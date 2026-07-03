@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -26,9 +27,7 @@ export class MessagingService {
   ) {}
 
   private ensureSchoolId(schoolId?: string): string {
-    if (!schoolId) {
-      throw new ForbiddenException('School context is required');
-    }
+    if (!schoolId) throw new LocalizedException('messaging.school_context_is_required_92ef57a6', undefined, HttpStatus.FORBIDDEN, 'School context is required');
     return schoolId;
   }
 
@@ -45,9 +44,7 @@ export class MessagingService {
       select: { startDate: true, endDate: true },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('messaging.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     return {
       gte: academicYear.startDate,
@@ -282,9 +279,7 @@ export class MessagingService {
       select: { id: true },
     });
 
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
+    if (!conversation) throw new LocalizedException('messaging.conversation_not_found_ec3b7531', undefined, HttpStatus.NOT_FOUND, 'Conversation not found');
 
     const messages = await this.prisma.message.findMany({
       where: {
@@ -329,14 +324,10 @@ export class MessagingService {
       },
     });
 
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
+    if (!conversation) throw new LocalizedException('messaging.conversation_not_found_ec3b7531', undefined, HttpStatus.NOT_FOUND, 'Conversation not found');
 
     const content = dto.content.trim();
-    if (!content) {
-      throw new BadRequestException('Message content is required');
-    }
+    if (!content) throw new LocalizedException('messaging.message_content_is_required_ad89fbab', undefined, undefined, 'Message content is required');
 
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({
@@ -403,9 +394,7 @@ export class MessagingService {
       select: { id: true, conversationId: true },
     });
 
-    if (!message) {
-      throw new NotFoundException('Message not found');
-    }
+    if (!message) throw new LocalizedException('messaging.message_not_found_1a5bbe00', undefined, HttpStatus.NOT_FOUND, 'Message not found');
 
     const read = await this.prisma.messageRead.upsert({
       where: {

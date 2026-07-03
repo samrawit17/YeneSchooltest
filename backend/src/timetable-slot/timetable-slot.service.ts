@@ -1,10 +1,11 @@
-import {
+import { HttpStatus,
   Injectable,
   ConflictException,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
@@ -61,9 +62,7 @@ export class TimetableSlotService {
       select: { id: true },
     });
 
-    if (!parentProfile) {
-      throw new ForbiddenException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('timetable_slot.parent_profile_not_found_ad089d27', undefined, HttpStatus.FORBIDDEN, 'Parent profile not found');
 
     const linkedStudents = await this.prisma.parentStudent.findMany({
       where: {
@@ -75,9 +74,7 @@ export class TimetableSlotService {
       },
     });
 
-    if (linkedStudents.length === 0) {
-      throw new ForbiddenException('No linked child found for this parent');
-    }
+    if (linkedStudents.length === 0) throw new LocalizedException('timetable_slot.no_linked_child_found_for_this_parent_eb74c6bb', undefined, HttpStatus.FORBIDDEN, 'No linked child found for this parent');
 
     const studentProfiles = await this.prisma.studentProfile.findMany({
       where: { id: { in: linkedStudents.map(ls => ls.studentId) }, schoolId },
@@ -86,9 +83,7 @@ export class TimetableSlotService {
 
     const studentUserIds = studentProfiles.map(sp => sp.userId).filter(Boolean);
 
-    if (studentUserIds.length === 0) {
-      throw new ForbiddenException('Linked child profile is incomplete');
-    }
+    if (studentUserIds.length === 0) throw new LocalizedException('timetable_slot.linked_child_profile_is_incomplete_0d1a6ebb', undefined, HttpStatus.FORBIDDEN, 'Linked child profile is incomplete');
 
     const studentAssignments = await this.prisma.studentClass.findFirst({
       where: {
@@ -501,9 +496,7 @@ export class TimetableSlotService {
       select: { classId: true },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Student enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('timetable_slot.student_enrollment_not_found_152abfaf', undefined, HttpStatus.NOT_FOUND, 'Student enrollment not found');
 
     return this.findByClass(schoolId, enrollment.classId);
   }
@@ -583,9 +576,7 @@ export class TimetableSlotService {
       },
     });
 
-    if (!slot) {
-      throw new NotFoundException('Timetable slot not found');
-    }
+    if (!slot) throw new LocalizedException('timetable_slot.timetable_slot_not_found_74cade9d', undefined, HttpStatus.NOT_FOUND, 'Timetable slot not found');
 
     return slot;
   }
@@ -826,13 +817,9 @@ export class TimetableSlotService {
   ) {
     const { classId, sectionId, academicYearId, apply = false, periodRequirements } = payload;
 
-    if (!classId || !sectionId) {
-      throw new BadRequestException('Class and section are required');
-    }
+    if (!classId || !sectionId) throw new LocalizedException('timetable_slot.class_and_section_are_required_4b8512b8', undefined, undefined, 'Class and section are required');
 
-    if (!Array.isArray(periodRequirements) || periodRequirements.length === 0) {
-      throw new BadRequestException('At least one period requirement is required');
-    }
+    if (!Array.isArray(periodRequirements) || periodRequirements.length === 0) throw new LocalizedException('timetable_slot.at_least_one_period_requirement_is_required_587314cb', undefined, undefined, 'At least one period requirement is required');
 
     const normalizedRequirements = periodRequirements
       .map((item) => ({
@@ -841,9 +828,7 @@ export class TimetableSlotService {
       }))
       .filter((item) => item.classSubjectId && item.periodsPerWeek > 0);
 
-    if (normalizedRequirements.length === 0) {
-      throw new BadRequestException('No valid period requirements were provided');
-    }
+    if (normalizedRequirements.length === 0) throw new LocalizedException('timetable_slot.no_valid_period_requirements_were_provided_f078ff2e', undefined, undefined, 'No valid period requirements were provided');
 
     const [periodTimes, classSubjects, existingSlots, maxPeriodsPerDay] = await Promise.all([
       this.prisma.periodTime.findMany({

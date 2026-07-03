@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EnrollmentStatus, Role } from '@prisma/client';
 
@@ -248,9 +249,7 @@ export class AutoAssignmentService {
         },
       });
 
-      if (!enrollment) {
-        throw new NotFoundException(`Enrollment not found: ${enrollmentId}`);
-      }
+      if (!enrollment) throw new LocalizedException('auto_assignment.enrollment_not_found_a78e543a', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found: ${enrollmentId}');
 
       // Use studentId from enrollment if not provided
       if (!studentId) {

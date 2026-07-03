@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, EnrollmentStatus } from '@prisma/client';
 import { AutoAssignmentService } from '../auto-assignment/auto-assignment.service';
@@ -94,9 +95,7 @@ export class RegistrarService {
       return null;
     }
 
-    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
-      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
-    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) throw new LocalizedException('registrar.student_stream_must_be_social_or_natural_for_grade_11_and_12_8c69d008', undefined, undefined, 'Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
 
     return normalized;
   }
@@ -143,9 +142,7 @@ export class RegistrarService {
       },
     });
 
-    if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
-      throw new BadRequestException('Selected section is already at capacity');
-    }
+    if (targetSection.capacity && enrolledCount >= targetSection.capacity) throw new LocalizedException('registrar.selected_section_is_already_at_capacity_00ec9761', undefined, undefined, 'Selected section is already at capacity');
 
     return {
       class: targetClass,
@@ -181,17 +178,13 @@ export class RegistrarService {
     const school = await this.prismaService.school.findUnique({
       where: { id: schoolId },
     });
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('registrar.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     // Check if email already exists
     const existingUser = await this.prismaService.user.findUnique({
       where: { email },
     });
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
-    }
+    if (existingUser) throw new LocalizedException('registrar.email_already_exists_d76fd2d8', undefined, undefined, 'Email already exists');
 
     // Generate student code (using unified credential service)
     const studentCreds =
@@ -310,9 +303,7 @@ export class RegistrarService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('registrar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const enrollment = await this.prismaService.enrollment.findFirst({
       where: {
@@ -339,9 +330,7 @@ export class RegistrarService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('registrar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const {
       name,
@@ -497,13 +486,9 @@ export class RegistrarService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('registrar.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new BadRequestException('Enrollment is not pending');
-    }
+    if (enrollment.status !== EnrollmentStatus.PENDING) throw new LocalizedException('registrar.enrollment_is_not_pending_5a9c23f5', undefined, undefined, 'Enrollment is not pending');
 
     const { className, section, rollNumber } = approveData;
     const placement = await this.resolveSectionWithCapacity(
@@ -579,13 +564,9 @@ export class RegistrarService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('registrar.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new BadRequestException('Enrollment is not pending');
-    }
+    if (enrollment.status !== EnrollmentStatus.PENDING) throw new LocalizedException('registrar.enrollment_is_not_pending_5a9c23f5', undefined, undefined, 'Enrollment is not pending');
 
     await this.prismaService.enrollment.update({
       where: { id: enrollmentId },
@@ -617,9 +598,7 @@ export class RegistrarService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('registrar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const { className, section, rollNumber, classId, sectionId, stream } = assignData;
 
@@ -632,9 +611,7 @@ export class RegistrarService {
         include: { class: true },
       });
 
-      if (!targetSection) {
-        throw new BadRequestException('Selected class and section are not valid');
-      }
+      if (!targetSection) throw new LocalizedException('registrar.selected_class_and_section_are_not_valid_7e616270', undefined, undefined, 'Selected class and section are not valid');
 
       const activeAcademicYear = await this.prismaService.academicYear.findFirst({
         where: { schoolId, isActive: true },
@@ -653,9 +630,7 @@ export class RegistrarService {
         },
       });
 
-      if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
-        throw new BadRequestException('Selected section is already at capacity');
-      }
+      if (targetSection.capacity && enrolledCount >= targetSection.capacity) throw new LocalizedException('registrar.selected_section_is_already_at_capacity_00ec9761', undefined, undefined, 'Selected section is already at capacity');
 
       await this.prismaService.studentClass.upsert({
         where: {
@@ -709,9 +684,7 @@ export class RegistrarService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('registrar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const existingDocs = student.documents ? JSON.parse(student.documents) : [];
 
@@ -743,9 +716,7 @@ export class RegistrarService {
       select: { name: true },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('registrar.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const schoolPrefix = school.name.substring(0, 3).toUpperCase();
     const timestamp = Date.now().toString().slice(-6);

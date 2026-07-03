@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { SubscriptionService } from '../subscription/subscription.service';
@@ -263,7 +264,7 @@ export class SchoolService {
         publicUrlSlug: true,
       },
     });
-    if (!existing) throw new HttpException('School not found', HttpStatus.NOT_FOUND);
+    if (!existing) throw new LocalizedException('school.school_not_found_httpstatus_not_found_83cbabb7', undefined, undefined, '\'School not found\', HttpStatus.NOT_FOUND');
 
     if (data.publicUrlSlug) {
       data.publicUrlSlug = await this.normalizeUniquePublicUrlSlug(
@@ -303,9 +304,7 @@ export class SchoolService {
       where: { id },
       select: { id: true, name: true },
     });
-    if (!school) {
-      throw new HttpException('School not found', HttpStatus.NOT_FOUND);
-    }
+    if (!school) throw new LocalizedException('school.school_not_found_httpstatus_not_found_83cbabb7', undefined, undefined, '\'School not found\', HttpStatus.NOT_FOUND');
 
     await this.prismaService.school.delete({
       where: { id },
@@ -330,15 +329,13 @@ export class SchoolService {
       throw new BadRequestException('Logo must be PNG, JPG, JPEG, or WEBP');
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      throw new BadRequestException('Logo must be less than 2MB');
-    }
+    if (file.size > 2 * 1024 * 1024) throw new LocalizedException('school.logo_must_be_less_than_2mb_3224a69c', undefined, undefined, 'Logo must be less than 2MB');
 
     const existing = await this.prismaService.school.findUnique({
       where: { id: schoolId },
       select: { logoUrl: true },
     });
-    if (!existing) throw new HttpException('School not found', HttpStatus.NOT_FOUND);
+    if (!existing) throw new LocalizedException('school.school_not_found_httpstatus_not_found_83cbabb7', undefined, undefined, '\'School not found\', HttpStatus.NOT_FOUND');
 
     const extension =
       file.mimetype === 'image/png'

@@ -1,0 +1,28 @@
+{
+  "created": "Exam '{{examName}}' created successfully",
+  "updated": "Exam '{{examName}}' updated successfully",
+  "deleted": "Exam '{{examName}}' deleted successfully",
+  "not_found": "Exam not found",
+  "scheduled": "Exam scheduled for {{date}} at {{time}}",
+  "rescheduled": "Exam rescheduled to {{date}} at {{time}}",
+  "cancelled": "Exam cancelled",
+  "result": {
+    "entered": "Results entered for {{examName}}",
+    "published": "Results published for {{examName}}",
+    "updated": "Results updated for {{examName}}",
+    "not_found": "No results found for this exam",
+    "already_published": "Results already published",
+    "confirm_publish": "Are you sure you want to publish results for {{examName}}?"
+  },
+  "seating": {
+    "generated": "Seating arrangement generated for {{examName}}",
+    "printed": "Seating arrangement printed",
+    "not_found": "No seating arrangement found",
+    "student_assigned": "{{studentName}} assigned to room {{room}}, seat {{seat}}"
+  },
+  "grade_scale": {
+    "created": "Grade scale created",
+    "updated": "Grade scale updated",
+    "not_found": "Grade scale not found"
+  }
+}

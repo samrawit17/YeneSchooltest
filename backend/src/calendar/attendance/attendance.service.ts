@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../../core/localization';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SCHOOL_SETTING_KEYS,
@@ -67,9 +68,7 @@ export class AttendanceService {
       select: { id: true },
     });
 
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('calendar.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
@@ -79,9 +78,7 @@ export class AttendanceService {
       select: { id: true, userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!studentProfile) throw new LocalizedException('calendar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const relation = await this.prisma.parentStudent.findFirst({
       where: {
@@ -105,9 +102,7 @@ export class AttendanceService {
     studentId: string,
   ): Promise<string> {
     if (user.role === Role.STUDENT) {
-      if (user.id !== studentId) {
-        throw new ForbiddenException('You can only view your own attendance');
-      }
+      if (user.id !== studentId) throw new LocalizedException('calendar.you_can_only_view_your_own_attendance_2afc1054', undefined, HttpStatus.FORBIDDEN, 'You can only view your own attendance');
       return user.id;
     }
 
@@ -123,9 +118,7 @@ export class AttendanceService {
       select: { userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!studentProfile) throw new LocalizedException('calendar.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     return studentProfile.userId;
   }
@@ -283,9 +276,7 @@ export class AttendanceService {
       return {};
     }
 
-    if (this.isWeekend(attendanceDate)) {
-      throw new BadRequestException('Cannot submit attendance on weekends');
-    }
+    if (this.isWeekend(attendanceDate)) throw new LocalizedException('calendar.cannot_submit_attendance_on_weekends_322ebd15', undefined, undefined, 'Cannot submit attendance on weekends');
 
     const now = new Date();
     if (!this.isSameCalendarDay(attendanceDate, now)) {
@@ -508,9 +499,7 @@ export class AttendanceService {
       },
     });
 
-    if (!session) {
-      throw new NotFoundException('Attendance session not found');
-    }
+    if (!session) throw new LocalizedException('calendar.attendance_session_not_found_690e4b0f', undefined, HttpStatus.NOT_FOUND, 'Attendance session not found');
 
     if (user) {
       if (session.schoolId !== user.schoolId) {
@@ -947,9 +936,7 @@ export class AttendanceService {
         }
       }
 
-      if (!classData) {
-        throw new NotFoundException('Class not found');
-      }
+      if (!classData) throw new LocalizedException('calendar.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
       if (!classData.academicYearId) {
         throw new BadRequestException(
@@ -1005,9 +992,7 @@ export class AttendanceService {
         },
       });
 
-      if (!slot) {
-        throw new NotFoundException('Timetable slot not found');
-      }
+      if (!slot) throw new LocalizedException('calendar.timetable_slot_not_found_74cade9d', undefined, HttpStatus.NOT_FOUND, 'Timetable slot not found');
 
       // STRICT: Only homeroom teachers can take attendance (admins are also allowed)
       const isAdmin =
@@ -1028,9 +1013,7 @@ export class AttendanceService {
         const academicYear = await this.prisma.academicYear.findUnique({
           where: { id: slot.academicYearId },
         });
-        if (!academicYear) {
-          throw new BadRequestException('Academic year is not configured');
-        }
+        if (!academicYear) throw new LocalizedException('calendar.academic_year_is_not_configured_c7513aaf', undefined, undefined, 'Academic year is not configured');
       }
 
       schoolId = slot.schoolId;
@@ -1248,9 +1231,7 @@ export class AttendanceService {
       },
     });
 
-    if (!session) {
-      throw new NotFoundException('Attendance session not found');
-    }
+    if (!session) throw new LocalizedException('calendar.attendance_session_not_found_690e4b0f', undefined, HttpStatus.NOT_FOUND, 'Attendance session not found');
 
     // Determine class and section info - handles both homeroom and regular sessions
     let classId: string;
@@ -1495,13 +1476,9 @@ export class AttendanceService {
       },
     });
 
-    if (!session) {
-      throw new NotFoundException('Attendance session not found');
-    }
+    if (!session) throw new LocalizedException('calendar.attendance_session_not_found_690e4b0f', undefined, HttpStatus.NOT_FOUND, 'Attendance session not found');
 
-    if (session.status === 'SUBMITTED') {
-      throw new BadRequestException('Cannot modify submitted attendance');
-    }
+    if (session.status === 'SUBMITTED') throw new LocalizedException('calendar.cannot_modify_submitted_attendance_32e54089', undefined, undefined, 'Cannot modify submitted attendance');
 
     await this.enforceTeacherAttendanceWindow(user, new Date(session.date));
 
@@ -1667,9 +1644,7 @@ export class AttendanceService {
       },
     });
 
-    if (!session) {
-      throw new NotFoundException('Attendance session not found');
-    }
+    if (!session) throw new LocalizedException('calendar.attendance_session_not_found_690e4b0f', undefined, HttpStatus.NOT_FOUND, 'Attendance session not found');
 
     await this.enforceTeacherAttendanceWindow(user, new Date(session.date));
 
@@ -2056,9 +2031,7 @@ export class AttendanceService {
    * Get all sessions with filters (Admin)
    */
   async getAllSessions(user: RequestUser, query: AttendanceQueryDto) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can view all sessions');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_view_all_sessions_81eaa362', undefined, HttpStatus.FORBIDDEN, 'Only admins can view all sessions');
 
     const { startDate, endDate, classId, status, grade, section } = query;
 
@@ -2155,9 +2128,7 @@ export class AttendanceService {
    * Get attendance summary (Admin)
    */
   async getSummary(user: RequestUser, query: AttendanceQueryDto) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can view attendance summary');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_view_attendance_summary_815fbbe9', undefined, HttpStatus.FORBIDDEN, 'Only admins can view attendance summary');
 
     const { startDate, endDate, classId } = query;
 
@@ -2225,9 +2196,7 @@ export class AttendanceService {
    */
   async getAttendanceReport(user: RequestUser, query: AttendanceQueryDto) {
     // Only admins can access this
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can view attendance reports');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_view_attendance_reports_602a0d87', undefined, HttpStatus.FORBIDDEN, 'Only admins can view attendance reports');
 
     const {
       classId,
@@ -2324,17 +2293,13 @@ export class AttendanceService {
     dto: OverrideAttendanceDto,
   ) {
     // Only admins can override
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can override attendance');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_override_attendance_842658f2', undefined, HttpStatus.FORBIDDEN, 'Only admins can override attendance');
 
     const record = await this.prisma.attendanceRecord.findUnique({
       where: { id: recordId },
     });
 
-    if (!record) {
-      throw new NotFoundException('Attendance record not found');
-    }
+    if (!record) throw new LocalizedException('calendar.attendance_record_not_found_ac9e62cd', undefined, HttpStatus.NOT_FOUND, 'Attendance record not found');
 
     // Log original status for audit trail
     const updated = await this.prisma.attendanceRecord.update({
@@ -2366,9 +2331,7 @@ export class AttendanceService {
    * Get attendance by date for admin dashboard
    */
   async getAttendanceByDate(user: RequestUser, date: string) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can view attendance by date');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_view_attendance_by_date_b391792d', undefined, HttpStatus.FORBIDDEN, 'Only admins can view attendance by date');
 
     const parsedDate = new Date(date);
 
@@ -2801,9 +2764,7 @@ export class AttendanceService {
     grade?: string,
     section?: string,
   ) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can access this endpoint');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_access_this_endpoint_cbdb36fe', undefined, HttpStatus.FORBIDDEN, 'Only admins can access this endpoint');
 
     const missingAttendance = await this.getMissingAttendanceEntries(
       user,
@@ -2826,9 +2787,7 @@ export class AttendanceService {
     grade?: string,
     section?: string,
   ) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can access this endpoint');
-    }
+    if (!this.isAdmin(user)) throw new LocalizedException('calendar.only_admins_can_access_this_endpoint_cbdb36fe', undefined, HttpStatus.FORBIDDEN, 'Only admins can access this endpoint');
 
     const missingEntries = await this.getMissingAttendanceEntries(
       user,

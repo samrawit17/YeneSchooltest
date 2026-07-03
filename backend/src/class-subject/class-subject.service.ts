@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   ConflictException,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
 import { CreateClassSubjectDto } from './dto/create-class-subject.dto';
@@ -81,9 +82,7 @@ export class ClassSubjectService {
       },
     });
 
-    if (!classRecord) {
-      throw new NotFoundException('Class not found for virtual assignment');
-    }
+    if (!classRecord) throw new LocalizedException('class_subject.class_not_found_for_virtual_assignment_1a672504', undefined, HttpStatus.NOT_FOUND, 'Class not found for virtual assignment');
 
     return tx.section.create({
       data: {
@@ -178,9 +177,7 @@ export class ClassSubjectService {
         select: { schoolId: true },
       });
 
-      if (!classData) {
-        throw new NotFoundException('Class not found');
-      }
+      if (!classData) throw new LocalizedException('class_subject.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
       const created = await tx.classSubject.create({
         data: {
@@ -363,9 +360,7 @@ export class ClassSubjectService {
       },
     });
 
-    if (!classSubject) {
-      throw new NotFoundException('Class subject assignment not found');
-    }
+    if (!classSubject) throw new LocalizedException('class_subject.class_subject_assignment_not_found_ad6ba707', undefined, HttpStatus.NOT_FOUND, 'Class subject assignment not found');
 
     return classSubject;
   }
@@ -527,9 +522,7 @@ export class ClassSubjectService {
 
       for (const sectionId of realSectionIds) {
         const section = sectionMap.get(sectionId);
-        if (!section) {
-          throw new NotFoundException(`Section ${sectionId} not found`);
-        }
+        if (!section) throw new LocalizedException('class_subject.section_not_found_e889c28c', undefined, HttpStatus.NOT_FOUND, 'Section ${sectionId} not found');
         if (classId && section.classId !== classId) {
           throw new BadRequestException(
             `Section ${section.name} does not belong to the selected class`,
@@ -579,9 +572,7 @@ export class ClassSubjectService {
 
       for (const virtualClassId of virtualClassIds) {
         const classRecord = virtualClassMap.get(virtualClassId);
-        if (!classRecord) {
-          throw new NotFoundException(`Class ${virtualClassId} not found`);
-        }
+        if (!classRecord) throw new LocalizedException('class_subject.class_not_found_4a3f1369', undefined, HttpStatus.NOT_FOUND, 'Class ${virtualClassId} not found');
         if (classId && classRecord.id !== classId) {
           throw new BadRequestException(
             `Class ${classRecord.name} does not match the selected class`,

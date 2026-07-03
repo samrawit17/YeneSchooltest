@@ -1,0 +1,11 @@
+{
+  "attendance_alert": "{{schoolName}}: {{studentName}} ዛሬ አልተገኘም። እባክዎ ከትምህርት ቤቱ ያረጋግጡ።",
+  "attendance_low": "{{schoolName}}: የ{{studentName}} መገኘት {{percentage}}% ነው። እባክዎ መደበኛ መገኘትን ያረጋግጡ።",
+  "fee_reminder": "{{schoolName}}: {{amount}} የክፍያ መጠን በ{{dueDate}} ይከፈላል። ቅጣትን ለማስቀረት ይክፈሉ።",
+  "fee_overdue": "{{schoolName}}: {{amount}} የክፍያ መጠን ዘግይቷል። ወዲያውኑ መክፈል ያስፈልጋል።",
+  "fee_received": "{{schoolName}}: {{amount}} ክፍያ ተቀብሏል። ደረሰኝ፡ {{receiptNo}}።",
+  "exam_reminder": "{{schoolName}}: {{examName}} በ{{date}} በ{{time}} ተይዟል። እባክዎ በዝግጅት ይኑሩ።",
+  "exam_result": "{{schoolName}}: የ{{examName}} ውጤት ታትሟል። ዝርዝር ለማየት ፖርታል ይጠቀሙ።",
+  "general_notification": "{{schoolName}}: {{message}}",
+  "emergency_alert": "{{schoolName}} ማስጠንቀቂያ፡ {{message}}። እባክዎ አስፈላጊውን ጥንቃቄ ያድርጉ።"
+}

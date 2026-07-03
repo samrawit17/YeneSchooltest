@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import {
@@ -304,9 +305,7 @@ export class AnnouncementService {
       },
     });
 
-    if (!announcement) {
-      throw new NotFoundException('Announcement not found');
-    }
+    if (!announcement) throw new LocalizedException('announcement.announcement_not_found_aa46f164', undefined, HttpStatus.NOT_FOUND, 'Announcement not found');
 
     return {
       ...announcement,
@@ -329,9 +328,7 @@ export class AnnouncementService {
       where: { id, schoolId },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Announcement not found');
-    }
+    if (!existing) throw new LocalizedException('announcement.announcement_not_found_aa46f164', undefined, HttpStatus.NOT_FOUND, 'Announcement not found');
 
     // Handle empty visibleTo array - store as comma-separated string or null
     const visibleTo =
@@ -390,7 +387,7 @@ export class AnnouncementService {
     file: { name: string; url: string; mimeType: string; size: number },
   ) {
     const existing = await this.prisma.announcement.findFirst({ where: { id, schoolId }, select: { attachments: true } });
-    if (!existing) throw new NotFoundException('Announcement not found');
+    if (!existing) throw new LocalizedException('announcement.announcement_not_found_aa46f164', undefined, HttpStatus.NOT_FOUND, 'Announcement not found');
 
     const attachments = existing.attachments ? JSON.parse(existing.attachments) : [];
     attachments.push(file);
@@ -403,10 +400,10 @@ export class AnnouncementService {
 
   async removeAttachment(id: string, schoolId: string, index: number) {
     const existing = await this.prisma.announcement.findFirst({ where: { id, schoolId }, select: { attachments: true } });
-    if (!existing) throw new NotFoundException('Announcement not found');
+    if (!existing) throw new LocalizedException('announcement.announcement_not_found_aa46f164', undefined, HttpStatus.NOT_FOUND, 'Announcement not found');
 
     const attachments = existing.attachments ? JSON.parse(existing.attachments) : [];
-    if (index < 0 || index >= attachments.length) throw new BadRequestException('Invalid attachment index');
+    if (index < 0 || index >= attachments.length) throw new LocalizedException('announcement.invalid_attachment_index_7cc94e1f', undefined, undefined, 'Invalid attachment index');
     attachments.splice(index, 1);
 
     return this.prisma.announcement.update({
@@ -420,9 +417,7 @@ export class AnnouncementService {
       where: { id, schoolId },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Announcement not found');
-    }
+    if (!existing) throw new LocalizedException('announcement.announcement_not_found_aa46f164', undefined, HttpStatus.NOT_FOUND, 'Announcement not found');
 
     return this.prisma.announcement.delete({
       where: { id },

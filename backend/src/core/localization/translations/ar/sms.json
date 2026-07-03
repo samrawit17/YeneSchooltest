@@ -1,0 +1,16 @@
+{
+  "common": {
+    "from": "نظام المدرسة"
+  },
+  "attendance": {
+    "absent": "غائب {{studentName}} في {{date}}",
+    "late": "تأخر {{studentName}} في {{time}}"
+  },
+  "fee": {
+    "due_reminder": "تذكير بالرسوم: {{amount}} مستحق في {{dueDate}}",
+    "received": "تم استلام {{amount}}. رقم الإيصال: {{receiptNumber}}"
+  },
+  "notification": {
+    "new_message": "رسالة جديدة من {{senderName}}"
+  }
+}

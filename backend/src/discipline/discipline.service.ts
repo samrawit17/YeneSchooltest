@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 
@@ -62,9 +63,7 @@ export class DisciplineService {
       select: { id: true, userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException(`Student profile not found for identifier: ${data.studentId}`);
-    }
+    if (!studentProfile) throw new LocalizedException('discipline.student_profile_not_found_for_identifier_f69fcef3', undefined, HttpStatus.NOT_FOUND, 'Student profile not found for identifier: ${data.studentId}');
 
     // Find parents linked to this student
     const parentLinks = await this.prisma.parentStudent.findMany({
@@ -203,7 +202,7 @@ export class DisciplineService {
       where: { id, schoolId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Discipline incident not found');
+    if (!existing) throw new LocalizedException('discipline.discipline_incident_not_found_07d440c4', undefined, HttpStatus.NOT_FOUND, 'Discipline incident not found');
 
     return this.prisma.disciplineIncident.update({
       where: { id },
@@ -225,7 +224,7 @@ export class DisciplineService {
       where: { id, schoolId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Discipline incident not found');
+    if (!existing) throw new LocalizedException('discipline.discipline_incident_not_found_07d440c4', undefined, HttpStatus.NOT_FOUND, 'Discipline incident not found');
 
     return this.prisma.disciplineIncident.delete({
       where: { id },

@@ -1,0 +1,11 @@
+{
+  "attendance_alert": "{{schoolName}}: {{studentName}} har'a hin argamne. Mee mana barnootaa wajjin mirkaneessaa.",
+  "attendance_low": "{{schoolName}}: Dhufaatii {{studentName}} {{percentage}}% dha. Mee dhufaatii sirreeffamaa.",
+  "fee_reminder": "{{schoolName}}: Kaffaltii {{amount}} guyyaa {{dueDate}} kaffaluu qaba. Adabbii xiqqeessuuf kaffali.",
+  "fee_overdue": "{{schoolName}}: Kaffaltii {{amount}} tursiifameera. Achumaan kaffaluun barbaachisa.",
+  "fee_received": "{{schoolName}}: Kaffaltii {{amount}} fudhatame. Receipt: {{receiptNo}}.",
+  "exam_reminder": "{{schoolName}}: Qormaanni {{examName}} guyyaa {{date}} sa'aatii {{time}} qophaa'ee jira. Mee qophaa'aa.",
+  "exam_result": "{{schoolName}}: Bu'aan {{examName}} maxxanfameera. Ilaaluuf poortaala fayyadami.",
+  "general_notification": "{{schoolName}}: {{message}}",
+  "emergency_alert": "{{schoolName}} AKEKKACHISA: {{message}}. Mee of eeggannoo godhaa."
+}

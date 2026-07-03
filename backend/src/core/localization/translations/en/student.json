@@ -1,0 +1,49 @@
+{
+  "created": {
+    "success": "Student {{name}} has been enrolled successfully",
+    "bulk": "{{count}} students enrolled successfully"
+  },
+  "updated": {
+    "success": "Student {{name}} information updated successfully",
+    "profile": "Student profile updated",
+    "status": "Student status changed to {{status}}"
+  },
+  "deleted": {
+    "success": "Student {{name}} removed from the system",
+    "confirm": "Are you sure you want to delete student {{name}}? This action cannot be undone"
+  },
+  "not_found": "Student not found",
+  "already_enrolled": "Student is already enrolled in this class",
+  "not_enrolled": "Student is not enrolled in any class",
+  "transfer": {
+    "success": "Student {{name}} transferred to {{class}} successfully",
+    "failed": "Failed to transfer student. Please check the target class capacity"
+  },
+  "promotion": {
+    "success": "Student {{name}} promoted to {{grade}}",
+    "bulk_success": "{{count}} students promoted successfully",
+    "failed": "Student does not meet promotion requirements",
+    "no_candidates": "No students found eligible for promotion"
+  },
+  "attendance": {
+    "summary": "Attendance summary for {{name}}: {{present}} present, {{absent}} absent out of {{total}} days",
+    "low_attendance": "Student {{name}} attendance has dropped to {{percentage}}%",
+    "warning": "Attendance warning: {{name}} has missed {{count}} consecutive days"
+  },
+  "id_card": {
+    "generated": "ID card generated for {{name}}",
+    "not_found": "ID card template not found"
+  },
+  "certificate": {
+    "generated": "Certificate generated for {{name}}",
+    "template_not_found": "Certificate template not found"
+  },
+  "parent": {
+    "linked": "Parent {{parentName}} linked to student {{studentName}}",
+    "unlinked": "Parent removed from student account",
+    "already_linked": "Parent already linked to this student"
+  },
+  "guardian": {
+    "updated": "Guardian information updated for {{name}}"
+  }
+}

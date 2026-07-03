@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -78,9 +79,7 @@ export class SubjectsService {
       },
     });
 
-    if (!subject) {
-      throw new NotFoundException('Subject not found');
-    }
+    if (!subject) throw new LocalizedException('subjects.subject_not_found_562e5a84', undefined, HttpStatus.NOT_FOUND, 'Subject not found');
 
     return subject;
   }

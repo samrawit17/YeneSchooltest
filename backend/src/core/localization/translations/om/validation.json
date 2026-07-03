@@ -1,0 +1,13 @@
+{
+  "required": "{{field}} barbaachisaa dha",
+  "invalid_email": "Teesso imeelii sirrii miti",
+  "invalid_phone": "Lakkoofsa bilbilaa sirrii miti",
+  "min_length": "{{field}} xinnaatti {{min}} qubeewwan ta'uu qaba",
+  "max_length": "{{field}} {{max}} qubeewwanii ol hin ta'uu qabu",
+  "invalid_format": "{{field}} bifa sirrii hin qabu",
+  "invalid_date": "Bifa guyyaa sirrii miti",
+  "invalid_number": "{{field}} lakkoofsa sirrii ta'uu qaba",
+  "weak_password": "Jecha icciitii qubeessa guddaa tokko, qubeessa xinnaa tokko, lakkoofsa tokko fi mallattoo addaa tokko of keessaa qabaachuu qaba",
+  "password_mismatch": "Jechoomni icciitii wal hin fakkaatanu",
+  "already_taken": "{{field}} duraanuu fudhatameera"
+}

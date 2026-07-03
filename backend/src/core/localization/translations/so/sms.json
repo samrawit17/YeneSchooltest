@@ -1,0 +1,16 @@
+{
+  "common": {
+    "from": "Nidaamka Dugsiga"
+  },
+  "attendance": {
+    "absent": "{{studentName}} waa maqan {{date}}",
+    "late": "{{studentName}} wuu daahay {{time}}"
+  },
+  "fee": {
+    "due_reminder": "Xusuusin Lacag: {{amount}} waa la gaaray {{dueDate}}",
+    "received": "{{amount}} waa la helay. Rasiidka: {{receiptNumber}}"
+  },
+  "notification": {
+    "new_message": "Fariin cusub oo ka timid {{senderName}}"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "welcome": {
+    "subject": "እንኳን ወደ {{schoolName}} በደህና መጡ",
+    "body": "<h1>እንኳን ወደ {{schoolName}} በደህና መጡ</h1><p>ውድ {{name}},</p><p>መለያዎ በተሳካ ሁኔታ ተፈጥሯል።</p><p>እባክዎ በመጀመሪያ ግብተው የይለፍ ቃልዎን ይቀይሩ።</p><p>ከልቤ ፣<br>{{schoolName}} ቡድን</p>"
+  },
+  "password_reset": {
+    "subject": "የይለፍ ቃል መቀየሪያ ጥያቄ",
+    "body": "<h1>የይለፍ ቃል መቀየሪያ</h1><p>ውድ {{name}},</p><p>የይለፍ ቃልዎን ለመቀየር ጥያቄ ደርሶናል።</p><p>ይህ ሊንክ በ1 ሰአት ውስጥ ያበቃል።</p><p>ይህን ካልጠየቁ ይህን ኢሜይል ችላ ይበሉ።</p><p>ከልቤ ፣<br>{{schoolName}} ቡድን</p>"
+  },
+  "fee_reminder": {
+    "subject": "የክፍያ ማሳሰቢያ",
+    "body": "<h1>የክፍያ ማሳሰቢያ</h1><p>ውድ {{parentName}},</p><p>የሚከተለው ክፍያ ቀነ ገደብ እንዳለው እናሳስብዎታለን፦</p><p><strong>ክፍያ፦</strong> {{feeDescription}}<br><strong>መጠን፦</strong> {{amount}}<br><strong>ቀነ ገደብ፦</strong> {{dueDate}}</p><p>እባክዎ ቅጣትን ለማስቀረት በቀነ ገደቡ ውስጥ ይክፈሉ።</p><p>ከልቤ ፣<br>{{schoolName}} የፋይናንስ ክፍል</p>"
+  },
+  "exam_result": {
+    "subject": "የ{{examName}} ውጤት ታትሟል",
+    "body": "<h1>የፈተና ውጤቶች</h1><p>ውድ {{name}},</p><p>የ<strong>{{examName}}</strong> ውጤቶች ታትመዋል።</p><p>ውጤቶችዎን በወላጅ/ተማሪ ፖርታል በመግባት መመልከት ይችላሉ።</p><p>ከልቤ ፣<br>{{schoolName}} አስተዳደር</p>"
+  }
+}

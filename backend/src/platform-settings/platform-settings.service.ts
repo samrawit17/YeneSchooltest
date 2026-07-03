@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
@@ -189,9 +190,7 @@ export class PlatformSettingsService {
   }
 
   private normalizeSettingValue(key: string, value: unknown) {
-    if (!key || typeof key !== 'string') {
-      throw new BadRequestException('Setting key is required');
-    }
+    if (!key || typeof key !== 'string') throw new LocalizedException('platform_settings.setting_key_is_required_8dd60c81', undefined, undefined, 'Setting key is required');
 
     if (key === 'MAX_SCHOOLS_ALLOWED') {
       if (value === null || value === undefined || value === '') return null;
@@ -216,9 +215,7 @@ export class PlatformSettingsService {
     }
 
     if (key === 'EMAIL_PROVIDER' || key === 'SMS_PROVIDER') {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new BadRequestException(`${key} must be a JSON object`);
-      }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new LocalizedException('platform_settings.must_be_a_json_object_c63a32a0', undefined, undefined, '${key} must be a JSON object');
       return value;
     }
 
@@ -234,16 +231,12 @@ export class PlatformSettingsService {
     }
 
     if (key === 'STORAGE_CONFIG') {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new BadRequestException('STORAGE_CONFIG must be a JSON object');
-      }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new LocalizedException('platform_settings.storage_config_must_be_a_json_object_049ab8ed', undefined, undefined, 'STORAGE_CONFIG must be a JSON object');
       return value;
     }
 
     if (key.startsWith('attendance_cutoff_')) {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new BadRequestException('Attendance cutoff must be an object');
-      }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new LocalizedException('platform_settings.attendance_cutoff_must_be_an_object_5bed594d', undefined, undefined, 'Attendance cutoff must be an object');
       const cutoff = value as { hour?: unknown; minute?: unknown };
       const hour = Number(cutoff.hour);
       const minute = Number(cutoff.minute);

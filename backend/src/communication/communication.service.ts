@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   BadRequestException,
   Injectable,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
@@ -38,9 +39,7 @@ export class CommunicationService {
       select: { startDate: true, endDate: true },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('communication.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     return {
       gte: academicYear.startDate,
@@ -65,15 +64,9 @@ export class CommunicationService {
     const message = dto.message?.trim();
     const classId = dto.classId?.trim() || undefined;
 
-    if (!targetUserId) {
-      throw new BadRequestException('A recipient is required');
-    }
-    if (!subject) {
-      throw new BadRequestException('Subject is required');
-    }
-    if (!message) {
-      throw new BadRequestException('Message is required');
-    }
+    if (!targetUserId) throw new LocalizedException('communication.a_recipient_is_required_93310a26', undefined, undefined, 'A recipient is required');
+    if (!subject) throw new LocalizedException('communication.subject_is_required_84d86d02', undefined, undefined, 'Subject is required');
+    if (!message) throw new LocalizedException('communication.message_is_required_caf57bac', undefined, undefined, 'Message is required');
 
     const creator = await this.prisma.user.findUnique({
       where: { id: createdById },
@@ -144,9 +137,7 @@ export class CommunicationService {
       }
     }
 
-    if (!targetUserRecord) {
-      throw new NotFoundException('Target user not found in this school');
-    }
+    if (!targetUserRecord) throw new LocalizedException('communication.target_user_not_found_in_this_school_07223705', undefined, HttpStatus.NOT_FOUND, 'Target user not found in this school');
 
     isTargetStudent = targetUserRecord.role === 'STUDENT';
     targetUser = targetUserRecord;
@@ -241,9 +232,7 @@ export class CommunicationService {
         },
       });
 
-      if (!parentProfile) {
-        throw new ForbiddenException('Parent profile not found');
-      }
+      if (!parentProfile) throw new LocalizedException('communication.parent_profile_not_found_ad089d27', undefined, HttpStatus.FORBIDDEN, 'Parent profile not found');
 
       if (isTargetStudent) {
         const parentRelation = await this.prisma.parentStudent.findFirst({
@@ -550,13 +539,9 @@ export class CommunicationService {
       },
     });
 
-    if (!communication) {
-      throw new NotFoundException('Communication not found');
-    }
+    if (!communication) throw new LocalizedException('communication.communication_not_found_21ef8c8b', undefined, HttpStatus.NOT_FOUND, 'Communication not found');
 
-    if (communication.schoolId !== schoolId) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (communication.schoolId !== schoolId) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
     if (
       academicYearDateRange &&
@@ -603,13 +588,9 @@ export class CommunicationService {
       },
     });
 
-    if (!communication) {
-      throw new NotFoundException('Communication not found');
-    }
+    if (!communication) throw new LocalizedException('communication.communication_not_found_21ef8c8b', undefined, HttpStatus.NOT_FOUND, 'Communication not found');
 
-    if (communication.schoolId !== schoolId) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (communication.schoolId !== schoolId) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
     await this.verifyAccess(communication, userId, userRole);
 
@@ -759,13 +740,9 @@ export class CommunicationService {
       where: { id: communicationId },
     });
 
-    if (!communication) {
-      throw new NotFoundException('Communication not found');
-    }
+    if (!communication) throw new LocalizedException('communication.communication_not_found_21ef8c8b', undefined, HttpStatus.NOT_FOUND, 'Communication not found');
 
-    if (communication.schoolId !== schoolId) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (communication.schoolId !== schoolId) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
     await this.prisma.communication.delete({
       where: { id: communicationId },
@@ -787,9 +764,7 @@ export class CommunicationService {
     dto: CreateCommunicationReplyDto,
   ) {
     const message = dto.message?.trim();
-    if (!message) {
-      throw new BadRequestException('Reply message is required');
-    }
+    if (!message) throw new LocalizedException('communication.reply_message_is_required_a0ac57c5', undefined, undefined, 'Reply message is required');
 
     const communication = await this.prisma.communication.findUnique({
       where: { id: communicationId },
@@ -813,13 +788,9 @@ export class CommunicationService {
       },
     });
 
-    if (!communication) {
-      throw new NotFoundException('Communication not found');
-    }
+    if (!communication) throw new LocalizedException('communication.communication_not_found_21ef8c8b', undefined, HttpStatus.NOT_FOUND, 'Communication not found');
 
-    if (communication.schoolId !== schoolId) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (communication.schoolId !== schoolId) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
     await this.verifyAccess(communication, userId, userRole);
 
@@ -906,20 +877,14 @@ export class CommunicationService {
       include: { communication: true },
     });
 
-    if (!reply) {
-      throw new NotFoundException('Reply not found');
-    }
+    if (!reply) throw new LocalizedException('communication.reply_not_found_aeaa8649', undefined, HttpStatus.NOT_FOUND, 'Reply not found');
 
-    if (reply.communication.schoolId !== schoolId) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (reply.communication.schoolId !== schoolId) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
     const isSender = reply.senderId === userId;
     const isAdmin = this.adminRoles.has(userRole);
 
-    if (!isSender && !isAdmin) {
-      throw new ForbiddenException('You can only delete your own replies');
-    }
+    if (!isSender && !isAdmin) throw new LocalizedException('communication.you_can_only_delete_your_own_replies_cbc1895b', undefined, HttpStatus.FORBIDDEN, 'You can only delete your own replies');
 
     await this.prisma.communicationReply.delete({
       where: { id: replyId },
@@ -1074,9 +1039,7 @@ export class CommunicationService {
           where: { userId, schoolId: communication.schoolId },
         }));
 
-      if (!parentProfile) {
-        throw new ForbiddenException('Parent profile not found');
-      }
+      if (!parentProfile) throw new LocalizedException('communication.parent_profile_not_found_ad089d27', undefined, HttpStatus.FORBIDDEN, 'Parent profile not found');
 
       // Use pre-fetched student profile if available
       let studentProfile = preFetched?.studentProfile;
@@ -1089,9 +1052,7 @@ export class CommunicationService {
         });
       }
 
-      if (!studentProfile) {
-        throw new ForbiddenException('Student profile not found');
-      }
+      if (!studentProfile) throw new LocalizedException('communication.student_profile_not_found_75599cef', undefined, HttpStatus.FORBIDDEN, 'Student profile not found');
 
       const parentRelation = await this.prisma.parentStudent.findFirst({
         where: {
@@ -1100,9 +1061,7 @@ export class CommunicationService {
         },
       });
 
-      if (!parentRelation) {
-        throw new ForbiddenException('Access denied');
-      }
+      if (!parentRelation) throw new LocalizedException('communication.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
       return true;
     }

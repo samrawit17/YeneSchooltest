@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { EventBusService } from '../core/events/event-bus.service';
@@ -19,9 +20,7 @@ export class PaymentsService {
   ) {}
 
   async recordPayment(user: any, dto: RecordPaymentDto) {
-    if (user?.role !== Role.SUPER_ADMIN && user?.schoolId && user.schoolId !== dto.schoolId) {
-      throw new BadRequestException('Fee does not match this school');
-    }
+    if (user?.role !== Role.SUPER_ADMIN && user?.schoolId && user.schoolId !== dto.schoolId) throw new LocalizedException('payments.fee_does_not_match_this_school_6ae67d67', undefined, undefined, 'Fee does not match this school');
 
     const paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
     const config = await this.feeStructureService.getBillingConfig(dto.schoolId);
@@ -37,9 +36,9 @@ export class PaymentsService {
             include: { payments: true, feeStructure: { select: { feeType: true } } },
           });
 
-      if (!sf) throw new BadRequestException('No fee found for this student. Generate student fees first.');
-      if (sf.schoolId !== dto.schoolId) throw new BadRequestException('Fee does not match this school');
-      if (sf.studentId !== dto.studentId) throw new BadRequestException('Fee does not match this student');
+      if (!sf) throw new LocalizedException('payments.no_fee_found_for_this_student_generate_student_fees_first_695bf3df', undefined, undefined, 'No fee found for this student. Generate student fees first.');
+      if (sf.schoolId !== dto.schoolId) throw new LocalizedException('payments.fee_does_not_match_this_school_6ae67d67', undefined, undefined, 'Fee does not match this school');
+      if (sf.studentId !== dto.studentId) throw new LocalizedException('payments.fee_does_not_match_this_student_ec157ce2', undefined, undefined, 'Fee does not match this student');
 
       const paymentTermId = dto.termId || sf.termId || null;
       const feeInstallmentIndex = this.getFeeStructureInstallmentIndex(sf.feeStructure?.feeType);
@@ -50,11 +49,9 @@ export class PaymentsService {
           where: { id: dto.termId, academicYearId: sf.academicYearId, academicYear: { schoolId: dto.schoolId } },
           select: { id: true },
         });
-        if (!term) throw new BadRequestException('Selected payment period does not match this fee academic year');
+        if (!term) throw new LocalizedException('payments.selected_payment_period_does_not_match_this_fee_academic_yea_962e89b8', undefined, undefined, 'Selected payment period does not match this fee academic year');
       }
-      if (!sf.termId && !paymentTermId && !isInstallmentFee) {
-        throw new BadRequestException('Select the term or semester this annual fee payment is for');
-      }
+      if (!sf.termId && !paymentTermId && !isInstallmentFee) throw new LocalizedException('payments.select_the_term_or_semester_this_annual_fee_payment_is_for_5f3f8a9b', undefined, undefined, 'Select the term or semester this annual fee payment is for');
 
       const alreadyPaid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
       const isAnnualFeePayment = !sf.termId && !isInstallmentFee && Boolean(paymentTermId);
@@ -68,7 +65,7 @@ export class PaymentsService {
           : alreadyPaid;
       const outstanding = Math.max(0, isAnnualFeePayment ? sf.finalAmount - alreadyPaid : perPeriodAmount - alreadyPaidForSelectedPeriod);
 
-      if (dto.amountPaid <= 0) throw new BadRequestException('Invalid amount');
+      if (dto.amountPaid <= 0) throw new LocalizedException('payments.invalid_amount_a9ced76f', undefined, undefined, 'Invalid amount');
       if (outstanding <= 0) {
         throw new BadRequestException(
           isAnnualFeePayment ? 'This annual fee is already fully paid'
@@ -123,7 +120,7 @@ export class PaymentsService {
         where: { id: paymentId, schoolId },
         include: { studentFee: { include: { payments: { select: { id: true, amountPaid: true } } } } },
       });
-      if (!payment) throw new BadRequestException('Payment not found');
+      if (!payment) throw new LocalizedException('payments.payment_not_found_58ad1e2f', undefined, undefined, 'Payment not found');
 
       const remainingPaid = payment.studentFee.payments
         .filter((item) => item.id !== payment.id)

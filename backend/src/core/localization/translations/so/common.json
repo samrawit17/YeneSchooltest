@@ -1,0 +1,66 @@
+{
+  "app": {
+    "name": "Nidaamka Maamulka Dugsiga"
+  },
+  "common": {
+    "welcome": "Ku Soo Dhawoow",
+    "loading": "Waa la soo rarayaa...",
+    "save": "Kaydi",
+    "cancel": "Jooji",
+    "delete": "Tirtir",
+    "edit": "Tafatir",
+    "create": "Abuur",
+    "update": "Cusbooneysii",
+    "search": "Raadi",
+    "filter": "Shaandhee",
+    "export": "Dhoofin",
+    "import": "Soo Dhoofin",
+    "yes": "Haa",
+    "no": "Maya",
+    "back": "Dib",
+    "next": "Xiga",
+    "close": "Xidh",
+    "confirm": "Xaqiiji",
+    "submit": "Gudbi",
+    "required": "Looma huro",
+    "optional": "Ikhtiyaar",
+    "success": "Guul",
+    "error": "Qalad",
+    "warning": "Digniin",
+    "info": "Macluumaad",
+    "no_data": "Ma jiro xog",
+    "print": "Daabac",
+    "download": "Soo Deji",
+    "upload": "Soo Geli",
+    "actions": "Ficilada",
+    "status": "Xaalad",
+    "date": "Taariikh",
+    "time": "Waqti",
+    "all": "Dhammaan",
+    "none": "Midna",
+    "or": "Ama",
+    "and": "Iyo"
+  },
+  "validation": {
+    "required": "Goobtan waa loo baahan yahay",
+    "email": "Fadlan geli email sax ah",
+    "min_length": "Waa inuu ka kooban yahay ugu yaraan {{min}} xaraf",
+    "max_length": "Waa inuu ka kooban yahay ugu badnaan {{max}} xaraf",
+    "password_mismatch": "Furaha sirta ah kuma habboona"
+  },
+  "error": {
+    "not_found": "Lama helin",
+    "unauthorized": "Lama idmaan",
+    "forbidden": "Waa mamnuuc",
+    "server_error": "Qalad server",
+    "bad_request": "Codsi qalad",
+    "validation_error": "Qalad xaqiijin",
+    "duplicate_entry": "Gelitaanka waa nuqul"
+  },
+  "pagination": {
+    "page": "Bog",
+    "of": "ee",
+    "rows_per_page": "Safafka boggiiba",
+    "total": "Wadarta"
+  }
+}

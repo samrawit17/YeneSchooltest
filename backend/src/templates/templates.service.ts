@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import * as fs from 'fs';
@@ -138,7 +139,7 @@ export class TemplatesService {
   async activate(schoolId: string, templateId: string) {
     await this.ensureTemplateSchema();
     const tpl = await this.prisma.template.findFirst({ where: { id: templateId, schoolId } });
-    if (!tpl) throw new NotFoundException('Template not found');
+    if (!tpl) throw new LocalizedException('templates.template_not_found_5350f35b', undefined, HttpStatus.NOT_FOUND, 'Template not found');
     await this.prisma.$transaction([
       this.prisma.template.updateMany({ where: { schoolId, type: tpl.type }, data: { isActive: false } }),
       this.prisma.template.updateMany({ where: { id: templateId, schoolId }, data: { isActive: true } }),
@@ -153,8 +154,8 @@ export class TemplatesService {
   ) {
     await this.ensureTemplateSchema();
     const tpl = await this.prisma.template.findFirst({ where: { id: templateId, schoolId } });
-    if (!tpl) throw new NotFoundException('Template not found');
-    if (!Array.isArray(fields)) throw new BadRequestException('fields must be an array');
+    if (!tpl) throw new LocalizedException('templates.template_not_found_5350f35b', undefined, HttpStatus.NOT_FOUND, 'Template not found');
+    if (!Array.isArray(fields)) throw new LocalizedException('templates.fields_must_be_an_array_44956851', undefined, undefined, 'fields must be an array');
     await this.prisma.template.updateMany({
       where: { id: templateId, schoolId },
       data: { fieldMapJson: JSON.stringify(fields) },

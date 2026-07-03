@@ -1,0 +1,89 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.JwtStrategy = void 0;
+const common_1 = require("@nestjs/common");
+const passport_1 = require("@nestjs/passport");
+const passport_jwt_1 = require("passport-jwt");
+const config_1 = require("@nestjs/config");
+const prisma_service_1 = require("../../prisma/prisma.service");
+const auth_service_1 = require("../auth.service");
+const default_permissions_constant_1 = require("../constants/default-permissions.constant");
+const role_enum_1 = require("../types/role.enum");
+function buildJwtExtractors(allowBearerAuth) {
+    const extractors = [
+        (req) => {
+            return req?.cookies?.[auth_service_1.JWT_COOKIE_NAME];
+        },
+    ];
+    if (allowBearerAuth) {
+        extractors.push(passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken());
+    }
+    return extractors;
+}
+let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
+    configService;
+    prismaService;
+    constructor(configService, prismaService) {
+        super({
+            jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors(buildJwtExtractors(configService.get('ALLOW_BEARER_AUTH') === 'true')),
+            ignoreExpiration: false,
+            secretOrKey: configService.get('JWT_SECRET'),
+        });
+        this.configService = configService;
+        this.prismaService = prismaService;
+    }
+    async validate(payload) {
+        const user = await this.prismaService.user.findUnique({
+            where: { id: payload.sub },
+            include: {
+                userPermissions: {
+                    include: { permission: true },
+                },
+            },
+        });
+        if (!user) {
+            return null;
+        }
+        const rolePermissions = await this.prismaService.rolePermission.findMany({
+            where: { role: user.role },
+            include: { permission: true },
+        });
+        const defaultRolePerms = default_permissions_constant_1.DEFAULT_ROLE_PERMISSIONS[user.role] || [];
+        const allPermissions = new Set([
+            ...defaultRolePerms,
+            ...user.userPermissions.map((up) => up.permission.name),
+            ...rolePermissions.map((rp) => rp.permission.name),
+        ]);
+        if (user.role === role_enum_1.Role.IT_MANAGER) {
+            for (const forbiddenPermission of default_permissions_constant_1.IT_MANAGER_FORBIDDEN_PERMISSIONS) {
+                allPermissions.delete(forbiddenPermission);
+            }
+        }
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            schoolId: user.schoolId,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            permissions: Array.from(allPermissions),
+        };
+    }
+};
+exports.JwtStrategy = JwtStrategy;
+exports.JwtStrategy = JwtStrategy = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        prisma_service_1.PrismaService])
+], JwtStrategy);
+//# sourceMappingURL=jwt.strategy.js.map

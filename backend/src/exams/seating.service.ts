@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -200,9 +201,7 @@ export class SeatingService {
       include: { assignments: true },
     });
 
-    if (!plan) {
-      throw new NotFoundException('Seating plan not found');
-    }
+    if (!plan) throw new LocalizedException('exams.seating_plan_not_found_2fe7dbd4', undefined, HttpStatus.NOT_FOUND, 'Seating plan not found');
 
     // Delete all student assignments
     await this.prisma.examSectionStudent.deleteMany({
@@ -354,9 +353,7 @@ export class SeatingService {
           where: { schoolId, isActive: true },
         });
 
-    if (!activeYear) {
-      throw new BadRequestException('No active academic year found');
-    }
+    if (!activeYear) throw new LocalizedException('exams.no_active_academic_year_found_47ece9b3', undefined, undefined, 'No active academic year found');
 
     // Fetch students in the grade range from the plan
     // Note: academicYear stores the year name (e.g., "2018") not the ID

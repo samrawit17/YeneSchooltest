@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePeriodTimeDto, UpdatePeriodTimeDto } from './dto/period-time.dto';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
@@ -47,9 +48,7 @@ export class PeriodTimeService {
   }
 
   private validatePeriodPayload(data: PeriodTimePayload) {
-    if (data.startTime >= data.endTime) {
-      throw new BadRequestException('Start time must be before end time');
-    }
+    if (data.startTime >= data.endTime) throw new LocalizedException('period_time.start_time_must_be_before_end_time_f3e3a4f0', undefined, undefined, 'Start time must be before end time');
   }
 
   private async getMaxPeriodsPerDay(schoolId: string) {
@@ -110,9 +109,7 @@ export class PeriodTimeService {
       select: { id: true },
     });
 
-    if (duplicatePeriod) {
-      throw new ConflictException(`Period ${data.periodNumber} already exists`);
-    }
+    if (duplicatePeriod) throw new LocalizedException('period_time.period_already_exists_5ad2b735', undefined, HttpStatus.CONFLICT, 'Period ${data.periodNumber} already exists');
 
     const periods = await this.prisma.periodTime.findMany({
       where: {
@@ -276,7 +273,7 @@ export class PeriodTimeService {
       where: { id, schoolId },
       select: { id: true, periodNumber: true, startTime: true, endTime: true },
     });
-    if (!existing) throw new NotFoundException('Period time not found');
+    if (!existing) throw new LocalizedException('period_time.period_time_not_found_669c0ead', undefined, HttpStatus.NOT_FOUND, 'Period time not found');
 
     const payload = {
       periodNumber: data.periodNumber ?? existing.periodNumber,
@@ -327,7 +324,7 @@ export class PeriodTimeService {
       where: { id, schoolId },
       select: { id: true, startTime: true, endTime: true },
     });
-    if (!existing) throw new NotFoundException('Period time not found');
+    if (!existing) throw new LocalizedException('period_time.period_time_not_found_669c0ead', undefined, HttpStatus.NOT_FOUND, 'Period time not found');
 
     const matchingTimetableSlotCount = await this.prisma.timetableSlot.count({
       where: {

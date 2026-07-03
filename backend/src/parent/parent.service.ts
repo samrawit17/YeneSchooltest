@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, ParentProfile, EnrollmentStatus } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
@@ -85,25 +86,19 @@ export class ParentService {
     const { email, name, phone, address, occupation, schoolId } =
       createParentDto;
 
-    if (!schoolId) {
-      throw new BadRequestException('School ID is required');
-    }
+    if (!schoolId) throw new LocalizedException('parent.school_id_is_required_96c29d2b', undefined, undefined, 'School ID is required');
 
     const school = await this.prismaService.school.findUnique({
       where: { id: schoolId },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('parent.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const existingUser = await this.prismaService.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-    }
+    if (existingUser) throw new LocalizedException('parent.user_with_this_email_already_exists_26c4a934', undefined, undefined, 'User with this email already exists');
 
     const credentials = await this.credentialService.generateStaffCredentials(
       schoolId,
@@ -166,29 +161,21 @@ export class ParentService {
       where: { id: schoolId },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('parent.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const student = await this.prismaService.studentProfile.findUnique({
       where: { id: studentProfileId },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('parent.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
-    if (student.schoolId !== schoolId) {
-      throw new ForbiddenException('Student does not belong to this school');
-    }
+    if (student.schoolId !== schoolId) throw new LocalizedException('parent.student_does_not_belong_to_this_school_1f02a341', undefined, HttpStatus.FORBIDDEN, 'Student does not belong to this school');
 
     const existingUser = await this.prismaService.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-    }
+    if (existingUser) throw new LocalizedException('parent.user_with_this_email_already_exists_26c4a934', undefined, undefined, 'User with this email already exists');
 
     const credentials = await this.credentialService.generateStaffCredentials(
       schoolId,
@@ -254,21 +241,15 @@ export class ParentService {
       where: { id: parentProfileId, schoolId },
     });
 
-    if (!parent) {
-      throw new NotFoundException('Parent not found');
-    }
+    if (!parent) throw new LocalizedException('parent.parent_not_found_e95958eb', undefined, HttpStatus.NOT_FOUND, 'Parent not found');
 
     const student = await this.prismaService.studentProfile.findUnique({
       where: { id: studentProfileId },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('parent.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
-    if (student.schoolId !== schoolId) {
-      throw new ForbiddenException('Student does not belong to this school');
-    }
+    if (student.schoolId !== schoolId) throw new LocalizedException('parent.student_does_not_belong_to_this_school_1f02a341', undefined, HttpStatus.FORBIDDEN, 'Student does not belong to this school');
 
     const existingLink = await this.prismaService.parentStudent.findUnique({
       where: {
@@ -279,9 +260,7 @@ export class ParentService {
       },
     });
 
-    if (existingLink) {
-      throw new BadRequestException('Student already linked to this parent');
-    }
+    if (existingLink) throw new LocalizedException('parent.student_already_linked_to_this_parent_25fbdd0f', undefined, undefined, 'Student already linked to this parent');
 
     const link = await this.prismaService.parentStudent.create({
       data: {
@@ -319,9 +298,7 @@ export class ParentService {
       },
     });
 
-    if (!link) {
-      throw new NotFoundException('Link not found');
-    }
+    if (!link) throw new LocalizedException('parent.link_not_found_6fe73780', undefined, HttpStatus.NOT_FOUND, 'Link not found');
 
     const parent = await this.prismaService.parentProfile.findFirst({
       where: { id: parentId, schoolId },
@@ -479,9 +456,7 @@ export class ParentService {
       },
     });
 
-    if (!parent) {
-      throw new NotFoundException('Parent not found');
-    }
+    if (!parent) throw new LocalizedException('parent.parent_not_found_e95958eb', undefined, HttpStatus.NOT_FOUND, 'Parent not found');
 
     return parent;
   }
@@ -491,9 +466,7 @@ export class ParentService {
       where: { userId, schoolId },
     });
 
-    if (!parent) {
-      throw new NotFoundException('Parent not found');
-    }
+    if (!parent) throw new LocalizedException('parent.parent_not_found_e95958eb', undefined, HttpStatus.NOT_FOUND, 'Parent not found');
 
     return parent;
   }
@@ -507,9 +480,7 @@ export class ParentService {
       where: { id: parentId, schoolId },
     });
 
-    if (!parent) {
-      throw new NotFoundException('Parent not found');
-    }
+    if (!parent) throw new LocalizedException('parent.parent_not_found_e95958eb', undefined, HttpStatus.NOT_FOUND, 'Parent not found');
 
     const userUpdateData: Prisma.UserUpdateInput = {};
     if (data.name !== undefined) {
@@ -558,9 +529,7 @@ export class ParentService {
       }
     }
 
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('parent.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const parentUser = await this.prismaService.user.findUnique({
       where: { id: parentProfile.userId },
@@ -1202,9 +1171,7 @@ export class ParentService {
       }
     }
 
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('parent.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const children = await this.prismaService.parentStudent.findMany({
       where: {
@@ -1679,9 +1646,7 @@ export class ParentService {
         item.userId === childId,
     );
 
-    if (!child) {
-      throw new NotFoundException('Child not linked to this parent');
-    }
+    if (!child) throw new LocalizedException('parent.child_not_linked_to_this_parent_3e54d88e', undefined, HttpStatus.NOT_FOUND, 'Child not linked to this parent');
 
     return child;
   }
@@ -1691,9 +1656,7 @@ export class ParentService {
       where: { id: parentId, schoolId },
     });
 
-    if (!parent) {
-      throw new NotFoundException('Parent not found');
-    }
+    if (!parent) throw new LocalizedException('parent.parent_not_found_e95958eb', undefined, HttpStatus.NOT_FOUND, 'Parent not found');
 
     await this.prismaService.user.update({
       where: { id: parent.userId },

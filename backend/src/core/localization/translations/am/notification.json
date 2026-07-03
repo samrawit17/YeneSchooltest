@@ -1,0 +1,234 @@
+{
+  "attendance": {
+    "marked": {
+      "title": "መገኘት ተመዝግቧል",
+      "message": "የ{{className}} መገኘት ተመዝግቧል"
+    },
+    "session_opened": {
+      "title": "የመገኘት ክፍለ ጊዜ ተከፍቷል",
+      "message": "የመገኘት ክፍለ ጊዜ ለ{{className}} - {{subject}} ዝግጁ ነው"
+    },
+    "low_attendance": {
+      "title": "ዝቅተኛ መገኘት ማስጠንቀቂያ",
+      "message": "ማሳሰቢያ፡ የ{{studentName}} መገኘት {{percentage}}% ነው"
+    },
+    "missing_detected": {
+      "title": "ያልተመዘገበ መገኘት",
+      "message": "{{count}} ተማሪ(ዎች) የ{{date}} መገኘት አልተመዘገበላቸውም"
+    },
+    "absent": {
+      "title": "የመገኘት ማስጠንቀቂያ",
+      "message": "{{studentName}} በ{{date}} በ{{className}} ውስጥ ባለመመዝገቡ ተመዝግቧል"
+    },
+    "late": {
+      "title": "ዘግይቶ መምጣት ማስታወሻ",
+      "message": "{{studentName}} በ{{time}} ለ{{className}} ዘግይቶ መጥቷል"
+    },
+    "reminder": {
+      "title": "የመገኘት ማስታወሻ",
+      "message": "የ{{className}} - {{subject}} መገኘት በ{{startTime}} ይጀምራል። መገኘትን መመዝገብ አይርሱ!"
+    },
+    "missing": {
+      "title": "ያልተመዘገበ መገኘት ማስታወሻ",
+      "message": "እባክዎ ለክፍል {{grade}} - {{section}} ({{className}}) ለ{{date}} መገኘት ይመዝግቡ። መገኘት እስካሁን አልተመዘገበም።"
+    }
+  },
+  "fee": {
+    "due": {
+      "title": "የክፍያ ቀነ ገደብ",
+      "message": "{{amount}} በ{{dueDate}} ይከፈላል ለ{{studentName}}"
+    },
+    "overdue": {
+      "title": "ክፍያ ዘግይቷል",
+      "message": "ክፍያ ዘግይቷል፡ {{amount}} - መከፈል የነበረበት {{dueDate}}"
+    },
+    "paid": {
+      "title": "ክፍያ ተቀብሏል",
+      "message": "የ{{amount}} ክፍያ ተቀብሏል። ደረሰኝ፡ {{receiptNumber}}"
+    },
+    "reminder": {
+      "title": "የክፍያ ማስታወሻ",
+      "message": "ማሳሰቢያ፡ {{amount}} በ{{dueDate}} ይከፈላል"
+    }
+  },
+  "exam": {
+    "created": {
+      "title": "አዲስ ፈተና",
+      "message": "አዲስ ፈተና ተይዟል፡ {{examName}} በ{{date}}"
+    },
+    "result_published": {
+      "title": "ውጤቶች ታትመዋል",
+      "message": "የ{{term}} ውጤቶች በ{{className}} ታትመዋል"
+    },
+    "reminder": {
+      "title": "የፈተና ማስታወሻ",
+      "message": "አስታዋሽ፡ {{examName}} ነገ በ{{time}} ነው"
+    },
+    "assessment_started": {
+      "title": "ግምገማ ተጀምሯል",
+      "message": "{{assessmentType}} \"{{assessmentTitle}}\" አሁን ለ{{className}} - {{subjectName}} ንቁ ነው። እባክዎ ነጥቦችን ያስገቡ።"
+    }
+  },
+  "grade": {
+    "published": {
+      "title": "ውጤት ታትሟል",
+      "message": "የ{{subjectName}} ውጤቶች ታትመዋል"
+    },
+    "report_available": {
+      "title": "የውጤት ካርድ",
+      "message": "የ{{termName}} የውጤት ካርድ ዝግጁ ነው"
+    }
+  },
+  "announcement": {
+    "new": {
+      "title": "አዲስ ማስታወቂያ",
+      "message": "አዲስ ማስታወቂያ፡ {{title}}"
+    },
+    "urgent": {
+      "title": "አስቸኳይ ማስታወቂያ",
+      "message": "አስቸኳይ፡ {{title}}"
+    }
+  },
+  "enrollment": {
+    "pending": {
+      "title": "አዲስ የምዝገባ ጥያቄ",
+      "message": "{{studentName}} ለክፍል {{grade}} የምዝገባ ጥያቄ አስገብቷል"
+    },
+    "approved": {
+      "title": "ምዝገባ ጸድቋል",
+      "message": "እንኳን ደስ አለዎት! የ{{studentName}} ምዝገባ ለ{{className}} ጸድቋል"
+    },
+    "rejected": {
+      "title": "ምዝገባ ውድቅ ሆኗል",
+      "message": "የ{{studentName}} የምዝገባ ማመልከቻ አልጸደቀም። ምክንያት፡ {{reason}}"
+    },
+    "rejected_no_reason": {
+      "title": "ምዝገባ ውድቅ ሆኗል",
+      "message": "የ{{studentName}} የምዝገባ ማመልከቻ አልጸደቀም"
+    }
+  },
+  "assignment": {
+    "created": {
+      "title": "አዲስ ሥራ",
+      "message": "አዲስ ሥራ \"{{assignmentTitle}}\" ለ{{className}} ተለጥፏል። የመጨረሻ ቀን፡ {{dueDate}}"
+    },
+    "parent": {
+      "title": "አዲስ ሥራ ለልጅዎ",
+      "message": "{{studentName}} አዲስ ሥራ \"{{assignmentTitle}}\" አለው የመጨረሻ ቀን {{dueDate}}"
+    },
+    "graded": {
+      "title": "ሥራ ተመዝኗል",
+      "message": "ሥራዎ \"{{assignmentTitle}}\" ለ{{className}} ተመዝኗል። ውጤት፡ {{grade}}"
+    },
+    "child_graded": {
+      "title": "የልጅ ሥራ ተመዝኗል",
+      "message": "የ{{studentName}} ሥራ \"{{assignmentTitle}}\" ተመዝኗል። ውጤት፡ {{grade}}"
+    }
+  },
+  "communication": {
+    "new_message": {
+      "title": "አዲስ መልዕክት",
+      "message": "{{senderName}}: {{preview}}"
+    },
+    "reply_received": {
+      "title": "ምላሽ ደርሷል",
+      "message": "ከ{{senderName}} ምላሽ ደርሷል"
+    }
+  },
+  "account": {
+    "created": {
+      "title": "እንኳን ደህና መጡ",
+      "message": "መለያዎ ተፈጥሯል። አሁን መግባት ይችላሉ።"
+    },
+    "created_with_temp_password": {
+      "title": "እንኳን ደህና መጡ",
+      "message": "መለያዎ ተፈጥሯል። እባክዎ ለመግቢያ መረጃ ኢሜይልዎን ይመልከቱ።"
+    },
+    "deactivated": {
+      "title": "መለያ ተዘግቷል",
+      "message": "መለያዎ ተዘግቷል። ለተጨማሪ መረጃ እባክዎ የትምህርት ቤቱን አስተዳደር ያግኙ።"
+    },
+    "deactivated_with_reason": {
+      "title": "መለያ ተዘግቷል",
+      "message": "ምክንያት፡ {{reason}}"
+    },
+    "activated": {
+      "title": "መለያ ተከፍቷል",
+      "message": "መለያዎ ተከፍቷል። አሁን መግባት ይችላሉ።"
+    }
+  },
+  "schedule": {
+    "changed": {
+      "title": "የሰሌዳ ለውጥ",
+      "message": "{{message}}"
+    },
+    "class_cancelled": {
+      "title": "ክፍል ተሰርዟል",
+      "message": "{{className}} በ{{date}} ተሰርዟል። ምክንያት፡ {{reason}}"
+    },
+    "class_cancelled_no_reason": {
+      "title": "ክፍል ተሰርዟል",
+      "message": "{{className}} በ{{date}} ተሰርዟል"
+    },
+    "student_class_cancelled": {
+      "title": "ክፍል ተሰርዟል",
+      "message": "የ{{subject}} ክፍል ለ{{className}} በ{{date}} ተሰርዟል"
+    },
+    "pickup_reminder": {
+      "title": "የመውሰድ ማስታወሻ",
+      "message": "ውድ ወላጅ ሆይ፣ የመጨረሻው ክፍል ሊያልቅ ነው። እባክዎ መጥተው ልጅዎን ይውሰዱ።"
+    },
+    "class_starting": {
+      "title": "ክፍልዎ እየጀመረ ነው",
+      "message": "ለአሁኑ ክፍልዎ ደወል ተመቷል። እባክዎ ወደ ክፍልዎ ይሂዱ።"
+    },
+    "class_ended": {
+      "title": "ክፍልዎ አልቋል",
+      "message": "የአሁኑ ክፍል ለማብቃት ደወል ተመቷል።"
+    }
+  },
+  "timetable": {
+    "updated": {
+      "title": "የጊዜ ሰሌዳ ተዘምኗል",
+      "message": "የ{{className}} የጊዜ ሰሌዳ ተዘምኗል። እባክዎ አዲሱን ሰሌዳዎ ይመልከቱ።"
+    }
+  },
+  "discipline": {
+    "incident_reported": {
+      "title": "የዲሲፕሊን መዝገብ",
+      "message": "ለ{{studentName}} ደረጃ {{severity}} ክስተት \"{{incidentTitle}}\" ተመዝግቧል።"
+    }
+  },
+  "general": {
+    "welcome": {
+      "title": "እንኳን ደህና መጡ",
+      "message": "እንኳን ወደ {{schoolName}} በደህና መጡ፣ {{name}}!"
+    },
+    "system_notification": {
+      "title": "የስርዓት ማሳሰቢያ",
+      "message": "የስርዓት ማሳሰቢያ"
+    }
+  },
+  "siren": {
+    "activated": {
+      "title": "ሳይረን ማንቂያ",
+      "message": "{{type}} ተነስቷል"
+    }
+  },
+  "messaging": {
+    "new_message": {
+      "title": "አዲስ መልዕክት",
+      "message": "ከ{{senderName}} አዲስ መልዕክት"
+    }
+  },
+  "bell": {
+    "class_bell": {
+      "title": "የክፍል ደወል",
+      "message": "የ{{sirenLabel}} ደወል ለጊዜ ሰሌዳዎ ተመቷል።"
+    },
+    "school_bell": {
+      "title": "የትምህርት ቤት ደወል",
+      "message": "የትምህርት ቤቱ ደወል ተመቷል።"
+    }
+  }
+}

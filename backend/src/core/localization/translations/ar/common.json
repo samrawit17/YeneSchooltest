@@ -1,0 +1,66 @@
+{
+  "app": {
+    "name": "نظام إدارة المدرسة"
+  },
+  "common": {
+    "welcome": "مرحباً بك",
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "update": "تحديث",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "import": "استيراد",
+    "yes": "نعم",
+    "no": "لا",
+    "back": "رجوع",
+    "next": "التالي",
+    "close": "إغلاق",
+    "confirm": "تأكيد",
+    "submit": "إرسال",
+    "required": "مطلوب",
+    "optional": "اختياري",
+    "success": "نجاح",
+    "error": "خطأ",
+    "warning": "تحذير",
+    "info": "معلومات",
+    "no_data": "لا توجد بيانات",
+    "print": "طباعة",
+    "download": "تحميل",
+    "upload": "رفع",
+    "actions": "الإجراءات",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "all": "الكل",
+    "none": "لا شيء",
+    "or": "أو",
+    "and": "و"
+  },
+  "validation": {
+    "required": "هذا الحقل مطلوب",
+    "email": "يرجى إدخال بريد إلكتروني صحيح",
+    "min_length": "يجب أن يكون الحد الأدنى للطول {{min}} حرفاً",
+    "max_length": "يجب أن يكون الحد الأقصى للطول {{max}} حرفاً",
+    "password_mismatch": "كلمات المرور غير متطابقة"
+  },
+  "error": {
+    "not_found": "غير موجود",
+    "unauthorized": "غير مصرح به",
+    "forbidden": "ممنوع",
+    "server_error": "خطأ في الخادم",
+    "bad_request": "طلب غير صحيح",
+    "validation_error": "خطأ في التحقق",
+    "duplicate_entry": "الإدخال مكرر"
+  },
+  "pagination": {
+    "page": "صفحة",
+    "of": "من",
+    "rows_per_page": "عدد الصفوف في الصفحة",
+    "total": "الإجمالي"
+  }
+}

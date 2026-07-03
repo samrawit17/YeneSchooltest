@@ -1,10 +1,11 @@
-import {
+import { HttpStatus,
   Injectable,
   ConflictException,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
 import { Role } from '../auth/types/role.enum';
@@ -20,18 +21,14 @@ export class ClassService {
     schoolId: string,
     academicYearId: string,
   ) {
-    if (!academicYearId) {
-      throw new BadRequestException('Academic year is required');
-    }
+    if (!academicYearId) throw new LocalizedException('class.academic_year_is_required_1bde6487', undefined, undefined, 'Academic year is required');
 
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: academicYearId, schoolId },
       select: { id: true, endDate: true, name: true },
     });
 
-    if (!academicYear) {
-      throw new BadRequestException('Academic year not found for this school');
-    }
+    if (!academicYear) throw new LocalizedException('class.academic_year_not_found_for_this_school_bdabd329', undefined, undefined, 'Academic year not found for this school');
 
     if (new Date(academicYear.endDate) < new Date()) {
       throw new BadRequestException(
@@ -156,9 +153,7 @@ export class ClassService {
       },
     });
 
-    if (!classData) {
-      throw new NotFoundException('Class not found');
-    }
+    if (!classData) throw new LocalizedException('class.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     return classData;
   }
@@ -230,9 +225,7 @@ export class ClassService {
       const teacher = await this.prisma.user.findUnique({
         where: { id: data.homeroomTeacherId },
       });
-      if (!teacher || teacher.schoolId !== schoolId) {
-        throw new NotFoundException('Teacher not found');
-      }
+      if (!teacher || teacher.schoolId !== schoolId) throw new LocalizedException('class.teacher_not_found_4d6b9155', undefined, HttpStatus.NOT_FOUND, 'Teacher not found');
       if (teacher.role !== Role.TEACHER) {
         throw new BadRequestException(
           'The selected user must be a teacher to be assigned as homeroom teacher',
@@ -699,9 +692,7 @@ export class ClassService {
       const sectionBelongsToClass = (classData.sections || []).some(
         (section) => section.id === sectionId,
       );
-      if (!sectionBelongsToClass) {
-        throw new NotFoundException('Section not found for this class');
-      }
+      if (!sectionBelongsToClass) throw new LocalizedException('class.section_not_found_for_this_class_cfd1891e', undefined, HttpStatus.NOT_FOUND, 'Section not found for this class');
       if (!classLevelAccess && !allowedSectionIds.has(sectionId)) {
         throw new ForbiddenException(
           'You can only view students in your assigned class or homeroom section',

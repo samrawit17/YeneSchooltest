@@ -1,0 +1,1 @@
+{"version":3,"file":"school-backup-query.dto.js","sourceRoot":"","sources":["../../../../src/backup/dto/school-backup-query.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAuC;AACvC,kDAA6E;AAE7E,MAAa,oBAAoB;IAI/B,IAAI,GAAqB,aAAa,CAAC;CACxC;AALD,oDAKC;AADC;IAHC,IAAA,sBAAI,EAAC,kCAAmB,EAAE;QACzB,OAAO,EAAE,wBAAwB,kCAAmB,CAAC,IAAI,CAAC,IAAI,CAAC,EAAE;KAClE,CAAC;;kDACqC"}

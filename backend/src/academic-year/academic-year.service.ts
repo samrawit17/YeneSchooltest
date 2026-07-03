@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SchoolSettingsService } from '../school-settings/school-settings.service';
@@ -96,20 +97,14 @@ const isCalendarType = (value: unknown): value is CalendarType =>
   typeof value === 'string' && CALENDAR_TYPES.includes(value as CalendarType);
 
 const parseValidDate = (value: Date | string | undefined, label: string) => {
-  if (!value) {
-    throw new BadRequestException(`${label} is required`);
-  }
+  if (!value) throw new LocalizedException('academic_year.is_required_d947c5d8', undefined, undefined, '${label} is required');
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestException(`${label} must be a valid date`);
-  }
+  if (Number.isNaN(date.getTime())) throw new LocalizedException('academic_year.must_be_a_valid_date_c2c21ec5', undefined, undefined, '${label} must be a valid date');
   return date;
 };
 
 const assertDateRange = (startDate: Date, endDate: Date) => {
-  if (startDate >= endDate) {
-    throw new BadRequestException('Start date must be before end date');
-  }
+  if (startDate >= endDate) throw new LocalizedException('academic_year.start_date_must_be_before_end_date_3a47b1bf', undefined, undefined, 'Start date must be before end date');
 };
 
 const STANDARD_PERIOD_DURATIONS: Partial<
@@ -222,9 +217,7 @@ export class AcademicYearService {
   ) {}
 
   private requireSchoolId(schoolId?: string | null) {
-    if (!schoolId) {
-      throw new BadRequestException('schoolId is required');
-    }
+    if (!schoolId) throw new LocalizedException('academic_year.schoolid_is_required_7fbaa2cd', undefined, undefined, 'schoolId is required');
     return schoolId;
   }
 
@@ -232,9 +225,7 @@ export class AcademicYearService {
     recordSchoolId: string,
     expectedSchoolId?: string,
   ) {
-    if (expectedSchoolId && recordSchoolId !== expectedSchoolId) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (expectedSchoolId && recordSchoolId !== expectedSchoolId) throw new LocalizedException('academic_year.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
   }
 
   private async assertTermSchoolAccess(
@@ -246,9 +237,7 @@ export class AcademicYearService {
       include: { academicYear: true },
     });
 
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+    if (!term) throw new LocalizedException('academic_year.term_not_found_f9401991', undefined, HttpStatus.NOT_FOUND, 'Term not found');
 
     this.assertSchoolAccess(term.academicYear.schoolId, expectedSchoolId);
     return term;
@@ -304,9 +293,7 @@ export class AcademicYearService {
     const total =
       terms.reduce((sum, term) => sum + term.percentageWeight, 0) + nextWeight;
 
-    if (total > 100.01) {
-      throw new BadRequestException('Total period weight cannot exceed 100%');
-    }
+    if (total > 100.01) throw new LocalizedException('academic_year.total_period_weight_cannot_exceed_100_143bc124', undefined, undefined, 'Total period weight cannot exceed 100%');
   }
 
   async createAcademicYear(createDto: CreateAcademicYearDto) {
@@ -321,15 +308,9 @@ export class AcademicYearService {
     const finalSchoolId = this.requireSchoolId(schoolId);
     const trimmedName = name?.trim();
 
-    if (!trimmedName) {
-      throw new BadRequestException('Academic year name is required');
-    }
-    if (curriculumType && !isCurriculumType(curriculumType)) {
-      throw new BadRequestException('Invalid curriculum type');
-    }
-    if (calendarType && !isCalendarType(calendarType)) {
-      throw new BadRequestException('Invalid calendar type');
-    }
+    if (!trimmedName) throw new LocalizedException('academic_year.academic_year_name_is_required_ba7cdfec', undefined, undefined, 'Academic year name is required');
+    if (curriculumType && !isCurriculumType(curriculumType)) throw new LocalizedException('academic_year.invalid_curriculum_type_f2e9e2ce', undefined, undefined, 'Invalid curriculum type');
+    if (calendarType && !isCalendarType(calendarType)) throw new LocalizedException('academic_year.invalid_calendar_type_49d65c6f', undefined, undefined, 'Invalid calendar type');
 
     const parsedStartDate = parseValidDate(startDate, 'Start date');
     const parsedEndDate = parseValidDate(endDate, 'End date');
@@ -455,9 +436,7 @@ export class AcademicYearService {
       },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('academic_year.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     this.assertSchoolAccess(academicYear.schoolId, schoolId);
 
@@ -561,15 +540,11 @@ export class AcademicYearService {
     ) {
       throw new BadRequestException('Invalid curriculum type');
     }
-    if (updateDto.calendarType && !isCalendarType(updateDto.calendarType)) {
-      throw new BadRequestException('Invalid calendar type');
-    }
+    if (updateDto.calendarType && !isCalendarType(updateDto.calendarType)) throw new LocalizedException('academic_year.invalid_calendar_type_49d65c6f', undefined, undefined, 'Invalid calendar type');
 
     // If updating name, check for duplicates
     const trimmedName = updateDto.name?.trim();
-    if (updateDto.name !== undefined && !trimmedName) {
-      throw new BadRequestException('Academic year name is required');
-    }
+    if (updateDto.name !== undefined && !trimmedName) throw new LocalizedException('academic_year.academic_year_name_is_required_ba7cdfec', undefined, undefined, 'Academic year name is required');
     if (trimmedName && trimmedName !== academicYear.name) {
       const existing = await this.prismaService.academicYear.findUnique({
         where: {
@@ -627,9 +602,7 @@ export class AcademicYearService {
     dto: UpdateCurriculumTypeDto,
     schoolId?: string,
   ) {
-    if (!isCurriculumType(dto.curriculumType)) {
-      throw new BadRequestException('Invalid curriculum type');
-    }
+    if (!isCurriculumType(dto.curriculumType)) throw new LocalizedException('academic_year.invalid_curriculum_type_f2e9e2ce', undefined, undefined, 'Invalid curriculum type');
 
     const academicYear = await this.getAcademicYearById(id, schoolId);
 
@@ -893,12 +866,8 @@ export class AcademicYearService {
       schoolId,
     );
     const name = dto.name?.trim();
-    if (!name) {
-      throw new BadRequestException('Period name is required');
-    }
-    if (!Number.isInteger(dto.order) || dto.order < 1) {
-      throw new BadRequestException('Period order must be a positive integer');
-    }
+    if (!name) throw new LocalizedException('academic_year.period_name_is_required_a8533660', undefined, undefined, 'Period name is required');
+    if (!Number.isInteger(dto.order) || dto.order < 1) throw new LocalizedException('academic_year.period_order_must_be_a_positive_integer_d2412d12', undefined, undefined, 'Period order must be a positive integer');
     this.assertPeriodWeight(dto.percentageWeight);
     const startDate = parseValidDate(dto.startDate, 'Start date');
     const endDate = parseValidDate(dto.endDate, 'End date');
@@ -912,9 +881,7 @@ export class AcademicYearService {
       },
     });
 
-    if (existingTerm) {
-      throw new BadRequestException('A period with this name already exists');
-    }
+    if (existingTerm) throw new LocalizedException('academic_year.a_period_with_this_name_already_exists_e0ce51af', undefined, undefined, 'A period with this name already exists');
 
     // Validate dates are within academic year
     if (startDate < academicYear.startDate || endDate > academicYear.endDate) {
@@ -977,9 +944,7 @@ export class AcademicYearService {
       );
     }
     const name = dto.name?.trim();
-    if (dto.name !== undefined && !name) {
-      throw new BadRequestException('Period name is required');
-    }
+    if (dto.name !== undefined && !name) throw new LocalizedException('academic_year.period_name_is_required_a8533660', undefined, undefined, 'Period name is required');
     if (
       dto.order !== undefined &&
       (!Number.isInteger(dto.order) || dto.order < 1)
@@ -1021,9 +986,7 @@ export class AcademicYearService {
         },
       });
 
-      if (existingName) {
-        throw new BadRequestException('A period with this name already exists');
-      }
+      if (existingName) throw new LocalizedException('academic_year.a_period_with_this_name_already_exists_e0ce51af', undefined, undefined, 'A period with this name already exists');
     }
 
     // Check if term has grades - prevent weight changes if grades exist
@@ -1095,18 +1058,14 @@ export class AcademicYearService {
   async deleteTerm(termId: string, schoolId?: string) {
     const term = await this.assertTermSchoolAccess(termId, schoolId);
 
-    if (term.isLocked) {
-      throw new ForbiddenException('Cannot delete a locked period');
-    }
+    if (term.isLocked) throw new LocalizedException('academic_year.cannot_delete_a_locked_period_26f1f6f8', undefined, HttpStatus.FORBIDDEN, 'Cannot delete a locked period');
 
     // Check if term has grades
     const hasGrades = await this.prismaService.subjectGrade.findFirst({
       where: { termId },
     });
 
-    if (hasGrades) {
-      throw new ForbiddenException('Cannot delete a period that has grades');
-    }
+    if (hasGrades) throw new LocalizedException('academic_year.cannot_delete_a_period_that_has_grades_d19d158d', undefined, HttpStatus.FORBIDDEN, 'Cannot delete a period that has grades');
 
     return this.prismaService.term.delete({
       where: { id: termId },

@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
 import { PlanTier } from '@prisma/client';
@@ -157,9 +158,7 @@ export class SubscriptionService {
         where: { id },
         select: { tier: true },
       });
-      if (!existingPlan) {
-        throw new NotFoundException('Plan not found');
-      }
+      if (!existingPlan) throw new LocalizedException('subscription.plan_not_found_4e904f21', undefined, HttpStatus.NOT_FOUND, 'Plan not found');
       data.features = this.mergeTierBaselineFeatures(
         existingPlan.tier,
         data.features,
@@ -190,9 +189,7 @@ export class SubscriptionService {
       where: { id },
       select: { id: true, name: true, tier: true },
     });
-    if (!plan) {
-      throw new NotFoundException('Plan not found');
-    }
+    if (!plan) throw new LocalizedException('subscription.plan_not_found_4e904f21', undefined, HttpStatus.NOT_FOUND, 'Plan not found');
 
     const schoolsWithPlan = await this.prisma.school.count({
       where: { planId: id },
@@ -223,7 +220,7 @@ export class SubscriptionService {
       where: { id: schoolId },
       select: { id: true, name: true },
     });
-    if (!school) throw new NotFoundException('School not found');
+    if (!school) throw new LocalizedException('subscription.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     let planName: string | null = null;
     if (planId) {
@@ -231,7 +228,7 @@ export class SubscriptionService {
         where: { id: planId, isActive: true },
         select: { id: true, name: true },
       });
-      if (!plan) throw new NotFoundException('Active plan not found');
+      if (!plan) throw new LocalizedException('subscription.active_plan_not_found_9945c730', undefined, HttpStatus.NOT_FOUND, 'Active plan not found');
       planName = plan.name;
     }
 

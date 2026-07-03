@@ -1,0 +1,204 @@
+{
+  "attendance": {
+    "marked": {
+      "title": "Imaansho La Qoray",
+      "message": "Imaanshaha {{className}} waa la qoray"
+    },
+    "session_opened": {
+      "title": "Fadhiga Imaansho Waa La Furay",
+      "message": "Fadhiga imaansho waa diyaar {{className}} - {{subject}}"
+    },
+    "low_attendance": {
+      "title": "Digniin Imaansho Hoosaysa",
+      "message": "Digniin Imaansho: Imaanshaha {{studentName}} waa {{percentage}}%"
+    },
+    "missing_detected": {
+      "title": "Imaansho La'aan",
+      "message": "{{count}} arday ayaa imaansho u maqan taariikhda {{date}}"
+    },
+    "absent": {
+      "title": "Digniin Imaansho",
+      "message": "{{studentName}} waa la qoray inuu maqnaa {{className}} taariikhda {{date}}"
+    },
+    "late": {
+      "title": "Ogeysiis Daahitaan",
+      "message": "{{studentName}} wuxuu yimid daahitaan saacadda {{time}} ee {{className}}"
+    },
+    "reminder": {
+      "title": "Xusuusin Imaansho",
+      "message": "Imaanshaha {{className}} - {{subject}} wuxuu bilaabmaa saacadda {{startTime}}. Ha illaawin inaad qorto imaanshaha!"
+    },
+    "missing": {
+      "title": "Xusuusin Imaansho La'aan",
+      "message": "Fadlan qor imaanshaha fasalka {{grade}} - {{section}} ({{className}}) taariikhda {{date}}. Imaansho weli lama qorin."
+    }
+  },
+  "fee": {
+    "due": {
+      "title": "Lacag Bixinta Gaadhay",
+      "message": "Lacagta {{amount}} waa la gaaray {{dueDate}}"
+    },
+    "paid": {
+      "title": "Lacagta La Helay",
+      "message": "Lacagtaada {{amount}} waa la helay. Lambarka rasiidka: {{receiptNumber}}"
+    },
+    "reminder": {
+      "title": "Xusuusin Lacag Bixinta",
+      "message": "Lacagta {{amount}} waa la gaaray {{dueDate}}"
+    }
+  },
+  "exam": {
+    "result_published": {
+      "title": "Natiijooyinka La Daabacay",
+      "message": "Natiijooyinka {{term}} ee {{className}} waa la daabacay"
+    },
+    "assessment_started": {
+      "title": "Qiimeynta La Bilaabay",
+      "message": "{{assessmentType}} \"{{assessmentTitle}}\" hadda waa firfircoon yahay {{className}} - {{subjectName}}. Fadlan geli dhibcaha."
+    }
+  },
+  "enrollment": {
+    "pending": {
+      "title": "Codsiga Diiwaangelin Cusub",
+      "message": "{{studentName}} wuxuu soo gudbiyay codsi diiwaangelin fasalka {{grade}}"
+    },
+    "approved": {
+      "title": "Diiwaangelinta La Ansixiyay",
+      "message": "Hambalyo! Diiwaangelinta {{studentName}} ee {{className}} waa la ansixiyay"
+    },
+    "rejected": {
+      "title": "Diiwaangelinta La Diiday",
+      "message": "Waan ka xunnahay inaan kuu sheegno in codsiga diiwaangelinta {{studentName}} aan la ansixin. Sababta: {{reason}}"
+    },
+    "rejected_no_reason": {
+      "title": "Diiwaangelinta La Diiday",
+      "message": "Waan ka xunnahay inaan kuu sheegno in codsiga diiwaangelinta {{studentName}} aan la ansixin."
+    }
+  },
+  "assignment": {
+    "created": {
+      "title": "Hawl Cusub",
+      "message": "Hawl cusub \"{{assignmentTitle}}\" ayaa la soo dhigay {{className}}. Waqtiga ugu dambeeya: {{dueDate}}"
+    },
+    "parent": {
+      "title": "Hawl Cusub Oo Ilmahaaga Ah",
+      "message": "{{studentName}} wuxuu leeyahay hawl cusub \"{{assignmentTitle}}\" waqtiga ugu dambeeya {{dueDate}}"
+    },
+    "graded": {
+      "title": "Hawsha La Qiimeeyay",
+      "message": "Hawshaada \"{{assignmentTitle}}\" ee {{className}} waa la qiimeeyay. Darajo: {{grade}}"
+    },
+    "child_graded": {
+      "title": "Hawsha Ilmaha La Qiimeeyay",
+      "message": "Hawsha {{studentName}} \"{{assignmentTitle}}\" waa la qiimeeyay. Darajo: {{grade}}"
+    }
+  },
+  "communication": {
+    "new_message": {
+      "title": "Fariin Cusub",
+      "message": "{{senderName}}: {{preview}}"
+    }
+  },
+  "account": {
+    "created": {
+      "title": "Ku Soo Dhawoow",
+      "message": "Koontadaada waa la abuuray. Hadda waad geli kartaa."
+    },
+    "created_with_temp_password": {
+      "title": "Ku Soo Dhawoow",
+      "message": "Koontadaada waa la abuuray. Fadlan eeg emailkaaga si aad u hesho xogta gelitaanka."
+    },
+    "deactivated": {
+      "title": "Koontada La Damay",
+      "message": "Koontadaada waa la damiyay. Fadlan la xiriir maamulka dugsiga macluumaad dheeraad ah."
+    },
+    "deactivated_with_reason": {
+      "title": "Koontada La Damay",
+      "message": "Sababta: {{reason}}"
+    },
+    "activated": {
+      "title": "Koontada La Dhaqaajiyay",
+      "message": "Koontadaada waa la dhaqaajiyay. Hadda waad geli kartaa."
+    }
+  },
+  "schedule": {
+    "changed": {
+      "title": "Isbeddelka Jadwalka",
+      "message": "{{message}}"
+    },
+    "class_cancelled": {
+      "title": "Fasalka La Joojiyay",
+      "message": "{{className}} ee {{date}} waa la joojiyay. Sababta: {{reason}}"
+    },
+    "class_cancelled_no_reason": {
+      "title": "Fasalka La Joojiyay",
+      "message": "{{className}} ee {{date}} waa la joojiyay"
+    },
+    "student_class_cancelled": {
+      "title": "Fasalka La Joojiyay",
+      "message": "Fasalka {{subject}} ee {{className}} taariikhda {{date}} waa la joojiyay"
+    },
+    "pickup_reminder": {
+      "title": "Xusuusin Qaadeyn",
+      "message": "Waalidka qaali ah, fasalka ugu dambeeya wuu dhammaanayaa. Fadlan kaalay oo qaado ilmahaaga."
+    },
+    "class_starting": {
+      "title": "Fasalkaagu Wuu Bilaabmayaa",
+      "message": "Geeska ayaa loo tumay fasalkaaga hadda. Fadlan u soco fasalkaaga."
+    },
+    "class_ended": {
+      "title": "Fasalkaagu Wuu Dhamaaday",
+      "message": "Geeska ayaa loo tumay si fasalkaaga hadda loo dhameeyo."
+    }
+  },
+  "timetable": {
+    "updated": {
+      "title": "Jadwalka La Cusbooneysiiyay",
+      "message": "Jadwalka {{className}} waa la cusbooneysiiyay. Fadlan eeg jadwalkaaga cusub."
+    }
+  },
+  "discipline": {
+    "incident_reported": {
+      "title": "Diiwaanka Anshaxa",
+      "message": "Dhacdo \"{{incidentTitle}}\" oo daran {{severity}} ayaa loo diiwaangaliyay {{studentName}}."
+    }
+  },
+  "general": {
+    "system_notification": {
+      "title": "Ogeysiis Nidaam",
+      "message": "Ogeysiis nidaam"
+    },
+    "backup_overdue": {
+      "title": "Kaydinta Dambe Waa Dhammaatay",
+      "message": "Kaydintii ugu dambeysay {{daysSince}} maalmood kahor"
+    },
+    "backup_overdue_never": {
+      "title": "Kaydinta Dambe Waa Dhammaatay",
+      "message": "Kaydin dambe waligeed lama duubin"
+    },
+    "db_critical": {
+      "title": "Cabirka Xogta Waa Mid Qatar",
+      "message": "Cabirka xogta {{dbSize}} MB (heerka: {{threshold}} MB)"
+    },
+    "weekly_summary": {
+      "title": "Soo Koobidda Todobaadlaha ah ee Platform-ka",
+      "message": "{{activeSchools}} dugsi oo firfircoon, {{activeUsers}} isticmaale oo firfircoon, xogta {{dbSize}} MB"
+    }
+  },
+  "siren": {
+    "activated": {
+      "title": "Digniin Sireen",
+      "message": "{{type}} waa la kiciyay"
+    }
+  },
+  "bell": {
+    "class_bell": {
+      "title": "Geeska Fasalka",
+      "message": "Geeska {{sirenLabel}} ayaa loo tumay jadwalkaaga."
+    },
+    "school_bell": {
+      "title": "Geeska Dugsiga",
+      "message": "Geeska dugsiga waa la tumay."
+    }
+  }
+}

@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { SchoolService } from '../school/school.service';
 import { AcademicYearService } from '../academic-year/academic-year.service';
@@ -26,9 +27,7 @@ export class EnrollmentService {
     const school =
       await this.schoolService.getSchoolByEnrollmentKey(enrollmentKey);
 
-    if (!school) {
-      throw new NotFoundException('Invalid enrollment key');
-    }
+    if (!school) throw new LocalizedException('enrollment.invalid_enrollment_key_f6383576', undefined, HttpStatus.NOT_FOUND, 'Invalid enrollment key');
 
     return school;
   }
@@ -100,9 +99,7 @@ export class EnrollmentService {
   getSchoolIdFromToken(token: string): string {
     const result = this.verifyEnrollmentToken(token);
 
-    if (!result.valid || !result.schoolId) {
-      throw new NotFoundException('Invalid or expired enrollment token');
-    }
+    if (!result.valid || !result.schoolId) throw new LocalizedException('enrollment.invalid_or_expired_enrollment_token_e372a38b', undefined, HttpStatus.NOT_FOUND, 'Invalid or expired enrollment token');
 
     return result.schoolId;
   }
@@ -136,9 +133,7 @@ export class EnrollmentService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
     if (enrollment.schoolId !== schoolId) {
       throw new BadRequestException(
@@ -146,9 +141,7 @@ export class EnrollmentService {
       );
     }
 
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new BadRequestException('Enrollment is not pending');
-    }
+    if (enrollment.status !== EnrollmentStatus.PENDING) throw new LocalizedException('enrollment.enrollment_is_not_pending_5a9c23f5', undefined, undefined, 'Enrollment is not pending');
 
     // Check if auto-section assignment is enabled
     const autoSectionAssignment =
@@ -162,9 +155,7 @@ export class EnrollmentService {
       const academicYear =
         await this.academicYearService.getActiveAcademicYear(schoolId);
 
-      if (!academicYear) {
-        throw new BadRequestException('No active academic year found');
-      }
+      if (!academicYear) throw new LocalizedException('enrollment.no_active_academic_year_found_47ece9b3', undefined, undefined, 'No active academic year found');
 
       // Find the class for this grade level in the current academic year
       targetClass = await this.findClassForGrade(
@@ -419,9 +410,7 @@ export class EnrollmentService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
     if (enrollment.schoolId !== schoolId) {
       throw new BadRequestException(
