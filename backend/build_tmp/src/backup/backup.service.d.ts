@@ -1,0 +1,45 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
+import { BackupArtifact, BackupContext, SchoolBackupType } from './backup.types';
+export declare class BackupService {
+    private readonly prisma;
+    private readonly eventBus;
+    private readonly sensitiveUserFields;
+    private readonly sensitiveCredentialFields;
+    constructor(prisma: PrismaService, eventBus: EventBusService);
+    getSchoolBackupTypes(): {
+        value: string;
+        label: string;
+        description: string;
+    }[];
+    createPlatformBackup(context?: BackupContext): Promise<BackupArtifact>;
+    createSchoolBackup(schoolId: string, type: SchoolBackupType, context?: BackupContext): Promise<BackupArtifact>;
+    cleanupBackup(tempDir: string): Promise<void>;
+    private emitBackupDownloaded;
+    private dumpDatabase;
+    private resolveUploadsPath;
+    private resolveUploadFilePath;
+    private createPlatformZip;
+    private buildSchoolBackupFiles;
+    private sanitizeRecord;
+    private sanitizeUsers;
+    private sanitizePendingCredentials;
+    private getAcademicsData;
+    private getStudentsData;
+    private getStaffData;
+    private getExamsAndMarksData;
+    private getFinanceData;
+    private getCertificatesData;
+    private getDocumentsData;
+    private getAttendanceData;
+    private getCommunicationsData;
+    private getOperationsData;
+    private getSchoolSettingsData;
+    private collectSchoolUploadUrls;
+    private collectSchoolUploadFiles;
+    private findMissingUploadUrls;
+    private createArchiveZip;
+    private toSafeRelativeUploadPath;
+    private toSafeFileName;
+    private createZipArchive;
+}

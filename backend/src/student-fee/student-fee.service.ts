@@ -1,12 +1,13 @@
 const CHUNK_SIZE = 50;
 
-import {
+import { HttpStatus,
   BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
@@ -531,9 +532,7 @@ export class StudentFeeService {
     schoolId: string,
     studentId: string,
   ) {
-    if (!user?.id) {
-      throw new ForbiddenException('Authentication required');
-    }
+    if (!user?.id) throw new LocalizedException('student_fee.authentication_required_442ef31b', undefined, HttpStatus.FORBIDDEN, 'Authentication required');
 
     const normalizedUserRole = String(user.role || '')
       .trim()
@@ -578,17 +577,13 @@ export class StudentFeeService {
         },
         select: { id: true, userId: true },
       });
-      if (!parentProfile) {
-        throw new ForbiddenException('Parent profile not found');
-      }
+      if (!parentProfile) throw new LocalizedException('student_fee.parent_profile_not_found_ad089d27', undefined, HttpStatus.FORBIDDEN, 'Parent profile not found');
 
       const studentProfile = await this.prisma.studentProfile.findFirst({
         where: { schoolId, OR: [{ id: studentId }, { userId: studentId }] },
         select: { id: true, userId: true },
       });
-      if (!studentProfile) {
-        throw new ForbiddenException('Student not found');
-      }
+      if (!studentProfile) throw new LocalizedException('student_fee.student_not_found_2525e0b2', undefined, HttpStatus.FORBIDDEN, 'Student not found');
 
       const possibleParentIds = [
         parentProfile.id,

@@ -1,0 +1,20 @@
+{
+  "marked": "Attendance marked for {{className}} on {{date}}",
+  "bulk_marked": "Bulk attendance marked for {{count}} students",
+  "session_opened": "Attendance session opened for {{className}} at {{time}}",
+  "session_closed": "Attendance session closed for {{className}}",
+  "session_not_found": "No active attendance session found",
+  "already_marked": "Attendance already marked for {{studentName}} today",
+  "not_marked": "Attendance not yet marked for {{date}}",
+  "override": "Attendance overridden for {{studentName}} by {{actorName}}",
+  "report": {
+    "daily": "Daily attendance report for {{date}}",
+    "monthly": "Monthly attendance report for {{month}}",
+    "summary": "Attendance summary: {{present}} present, {{absent}} absent, {{late}} late",
+    "student_summary": "{{studentName}}: {{present}}/{{total}} days present ({{percentage}}%)"
+  },
+  "low_attendance": "Attendance alert: {{studentName}} attendance is {{percentage}}%",
+  "excused": "Absence excused for {{studentName}}",
+  "unexcused": "Unexcused absence recorded for {{studentName}}",
+  "late": "{{studentName}} marked late by {{minutes}} minutes"
+}

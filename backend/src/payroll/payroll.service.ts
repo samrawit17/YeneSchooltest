@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
@@ -127,9 +128,7 @@ export class PayrollService {
       select: { id: true, name: true },
     });
 
-    if (!staff) {
-      throw new NotFoundException('Staff member not found for this school');
-    }
+    if (!staff) throw new LocalizedException('payroll.staff_member_not_found_for_this_school_b5cc1d91', undefined, HttpStatus.NOT_FOUND, 'Staff member not found for this school');
 
     const salary = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.payrollSalary.findUnique({
@@ -248,9 +247,7 @@ export class PayrollService {
       },
     });
 
-    if (!run) {
-      throw new NotFoundException('Payroll run not found');
-    }
+    if (!run) throw new LocalizedException('payroll.payroll_run_not_found_861c8197', undefined, HttpStatus.NOT_FOUND, 'Payroll run not found');
 
     return run;
   }
@@ -270,9 +267,7 @@ export class PayrollService {
       orderBy: [{ staffUser: { name: 'asc' } }],
     });
 
-    if (activeSalaries.length === 0) {
-      throw new BadRequestException('Add at least one active staff salary before creating payroll');
-    }
+    if (activeSalaries.length === 0) throw new LocalizedException('payroll.add_at_least_one_active_staff_salary_before_creating_payroll_8e71f754', undefined, undefined, 'Add at least one active staff salary before creating payroll');
 
     const calendarType = await this.getSchoolCalendarType(dto.schoolId);
 
@@ -326,9 +321,7 @@ export class PayrollService {
 
       return this.getPayrollRun(dto.schoolId, runId);
     } catch (error: any) {
-      if (this.isUniqueConstraintError(error)) {
-        throw new BadRequestException('Payroll already exists for this month');
-      }
+      if (this.isUniqueConstraintError(error)) throw new LocalizedException('payroll.payroll_already_exists_for_this_month_cdb8a7e1', undefined, undefined, 'Payroll already exists for this month');
       throw error;
     }
   }
@@ -339,9 +332,9 @@ export class PayrollService {
         where: { id: runId, schoolId: dto.schoolId },
       });
 
-      if (!run) throw new NotFoundException('Payroll run not found');
-      if (run.status === 'PAID') throw new BadRequestException('Paid payroll runs cannot be changed');
-      if (run.status === 'CANCELLED') throw new BadRequestException('Cancelled payroll runs cannot be changed');
+      if (!run) throw new LocalizedException('payroll.payroll_run_not_found_861c8197', undefined, HttpStatus.NOT_FOUND, 'Payroll run not found');
+      if (run.status === 'PAID') throw new LocalizedException('payroll.paid_payroll_runs_cannot_be_changed_0218fe6f', undefined, undefined, 'Paid payroll runs cannot be changed');
+      if (run.status === 'CANCELLED') throw new LocalizedException('payroll.cancelled_payroll_runs_cannot_be_changed_0efd96c3', undefined, undefined, 'Cancelled payroll runs cannot be changed');
 
       if (run.status !== dto.status) {
         const allowedTransitions: Record<string, string[]> = {
@@ -349,9 +342,7 @@ export class PayrollService {
           APPROVED: ['PAID', 'CANCELLED'],
         };
         const allowedNextStatuses = allowedTransitions[run.status] || [];
-        if (!allowedNextStatuses.includes(dto.status)) {
-          throw new BadRequestException('Payroll run must move from DRAFT to APPROVED before payment');
-        }
+        if (!allowedNextStatuses.includes(dto.status)) throw new LocalizedException('payroll.payroll_run_must_move_from_draft_to_approved_before_payment_73789a07', undefined, undefined, 'Payroll run must move from DRAFT to APPROVED before payment');
       }
 
       const statusData: Record<string, any> = {
@@ -376,8 +367,8 @@ export class PayrollService {
         const counts = entryStatuses.reduce<Record<string, number>>(
           (sum, row) => ({ ...sum, [row.status]: row._count._all }), {},
         );
-        if (counts.PENDING) throw new BadRequestException('Approve the payroll run before marking it paid');
-        if (!counts.APPROVED && !counts.PAID) throw new BadRequestException('Payroll has no payable entries to mark as paid');
+        if (counts.PENDING) throw new LocalizedException('payroll.approve_the_payroll_run_before_marking_it_paid_198b4953', undefined, undefined, 'Approve the payroll run before marking it paid');
+        if (!counts.APPROVED && !counts.PAID) throw new LocalizedException('payroll.payroll_has_no_payable_entries_to_mark_as_paid_c03e05c2', undefined, undefined, 'Payroll has no payable entries to mark as paid');
 
         statusData.paidById = user.id;
         statusData.paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : run.paymentDate || new Date();
@@ -416,16 +407,10 @@ export class PayrollService {
         include: { run: { select: { status: true } } },
       });
 
-      if (!entry) throw new NotFoundException('Payroll entry not found');
-      if (entry.run.status === 'PAID' || entry.run.status === 'CANCELLED') {
-        throw new BadRequestException('Entries cannot be changed after the payroll run is final');
-      }
-      if (entry.status === 'PAID' && dto.status !== 'PAID') {
-        throw new BadRequestException('Paid payroll entries cannot be reopened');
-      }
-      if (dto.status === 'PAID' && entry.run.status !== 'APPROVED') {
-        throw new BadRequestException('Approve the payroll run before paying staff entries');
-      }
+      if (!entry) throw new LocalizedException('payroll.payroll_entry_not_found_4bba9b4b', undefined, HttpStatus.NOT_FOUND, 'Payroll entry not found');
+      if (entry.run.status === 'PAID' || entry.run.status === 'CANCELLED') throw new LocalizedException('payroll.entries_cannot_be_changed_after_the_payroll_run_is_final_25b100e3', undefined, undefined, 'Entries cannot be changed after the payroll run is final');
+      if (entry.status === 'PAID' && dto.status !== 'PAID') throw new LocalizedException('payroll.paid_payroll_entries_cannot_be_reopened_c95a43d6', undefined, undefined, 'Paid payroll entries cannot be reopened');
+      if (dto.status === 'PAID' && entry.run.status !== 'APPROVED') throw new LocalizedException('payroll.approve_the_payroll_run_before_paying_staff_entries_63a39624', undefined, undefined, 'Approve the payroll run before paying staff entries');
 
       const updated = await tx.payrollEntry.update({
         where: { id: entryId },

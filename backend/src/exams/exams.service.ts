@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateExamDto,
@@ -26,9 +27,7 @@ export class ExamsService {
     const subject = await this.prisma.subject.findUnique({
       where: { id: dto.subjectId },
     });
-    if (!subject || subject.schoolId !== schoolId) {
-      throw new NotFoundException('Subject not found');
-    }
+    if (!subject || subject.schoolId !== schoolId) throw new LocalizedException('exams.subject_not_found_562e5a84', undefined, HttpStatus.NOT_FOUND, 'Subject not found');
 
     const data: any = {
       schoolId,
@@ -105,7 +104,7 @@ export class ExamsService {
         },
       },
     });
-    if (!exam) throw new NotFoundException('Exam not found');
+    if (!exam) throw new LocalizedException('exams.exam_not_found_8661b89e', undefined, HttpStatus.NOT_FOUND, 'Exam not found');
     return exam;
   }
 
@@ -113,7 +112,7 @@ export class ExamsService {
     const exam = await this.prisma.exam.findUnique({
       where: { id: examId, schoolId },
     });
-    if (!exam) throw new NotFoundException('Exam not found');
+    if (!exam) throw new LocalizedException('exams.exam_not_found_8661b89e', undefined, HttpStatus.NOT_FOUND, 'Exam not found');
 
     const updateData: any = { ...dto };
     if (dto.date) updateData.date = new Date(dto.date);
@@ -136,7 +135,7 @@ export class ExamsService {
     const exam = await this.prisma.exam.findUnique({
       where: { id: examId, schoolId },
     });
-    if (!exam) throw new NotFoundException('Exam not found');
+    if (!exam) throw new LocalizedException('exams.exam_not_found_8661b89e', undefined, HttpStatus.NOT_FOUND, 'Exam not found');
 
     return this.prisma.exam.delete({ where: { id: examId } });
   }
@@ -285,11 +284,11 @@ export class ExamsService {
       where: { id: examId, schoolId },
       include: { results: true },
     });
-    if (!exam) throw new NotFoundException('Exam not found');
+    if (!exam) throw new LocalizedException('exams.exam_not_found_8661b89e', undefined, HttpStatus.NOT_FOUND, 'Exam not found');
 
     // Check teacher assignment or admin role
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new LocalizedException('exams.user_not_found_b846d114', undefined, HttpStatus.NOT_FOUND, 'User not found');
 
     if (user.role === Role.TEACHER) {
       const assignment = await this.prisma.teacherSubjectAssignment.findFirst({
@@ -299,8 +298,7 @@ export class ExamsService {
           subjectId: exam.subjectId,
         },
       });
-      if (!assignment)
-        throw new ForbiddenException('Not assigned to this class/subject');
+      if (!assignment) throw new LocalizedException('exams.not_assigned_to_this_class_subject_a9a91398', undefined, HttpStatus.FORBIDDEN, 'Not assigned to this class/subject');
     }
 
     const { results } = dto;
@@ -458,9 +456,7 @@ export class ExamsService {
         endDate: true,
       },
     });
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+    if (!term) throw new LocalizedException('exams.term_not_found_f9401991', undefined, HttpStatus.NOT_FOUND, 'Term not found');
 
     // 2. Lock all exams for this term/class
     const exams = await this.prisma.exam.findMany({
@@ -474,9 +470,7 @@ export class ExamsService {
       },
     });
 
-    if (exams.length === 0) {
-      throw new NotFoundException('No exams found for this class');
-    }
+    if (exams.length === 0) throw new LocalizedException('exams.no_exams_found_for_this_class_19e6da5c', undefined, HttpStatus.NOT_FOUND, 'No exams found for this class');
 
     // 3. Update published to true
     await this.prisma.exam.updateMany({
@@ -513,9 +507,7 @@ export class ExamsService {
         schoolId,
       },
     });
-    if (!link) {
-      throw new ForbiddenException('You are not linked to this student');
-    }
+    if (!link) throw new LocalizedException('exams.you_are_not_linked_to_this_student_49797e72', undefined, HttpStatus.FORBIDDEN, 'You are not linked to this student');
     return link;
   }
 }

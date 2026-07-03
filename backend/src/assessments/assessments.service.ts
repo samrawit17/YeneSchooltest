@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import {
   AssessmentScoreStatus,
   AssessmentStatus,
@@ -308,9 +309,7 @@ export class AssessmentsService {
       select: { id: true },
     });
 
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('assessments.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
@@ -320,9 +319,7 @@ export class AssessmentsService {
       select: { id: true, userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!studentProfile) throw new LocalizedException('assessments.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const parentStudent = await this.prisma.parentStudent.findFirst({
       where: {
@@ -333,9 +330,7 @@ export class AssessmentsService {
       select: { id: true },
     });
 
-    if (!parentStudent) {
-      throw new ForbiddenException('You are not linked to this student');
-    }
+    if (!parentStudent) throw new LocalizedException('assessments.you_are_not_linked_to_this_student_49797e72', undefined, HttpStatus.FORBIDDEN, 'You are not linked to this student');
 
     return studentProfile.userId;
   }
@@ -349,9 +344,7 @@ export class AssessmentsService {
       select: { id: true },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('assessments.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     if (dto.termId) {
       const term = await this.prisma.term.findFirst({
@@ -359,14 +352,10 @@ export class AssessmentsService {
         select: { id: true },
       });
 
-      if (!term) {
-        throw new NotFoundException('Term not found for academic year');
-      }
+      if (!term) throw new LocalizedException('assessments.term_not_found_for_academic_year_1a90ff3d', undefined, HttpStatus.NOT_FOUND, 'Term not found for academic year');
     }
 
-    if (new Date(dto.endDate) < new Date(dto.startDate)) {
-      throw new BadRequestException('End date cannot be before start date');
-    }
+    if (new Date(dto.endDate) < new Date(dto.startDate)) throw new LocalizedException('assessments.end_date_cannot_be_before_start_date_71f9ba01', undefined, undefined, 'End date cannot be before start date');
   }
 
   private assessmentSubjectTargetKey(subject: {
@@ -481,13 +470,9 @@ export class AssessmentsService {
       where: { id: assessmentId, schoolId },
     });
 
-    if (!assessment) {
-      throw new NotFoundException('Assessment not found');
-    }
+    if (!assessment) throw new LocalizedException('assessments.assessment_not_found_c5381dbc', undefined, HttpStatus.NOT_FOUND, 'Assessment not found');
 
-    if (assessment.status === AssessmentStatus.LOCKED) {
-      throw new ForbiddenException('Assessment is locked');
-    }
+    if (assessment.status === AssessmentStatus.LOCKED) throw new LocalizedException('assessments.assessment_is_locked_99cc7fe3', undefined, HttpStatus.FORBIDDEN, 'Assessment is locked');
 
 if (
       role === 'TEACHER' &&
@@ -522,9 +507,7 @@ if (
       },
     });
 
-    if (!assessmentSubject) {
-      throw new NotFoundException('Assessment subject not found');
-    }
+    if (!assessmentSubject) throw new LocalizedException('assessments.assessment_subject_not_found_6f6fdaca', undefined, HttpStatus.NOT_FOUND, 'Assessment subject not found');
 
     if (assessmentSubject.teacherId === teacherId) {
       return assessmentSubject;
@@ -720,13 +703,9 @@ if (
     const classMap = new Map(classesFound.map((c) => [c.id, c]));
 
     for (const item of subjects) {
-      if (!subjectSet.has(item.subjectId)) {
-        throw new NotFoundException('Subject not found');
-      }
+      if (!subjectSet.has(item.subjectId)) throw new LocalizedException('assessments.subject_not_found_562e5a84', undefined, HttpStatus.NOT_FOUND, 'Subject not found');
       const classRecord = classMap.get(item.classId);
-      if (!classRecord) {
-        throw new NotFoundException('Class not found');
-      }
+      if (!classRecord) throw new LocalizedException('assessments.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
     }
 
     let sectionsFound: { id: string; classId: string }[] = [];
@@ -1117,9 +1096,7 @@ if (
       },
     });
 
-    if (!assessment) {
-      throw new NotFoundException('Assessment not found');
-    }
+    if (!assessment) throw new LocalizedException('assessments.assessment_not_found_c5381dbc', undefined, HttpStatus.NOT_FOUND, 'Assessment not found');
 
     const [withCounts] = await this.attachEffectiveScoreCountsToAssessments(
       schoolId,
@@ -1148,13 +1125,9 @@ if (
       : assessment.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : assessment.endDate;
 
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new BadRequestException('Assessment dates are invalid');
-    }
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) throw new LocalizedException('assessments.assessment_dates_are_invalid_6f7d6517', undefined, undefined, 'Assessment dates are invalid');
 
-    if (endDate < startDate) {
-      throw new BadRequestException('End date cannot be before start date');
-    }
+    if (endDate < startDate) throw new LocalizedException('assessments.end_date_cannot_be_before_start_date_71f9ba01', undefined, undefined, 'End date cannot be before start date');
 
     const data: Prisma.AssessmentUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title.trim();
@@ -1454,9 +1427,7 @@ if (
           },
         });
 
-    if (!assessmentSubject) {
-      throw new NotFoundException('Assessment subject not found');
-    }
+    if (!assessmentSubject) throw new LocalizedException('assessments.assessment_subject_not_found_6f6fdaca', undefined, HttpStatus.NOT_FOUND, 'Assessment subject not found');
 
     // For teachers, get section from their assignment if assessment has no section
     let sectionId = assessmentSubject.sectionId;
@@ -1550,9 +1521,7 @@ if (
             include: { assessment: true },
           });
 
-    if (!assessmentSubject) {
-      throw new NotFoundException('Assessment subject not found');
-    }
+    if (!assessmentSubject) throw new LocalizedException('assessments.assessment_subject_not_found_6f6fdaca', undefined, HttpStatus.NOT_FOUND, 'Assessment subject not found');
 
     if (
       assessmentSubject.assessment.status === AssessmentStatus.LOCKED &&
@@ -1661,9 +1630,7 @@ if (
       select: { id: true },
     });
 
-    if (!assessment) {
-      throw new NotFoundException('Assessment not found');
-    }
+    if (!assessment) throw new LocalizedException('assessments.assessment_not_found_c5381dbc', undefined, HttpStatus.NOT_FOUND, 'Assessment not found');
 
     const teacherIds = await this.getAssessmentAffectedTeacherIds(
       schoolId,
@@ -1786,9 +1753,7 @@ if (
 
   async updateWeights(schoolId: string, dto: UpdateAssessmentWeightsDto) {
     const total = dto.weights.reduce((sum, row) => sum + row.percentage, 0);
-    if (Math.round(total * 100) / 100 !== 100) {
-      throw new BadRequestException('Assessment weights must total 100');
-    }
+    if (Math.round(total * 100) / 100 !== 100) throw new LocalizedException('assessments.assessment_weights_must_total_100_72fa5a62', undefined, undefined, 'Assessment weights must total 100');
 
     await this.prisma.$transaction(
       dto.weights.map((row) =>

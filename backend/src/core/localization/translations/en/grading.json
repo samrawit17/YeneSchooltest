@@ -1,0 +1,25 @@
+{
+  "grade": {
+    "entered": "Grade entered for {{studentName}} in {{subjectName}}",
+    "updated": "Grade updated for {{studentName}} in {{subjectName}}",
+    "submitted": "Grades submitted for {{subjectName}}",
+    "approved": "Grades approved for {{subjectName}}",
+    "published": "Grades published for {{subjectName}}",
+    "rejected": "Grade submission rejected: {{reason}}"
+  },
+  "report_card": {
+    "generated": "Report card generated for {{studentName}} - {{termName}}",
+    "not_found": "Report card not found",
+    "published": "Report cards published for {{termName}}"
+  },
+  "assessment": {
+    "created": "Assessment '{{name}}' created",
+    "scored": "Assessment scored for {{studentName}}",
+    "locked": "Assessment results locked"
+  },
+  "grading_component": {
+    "created": "Grading component '{{name}}' created",
+    "updated": "Grading component '{{name}}' updated",
+    "not_found": "Grading component not found"
+  }
+}

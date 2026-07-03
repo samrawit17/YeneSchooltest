@@ -1,0 +1,21 @@
+{
+  "required": "Goobtan waa loo baahan yahay",
+  "email": "Fadlan geli email sax ah",
+  "min_length": "Waa inuu ka kooban yahay ugu yaraan {{min}} xaraf",
+  "max_length": "Waa inuu ka kooban yahay ugu badnaan {{max}} xaraf",
+  "min_value": "Qiimuhu waa inuu ahaadaa ugu yaraan {{min}}",
+  "max_value": "Qiimuhu waa inuu ahaadaa ugu badnaan {{max}}",
+  "pattern": "Qaabku waa qalad",
+  "password_mismatch": "Furaha sirta ah kuma habboona",
+  "phone": "Fadlan geli lambar taleefan sax ah",
+  "url": "Fadlan geli URL sax ah",
+  "date": "Fadlan geli taariikh sax ah",
+  "integer": "Fadlan geli tiro dhammaystiran",
+  "number": "Fadlan geli tiro",
+  "alphanumeric": "Waa inuu ka kooban yahay xarfo iyo tirooyin oo keliya",
+  "unique": "Qiimahan ayaa horay loo isticmaalay",
+  "exists": "Qiimahaani ma jiro",
+  "confirmed": "Xaqiijintu kuma habboona",
+  "inclusion": "Qiimaha kuma jiro liiska",
+  "exclusion": "Qiimaha wuxuu ku jiraa liiska laga reebay"
+}

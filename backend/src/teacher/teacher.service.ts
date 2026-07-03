@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -197,9 +198,7 @@ export class TeacherService {
       select: { id: true },
     });
 
-    if (!teacher) {
-      throw new NotFoundException('Teacher not found');
-    }
+    if (!teacher) throw new LocalizedException('teacher.teacher_not_found_4d6b9155', undefined, HttpStatus.NOT_FOUND, 'Teacher not found');
 
     // Resolve academic year ID — accepts either name or ID
     let resolvedAcademicYear: any;

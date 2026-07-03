@@ -1,0 +1,22 @@
+{
+  "common": {
+    "greeting": "Salaan {{name}},",
+    "farewell": "Salaan,",
+    "team_signature": "Kooxda Nidaamka Maamulka Dugsiga",
+    "footer": "© {{year}} Nidaamka Maamulka Dugsiga. Xuquuqda oo dhan waa la dhawray."
+  },
+  "welcome": {
+    "subject": "Ku Soo Dhawoow Nidaamka Maamulka Dugsiga",
+    "body": "Kuso dhawoow nidaamka maamulka dugsiga. Akoonkaaga si guul leh ayaa loo abuuray."
+  },
+  "password_reset": {
+    "subject": "Dib u Deji Furaha Sirta ah",
+    "body": "Waxaan helnay codsi dib u dejinta furaha sirta ah. Fadlan guji linkiga hoose si aad dib ugu dejiso."
+  },
+  "enrollment": {
+    "approved_subject": "Diiwaangelinta La Ansixiyay",
+    "approved_body": "Diiwaangelinta {{studentName}} ee {{className}} waa la ansixiyay.",
+    "rejected_subject": "Diiwaangelinta La Diiday",
+    "rejected_body": "Waan ka xunnahay, diiwaangelinta {{studentName}} waa la diiday."
+  }
+}

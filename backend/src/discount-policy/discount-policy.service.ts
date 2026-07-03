@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -20,7 +21,7 @@ export class DiscountPolicyService {
 
   async update(id: string, schoolId: string, data: { name?: string; discountType?: string; discountValue?: number; isActive?: boolean; criteria?: string }) {
     const policy = await this.prisma.discountPolicy.findUnique({ where: { id } });
-    if (!policy || policy.schoolId !== schoolId) throw new NotFoundException('Discount policy not found for this school');
+    if (!policy || policy.schoolId !== schoolId) throw new LocalizedException('discount_policy.discount_policy_not_found_for_this_school_36644ca9', undefined, HttpStatus.NOT_FOUND, 'Discount policy not found for this school');
     return this.prisma.discountPolicy.update({
       where: { id },
       data: { name: data.name ?? policy.name, discountType: data.discountType ?? policy.discountType, discountValue: data.discountValue ?? policy.discountValue, isActive: data.isActive ?? policy.isActive, criteria: data.criteria ?? policy.criteria },
@@ -29,16 +30,16 @@ export class DiscountPolicyService {
 
   async delete(id: string, schoolId: string) {
     const policy = await this.prisma.discountPolicy.findUnique({ where: { id } });
-    if (!policy || policy.schoolId !== schoolId) throw new NotFoundException('Discount policy not found for this school');
+    if (!policy || policy.schoolId !== schoolId) throw new LocalizedException('discount_policy.discount_policy_not_found_for_this_school_36644ca9', undefined, HttpStatus.NOT_FOUND, 'Discount policy not found for this school');
     return this.prisma.discountPolicy.update({ where: { id }, data: { isActive: false } });
   }
 
   async applyToStudentFee(studentFeeId: string, discountPolicyId: string, schoolId: string) {
     const policy = await this.prisma.discountPolicy.findUnique({ where: { id: discountPolicyId } });
-    if (!policy || policy.schoolId !== schoolId) throw new NotFoundException('Invalid discount policy');
+    if (!policy || policy.schoolId !== schoolId) throw new LocalizedException('discount_policy.invalid_discount_policy_2920e82e', undefined, HttpStatus.NOT_FOUND, 'Invalid discount policy');
 
     const studentFee = await this.prisma.studentFee.findUnique({ where: { id: studentFeeId } });
-    if (!studentFee || studentFee.schoolId !== schoolId) throw new NotFoundException('Student fee not found');
+    if (!studentFee || studentFee.schoolId !== schoolId) throw new LocalizedException('discount_policy.student_fee_not_found_d9d18a9c', undefined, HttpStatus.NOT_FOUND, 'Student fee not found');
 
     let discountAmount = 0;
     if (policy.discountType === 'PERCENTAGE') {

@@ -1,0 +1,34 @@
+{
+  "rule": {
+    "created": "Automation rule '{{ruleName}}' created successfully",
+    "updated": "Automation rule '{{ruleName}}' updated successfully",
+    "deleted": "Automation rule '{{ruleName}}' deleted successfully",
+    "enabled": "Automation rule '{{ruleName}}' enabled",
+    "disabled": "Automation rule '{{ruleName}}' disabled",
+    "not_found": "Automation rule not found"
+  },
+  "execution": {
+    "started": "Executing rule '{{ruleName}}' for event {{eventType}}",
+    "completed": "Rule '{{ruleName}}' executed successfully: {{actionCount}} action(s) performed",
+    "failed": "Rule '{{ruleName}}' execution failed: {{error}}",
+    "condition_met": "Condition met for rule '{{ruleName}}'",
+    "condition_not_met": "Condition not met for rule '{{ruleName}}'",
+    "action_executed": "Action {{actionType}} executed: {{result}}",
+    "action_failed": "Action {{actionType}} failed: {{error}}"
+  },
+  "action": {
+    "send_email": "Sending email to {{recipients}}",
+    "send_sms": "Sending SMS to {{recipients}}",
+    "push_notification": "Sending push notification",
+    "create_alert": "Creating alert: {{message}}",
+    "update_database": "Updating database field {{field}} to {{value}}"
+  },
+  "trigger": {
+    "attendance_marked": "Attendance marked for {{count}} students",
+    "fee_overdue": "Fee overdue detected for {{count}} students",
+    "fee_paid": "Fee payment received from {{studentName}}",
+    "grade_published": "Grades published for {{subjectName}}",
+    "student_created": "New student {{studentName}} created",
+    "exam_created": "New exam {{examName}} created"
+  }
+}

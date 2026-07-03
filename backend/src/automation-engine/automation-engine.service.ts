@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRuleDto, UpdateRuleDto, AutomationLogQueryDto } from './dto/automation-engine.dto';
 
@@ -31,18 +32,14 @@ export class AutomationEngineService {
     const rule = await this.prisma.automationRule.findFirst({
       where: { id: ruleId, schoolId },
     });
-    if (!rule) throw new NotFoundException('Automation rule not found');
+    if (!rule) throw new LocalizedException('automation_engine.automation_rule_not_found_1d10b924', undefined, HttpStatus.NOT_FOUND, 'Automation rule not found');
     return rule;
   }
 
   async createRule(schoolId: string, userId: string, dto: CreateRuleDto) {
     const triggerPattern = /^[a-z]+\.[a-z]+$/;
-    if (!triggerPattern.test(dto.eventTrigger)) {
-      throw new BadRequestException('eventTrigger must be in format "domain.event" (e.g. attendance.marked)');
-    }
-    if (!dto.actions || dto.actions.length === 0) {
-      throw new BadRequestException('At least one action is required');
-    }
+    if (!triggerPattern.test(dto.eventTrigger)) throw new LocalizedException('automation_engine.eventtrigger_must_be_in_format_domain_event_e_g_attendance_m_2085c03b', undefined, undefined, '\'eventTrigger must be in format "domain.event" (e.g. attendance.marked');
+    if (!dto.actions || dto.actions.length === 0) throw new LocalizedException('automation_engine.at_least_one_action_is_required_dbc73aa2', undefined, undefined, 'At least one action is required');
 
     return this.prisma.automationRule.create({
       data: {
@@ -63,9 +60,7 @@ export class AutomationEngineService {
 
     if (dto.eventTrigger) {
       const triggerPattern = /^[a-z]+\.[a-z]+$/;
-      if (!triggerPattern.test(dto.eventTrigger)) {
-        throw new BadRequestException('eventTrigger must be in format "domain.event"');
-      }
+      if (!triggerPattern.test(dto.eventTrigger)) throw new LocalizedException('automation_engine.eventtrigger_must_be_in_format_domain_event_502f05e3', undefined, undefined, 'eventTrigger must be in format "domain.event"');
     }
 
     return this.prisma.automationRule.update({
@@ -122,7 +117,7 @@ export class AutomationEngineService {
     const log = await this.prisma.automationExecutionLog.findFirst({
       where: { id: logId, schoolId },
     });
-    if (!log) throw new NotFoundException('Execution log not found');
+    if (!log) throw new LocalizedException('automation_engine.execution_log_not_found_194354b9', undefined, HttpStatus.NOT_FOUND, 'Execution log not found');
     return log;
   }
 

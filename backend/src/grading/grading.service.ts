@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { 
   AssessmentStatus, 
   AssessmentScoreStatus, 
@@ -296,13 +297,9 @@ export class GradingService {
             );
           }
 
-          if (assessmentSubject.assessment.status === AssessmentStatus.LOCKED) {
-            throw new ForbiddenException(`${code} assessment is locked`);
-          }
+          if (assessmentSubject.assessment.status === AssessmentStatus.LOCKED) throw new LocalizedException('grading.assessment_is_locked_e6fb1e6d', undefined, HttpStatus.FORBIDDEN, '${code} assessment is locked');
 
-          if (assessmentSubject.assessment.startDate > new Date()) {
-            throw new ForbiddenException(`${code} assessment has not started yet`);
-          }
+          if (assessmentSubject.assessment.startDate > new Date()) throw new LocalizedException('grading.assessment_has_not_started_yet_9ec01f8f', undefined, HttpStatus.FORBIDDEN, '${code} assessment has not started yet');
 
           if (
             assessmentSubject.assessment.status === AssessmentStatus.COMPLETED ||
@@ -317,9 +314,7 @@ export class GradingService {
           );
         }
 
-        if (score !== null && (score < 0 || score > maxScore)) {
-          throw new BadRequestException(`${code} max score is ${maxScore}`);
-        }
+        if (score !== null && (score < 0 || score > maxScore)) throw new LocalizedException('grading.max_score_is_2a04992a', undefined, undefined, '${code} max score is ${maxScore}');
 
         return {
           code,
@@ -626,13 +621,9 @@ export class GradingService {
       select: { id: true, isLocked: true },
     });
 
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+    if (!term) throw new LocalizedException('grading.term_not_found_f9401991', undefined, HttpStatus.NOT_FOUND, 'Term not found');
 
-    if (term.isLocked && !bypassLock) {
-      throw new ForbiddenException('This term is locked for grading');
-    }
+    if (term.isLocked && !bypassLock) throw new LocalizedException('grading.this_term_is_locked_for_grading_af8f42ec', undefined, HttpStatus.FORBIDDEN, 'This term is locked for grading');
   }
 
   private async assertStudentInClassSection(
@@ -958,9 +949,7 @@ export class GradingService {
       select: { id: true },
     });
 
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('grading.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
@@ -970,9 +959,7 @@ export class GradingService {
       select: { id: true, userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!studentProfile) throw new LocalizedException('grading.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const parentStudent = await this.prisma.parentStudent.findFirst({
       where: {
@@ -982,9 +969,7 @@ export class GradingService {
       select: { id: true },
     });
 
-    if (!parentStudent) {
-      throw new ForbiddenException('You are not linked to this student');
-    }
+    if (!parentStudent) throw new LocalizedException('grading.you_are_not_linked_to_this_student_49797e72', undefined, HttpStatus.FORBIDDEN, 'You are not linked to this student');
 
     return {
       studentUserId: studentProfile.userId,
@@ -1268,9 +1253,7 @@ export class GradingService {
       select: { id: true, userId: true },
     });
 
-    if (!studentProfile) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!studentProfile) throw new LocalizedException('grading.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const whereClause: any = {
       studentId: {
@@ -1894,17 +1877,11 @@ export class GradingService {
       where: { id: gradeId },
     });
 
-    if (!grade) {
-      throw new NotFoundException('Grade not found');
-    }
+    if (!grade) throw new LocalizedException('grading.grade_not_found_c0cf0a15', undefined, HttpStatus.NOT_FOUND, 'Grade not found');
 
-    if (grade.schoolId !== schoolId) {
-      throw new ForbiddenException('You can only edit grades in your school');
-    }
+    if (grade.schoolId !== schoolId) throw new LocalizedException('grading.you_can_only_edit_grades_in_your_school_9ec73540', undefined, HttpStatus.FORBIDDEN, 'You can only edit grades in your school');
 
-    if (grade.teacherId !== teacherId) {
-      throw new ForbiddenException('You can only edit your own grades');
-    }
+    if (grade.teacherId !== teacherId) throw new LocalizedException('grading.you_can_only_edit_your_own_grades_99ae93c9', undefined, HttpStatus.FORBIDDEN, 'You can only edit your own grades');
 
     if (
       grade.status !== GradeStatus.DRAFT &&
@@ -1945,17 +1922,11 @@ export class GradingService {
       where: { id: gradeId },
     });
 
-    if (!grade) {
-      throw new NotFoundException('Grade not found');
-    }
+    if (!grade) throw new LocalizedException('grading.grade_not_found_c0cf0a15', undefined, HttpStatus.NOT_FOUND, 'Grade not found');
 
-    if (grade.schoolId !== schoolId) {
-      throw new ForbiddenException('You can only submit grades in your school');
-    }
+    if (grade.schoolId !== schoolId) throw new LocalizedException('grading.you_can_only_submit_grades_in_your_school_14f41d67', undefined, HttpStatus.FORBIDDEN, 'You can only submit grades in your school');
 
-    if (grade.teacherId !== teacherId) {
-      throw new ForbiddenException('You can only submit your own grades');
-    }
+    if (grade.teacherId !== teacherId) throw new LocalizedException('grading.you_can_only_submit_your_own_grades_4b9f4366', undefined, HttpStatus.FORBIDDEN, 'You can only submit your own grades');
 
     if (
       grade.status !== GradeStatus.DRAFT &&
@@ -2020,9 +1991,7 @@ export class GradingService {
       },
     });
 
-    if (grades.length === 0) {
-      throw new BadRequestException('No grades to submit');
-    }
+    if (grades.length === 0) throw new LocalizedException('grading.no_grades_to_submit_7d2db342', undefined, undefined, 'No grades to submit');
 
     // Submit all grades
     const result = await this.prisma.subjectGrade.updateMany({
@@ -2101,9 +2070,7 @@ export class GradingService {
       where: { id: gradeId },
     });
 
-    if (!grade) {
-      throw new NotFoundException('Grade not found');
-    }
+    if (!grade) throw new LocalizedException('grading.grade_not_found_c0cf0a15', undefined, HttpStatus.NOT_FOUND, 'Grade not found');
 
     if (grade.schoolId !== schoolId) {
       throw new ForbiddenException(
@@ -2111,9 +2078,7 @@ export class GradingService {
       );
     }
 
-    if (grade.status !== GradeStatus.SUBMITTED) {
-      throw new ForbiddenException('Can only review SUBMITTED grades');
-    }
+    if (grade.status !== GradeStatus.SUBMITTED) throw new LocalizedException('grading.can_only_review_submitted_grades_96d85456', undefined, HttpStatus.FORBIDDEN, 'Can only review SUBMITTED grades');
 
     const updated = await this.prisma.subjectGrade.update({
       where: { id: gradeId },
@@ -2144,9 +2109,7 @@ export class GradingService {
     schoolId: string,
     gradeIds: string[],
   ) {
-    if (gradeIds.length === 0) {
-      throw new BadRequestException('At least one grade ID is required');
-    }
+    if (gradeIds.length === 0) throw new LocalizedException('grading.at_least_one_grade_id_is_required_25ccb1db', undefined, undefined, 'At least one grade ID is required');
 
     const result = await this.prisma.subjectGrade.updateMany({
       where: {
@@ -2180,9 +2143,7 @@ export class GradingService {
     gradeIds: string[],
     comment: string,
   ) {
-    if (gradeIds.length === 0) {
-      throw new BadRequestException('At least one grade ID is required');
-    }
+    if (gradeIds.length === 0) throw new LocalizedException('grading.at_least_one_grade_id_is_required_25ccb1db', undefined, undefined, 'At least one grade ID is required');
 
     if (!comment?.trim()) {
       throw new BadRequestException(
@@ -2633,9 +2594,7 @@ export class GradingService {
       where: { id: dto.classId, schoolId },
     });
 
-    if (!classData) {
-      throw new NotFoundException('Class not found');
-    }
+    if (!classData) throw new LocalizedException('grading.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     return this.prisma.teacherSubjectAssignment.upsert({
       where: {
@@ -2818,9 +2777,7 @@ export class GradingService {
       },
     });
 
-    if (!academicYearRecord) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYearRecord) throw new LocalizedException('grading.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     // Get all grades for this student and subject across all periods
     const periodGrades = await this.prisma.subjectGrade.findMany({
@@ -3319,9 +3276,7 @@ export class GradingService {
       where: { id: academicYearId },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('grading.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     const academicYearName = academicYear.name;
     const termName = termId
@@ -3644,9 +3599,7 @@ export class GradingService {
     },
   ) {
     const lines = data.csvData.split('\n').filter((line) => line.trim());
-    if (lines.length < 2) {
-      throw new BadRequestException('CSV file is empty or missing headers');
-    }
+    if (lines.length < 2) throw new LocalizedException('grading.csv_file_is_empty_or_missing_headers_2ece5c43', undefined, undefined, 'CSV file is empty or missing headers');
 
     const headers = lines[0].split(',').map((h) => h.trim());
     const studentIdIdx = headers.findIndex((h) =>
@@ -3658,9 +3611,7 @@ export class GradingService {
       h.toLowerCase().includes('final'),
     );
 
-    if (studentIdIdx === -1) {
-      throw new BadRequestException('CSV must include a Student ID column');
-    }
+    if (studentIdIdx === -1) throw new LocalizedException('grading.csv_must_include_a_student_id_column_4bc47c7f', undefined, undefined, 'CSV must include a Student ID column');
 
     const grades: CreateGradeDto[] = [];
     for (let i = 1; i < lines.length; i++) {

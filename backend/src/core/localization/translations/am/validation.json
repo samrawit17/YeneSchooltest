@@ -1,0 +1,15 @@
+{
+  "required": "{{field}} ያስፈልጋል",
+  "invalid_email": "ልክ ያልሆነ የኢሜይል አድራሻ",
+  "invalid_phone": "ልክ ያልሆነ የስልክ ቁጥር",
+  "min_length": "{{field}} ቢያንስ {{min}} ቁምፊዎች መሆን አለበት",
+  "max_length": "{{field}} ከ {{max}} ቁምፊዎች መብለጥ የለበትም",
+  "invalid_format": "{{field}} ልክ ያልሆነ ቅርጸት አለው",
+  "invalid_date": "ልክ ያልሆነ የቀን ቅርጸት",
+  "invalid_number": "{{field}} ልክ የሆነ ቁጥር መሆን አለበት",
+  "weak_password": "የይለፍ ቃሉ ቢያንስ አንድ አቢይ ሆሄ፣ አንድ ትንሽ ሆሄ፣ አንድ ቁጥር እና አንድ ልዩ ቁምፊ መያዝ አለበት",
+  "password_mismatch": "የይለፍ ቃላት አይዛመዱም",
+  "file_too_large": "የፋይል መጠን ከ {{max}} መብለጥ የለበትም",
+  "already_taken": "{{field}} ቀድሞውኑ ተይዟል",
+  "mismatch": "{{field}} አይዛመድም"
+}

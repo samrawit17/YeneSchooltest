@@ -1,0 +1,15 @@
+{
+  "attendance_alert": "{{schoolName}}: {{studentName}} was marked absent today. Please check with the school.",
+  "attendance_low": "{{schoolName}}: {{studentName}} attendance is {{percentage}}%. Please ensure regular attendance.",
+  "fee_reminder": "{{schoolName}}: Fee payment of {{amount}} is due on {{dueDate}}. Please pay to avoid penalties.",
+  "fee_overdue": "{{schoolName}}: Fee payment of {{amount}} is overdue. Immediate payment required.",
+  "fee_received": "{{schoolName}}: Payment of {{amount}} received. Receipt: {{receiptNo}}.",
+  "exam_reminder": "{{schoolName}}: {{examName}} is scheduled for {{date}} at {{time}}. Please prepare accordingly.",
+  "exam_result": "{{schoolName}}: {{examName}} results published. Check portal for details.",
+  "homework_reminder": "{{schoolName}}: Homework reminder for {{subjectName}}. Due: {{dueDate}}.",
+  "meeting_reminder": "{{schoolName}}: Parent-teacher meeting on {{date}} at {{time}}. Attendance important.",
+  "emergency_alert": "{{schoolName}} ALERT: {{message}}. Please take necessary precautions.",
+  "general_notification": "{{schoolName}}: {{message}}",
+  "enrollment_approved": "{{schoolName}}: {{studentName}} enrollment approved. Please visit school to complete registration.",
+  "school_event": "{{schoolName}}: {{eventName}} on {{date}}. {{description}}"
+}

@@ -1,0 +1,183 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { EventBusService } from '../core/events/event-bus.service';
+import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';
+import { StorageService } from '../storage/storage.service';
+export interface CreateSchoolDto {
+    name: string;
+    email: string;
+    address?: string;
+    phone?: string;
+}
+export interface UpdateSchoolDto {
+    name?: string;
+    email?: string;
+    address?: string;
+    phone?: string;
+    code?: string;
+    logoUrl?: string;
+    publicUrlSlug?: string;
+}
+type SchoolMutationContext = {
+    actor?: AuditActor | null;
+    request?: AuditRequestContext | null;
+    source?: 'profile' | 'logo';
+};
+export declare class SchoolService {
+    private prismaService;
+    private platformSettingsService;
+    private subscriptionService;
+    private auditService;
+    private eventBus;
+    private storageService;
+    constructor(prismaService: PrismaService, platformSettingsService: PlatformSettingsService, subscriptionService: SubscriptionService, auditService: AuditService, eventBus: EventBusService, storageService: StorageService);
+    createSchool(createSchoolDto: CreateSchoolDto): Promise<({
+        plan: {
+            id: string;
+            name: string;
+            description: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            tier: import("@prisma/client").$Enums.PlanTier;
+            features: string[];
+        } | null;
+    } & {
+        id: string;
+        name: string;
+        email: string;
+        isActive: boolean;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        enrollmentKey: string | null;
+        code: string | null;
+        publicUrlSlug: string;
+        address: string | null;
+        timezone: string;
+        logoUrl: string | null;
+        settings: string | null;
+        planId: string | null;
+        planAssignedAt: Date | null;
+    }) | null>;
+    private enforceMaxSchoolsAllowed;
+    private parsePositiveInteger;
+    getSchools(page?: number, limit?: number): Promise<{
+        data: {
+            studentCount: number;
+            plan: {
+                id: string;
+                name: string;
+                description: string | null;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                tier: import("@prisma/client").$Enums.PlanTier;
+                features: string[];
+            } | null;
+            id: string;
+            name: string;
+            email: string;
+            isActive: boolean;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            enrollmentKey: string | null;
+            code: string | null;
+            publicUrlSlug: string;
+            address: string | null;
+            timezone: string;
+            logoUrl: string | null;
+            settings: string | null;
+            planId: string | null;
+            planAssignedAt: Date | null;
+        }[];
+        total: number;
+        activeTotal: number;
+        totalStudents: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
+    getSchoolById(id: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        isActive: boolean;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        enrollmentKey: string | null;
+        code: string | null;
+        publicUrlSlug: string;
+        address: string | null;
+        timezone: string;
+        logoUrl: string | null;
+        settings: string | null;
+        planId: string | null;
+        planAssignedAt: Date | null;
+    } | null>;
+    getSchoolByEnrollmentKey(enrollmentKey: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        isActive: boolean;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        enrollmentKey: string | null;
+        code: string | null;
+        publicUrlSlug: string;
+        address: string | null;
+        timezone: string;
+        logoUrl: string | null;
+        settings: string | null;
+        planId: string | null;
+        planAssignedAt: Date | null;
+    } | null>;
+    getSchoolByPublicUrlSlug(publicUrlSlug: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        isActive: boolean;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        enrollmentKey: string | null;
+        code: string | null;
+        publicUrlSlug: string;
+        address: string | null;
+        timezone: string;
+        logoUrl: string | null;
+        settings: string | null;
+        planId: string | null;
+        planAssignedAt: Date | null;
+    } | null>;
+    private cleanupLocalUpload;
+    private auditSchoolChange;
+    updateSchool(id: string, data: UpdateSchoolDto, context?: SchoolMutationContext): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        isActive: boolean;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        enrollmentKey: string | null;
+        code: string | null;
+        publicUrlSlug: string;
+        address: string | null;
+        timezone: string;
+        logoUrl: string | null;
+        settings: string | null;
+        planId: string | null;
+        planAssignedAt: Date | null;
+    }>;
+    deleteSchool(id: string): Promise<void>;
+    uploadLogo(schoolId: string, file: Express.Multer.File, context?: SchoolMutationContext): Promise<string>;
+    private slugify;
+    private generateUniquePublicUrlSlug;
+    private normalizeUniquePublicUrlSlug;
+}
+export {};

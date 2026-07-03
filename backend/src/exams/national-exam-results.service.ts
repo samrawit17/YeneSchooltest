@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import {
   NationalExamBatchStatus,
   NationalExamResultStatus,
@@ -59,14 +60,12 @@ export class NationalExamResultsService {
         },
       },
     });
-    if (!batch) throw new NotFoundException('National exam result batch not found');
+    if (!batch) throw new LocalizedException('exams.national_exam_result_batch_not_found_b3b6afc6', undefined, HttpStatus.NOT_FOUND, 'National exam result batch not found');
     return batch;
   }
 
   async importResults(schoolId: string, importedById: string, dto: ImportNationalExamResultsDto) {
-    if (!dto.rows?.length) {
-      throw new BadRequestException('At least one result row is required');
-    }
+    if (!dto.rows?.length) throw new LocalizedException('exams.at_least_one_result_row_is_required_a3c907c2', undefined, undefined, 'At least one result row is required');
 
     const expectedGrade = this.getExpectedGrade(dto.examType);
     const invalidGrade = dto.rows.find((row) => Number(row.grade) !== expectedGrade);
@@ -77,9 +76,7 @@ export class NationalExamResultsService {
     }
 
     const duplicates = this.findDuplicates(dto.rows.map((row) => row.candidateNumber.trim()));
-    if (duplicates.length) {
-      throw new BadRequestException(`Duplicate candidate numbers: ${duplicates.join(', ')}`);
-    }
+    if (duplicates.length) throw new LocalizedException('exams.duplicate_candidate_numbers_duplicates_join_e0629656', undefined, undefined, '`Duplicate candidate numbers: ${duplicates.join(\', \'');
 
     const candidates = dto.rows.map((row) => row.candidateNumber.trim()).filter(Boolean);
     const students = await this.prisma.user.findMany({
@@ -176,7 +173,7 @@ export class NationalExamResultsService {
     const batch = await this.prisma.nationalExamResultBatch.findFirst({
       where: { id: batchId, schoolId },
     });
-    if (!batch) throw new NotFoundException('National exam result batch not found');
+    if (!batch) throw new LocalizedException('exams.national_exam_result_batch_not_found_b3b6afc6', undefined, HttpStatus.NOT_FOUND, 'National exam result batch not found');
 
     return this.prisma.nationalExamResultBatch.update({
       where: { id: batchId },

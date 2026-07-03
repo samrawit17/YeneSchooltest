@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { NotificationService, NotificationType } from '../notification/notification.service';
@@ -105,9 +106,7 @@ export class ReportCardService {
       where: { id: academicYearId, schoolId },
       select: { id: true, name: true },
     });
-    if (!year) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!year) throw new LocalizedException('report_card.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
     return year.name;
   }
 
@@ -124,9 +123,7 @@ export class ReportCardService {
       },
       select: { id: true, name: true, academicYearId: true },
     });
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+    if (!term) throw new LocalizedException('report_card.term_not_found_f9401991', undefined, HttpStatus.NOT_FOUND, 'Term not found');
     return term;
   }
 
@@ -534,9 +531,7 @@ export class ReportCardService {
       where: { userId: parentId, schoolId },
       select: { id: true, schoolId: true },
     });
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
+    if (!parentProfile) throw new LocalizedException('report_card.parent_profile_not_found_ad089d27', undefined, HttpStatus.NOT_FOUND, 'Parent profile not found');
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
@@ -545,17 +540,13 @@ export class ReportCardService {
       },
       select: { id: true },
     });
-    if (!studentProfile) {
-      throw new NotFoundException('Student profile not found');
-    }
+    if (!studentProfile) throw new LocalizedException('report_card.student_profile_not_found_75599cef', undefined, HttpStatus.NOT_FOUND, 'Student profile not found');
 
     const link = await this.prisma.parentStudent.findFirst({
       where: { parentId: parentProfile.id, studentId: studentProfile.id },
       select: { id: true, student: { select: { userId: true } } },
     });
-    if (!link?.student?.userId) {
-      throw new BadRequestException('You are not linked to this student');
-    }
+    if (!link?.student?.userId) throw new LocalizedException('report_card.you_are_not_linked_to_this_student_49797e72', undefined, undefined, 'You are not linked to this student');
 
     return {
       studentUserId: link.student.userId,
@@ -589,9 +580,7 @@ export class ReportCardService {
       select: { name: true, endDate: true },
     });
 
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('report_card.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     const endOfAcademicYear = new Date(academicYear.endDate);
     endOfAcademicYear.setHours(23, 59, 59, 999);
@@ -729,9 +718,7 @@ export class ReportCardService {
       criteria,
     } = params;
 
-    if (!fromClassId) {
-      throw new BadRequestException('Source class is required');
-    }
+    if (!fromClassId) throw new LocalizedException('report_card.source_class_is_required_492e76aa', undefined, undefined, 'Source class is required');
 
     const classInfo = await this.prisma.class.findUnique({
       where: { id: fromClassId },
@@ -743,9 +730,7 @@ export class ReportCardService {
       },
     });
 
-    if (!classInfo || classInfo.schoolId !== schoolId) {
-      throw new NotFoundException('Source class not found');
-    }
+    if (!classInfo || classInfo.schoolId !== schoolId) throw new LocalizedException('report_card.source_class_not_found_38baffa4', undefined, HttpStatus.NOT_FOUND, 'Source class not found');
 
     const enrollments = await this.prisma.studentClass.findMany({
       where: {
@@ -769,9 +754,7 @@ export class ReportCardService {
       },
     });
 
-    if (enrollments.length === 0) {
-      throw new BadRequestException('No students found for this promotion batch');
-    }
+    if (enrollments.length === 0) throw new LocalizedException('report_card.no_students_found_for_this_promotion_batch_6b7606b6', undefined, undefined, 'No students found for this promotion batch');
 
     if (!promoteAll && studentIds.length !== enrollments.length) {
       throw new BadRequestException(
@@ -1017,9 +1000,7 @@ export class ReportCardService {
         name: true,
       },
     });
-    if (!academicYearRecord) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYearRecord) throw new LocalizedException('report_card.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
 
     const academicYearId = academicYearRecord.id;
     const academicYearName = academicYearRecord.name;
@@ -1029,9 +1010,7 @@ export class ReportCardService {
       where: { id: studentId, schoolId },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('report_card.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const [classRecord, sectionRecord, enrollment] = await Promise.all([
       this.prisma.class.findFirst({
@@ -1054,12 +1033,8 @@ export class ReportCardService {
       }),
     ]);
 
-    if (!classRecord) {
-      throw new NotFoundException('Class not found');
-    }
-    if (!sectionRecord) {
-      throw new NotFoundException('Section not found');
-    }
+    if (!classRecord) throw new LocalizedException('report_card.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
+    if (!sectionRecord) throw new LocalizedException('report_card.section_not_found_f649d604', undefined, HttpStatus.NOT_FOUND, 'Section not found');
     if (!enrollment) {
       throw new BadRequestException(
         'Student is not enrolled in this class and section for the selected academic year',
@@ -1244,9 +1219,7 @@ export class ReportCardService {
       },
       select: { id: true, name: true },
     });
-    if (!academicYearRecord) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYearRecord) throw new LocalizedException('report_card.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
     const termRecord = await this.resolveTerm(
       schoolId,
       termId,
@@ -1262,12 +1235,8 @@ export class ReportCardService {
         select: { id: true },
       }),
     ]);
-    if (!classRecord) {
-      throw new NotFoundException('Class not found');
-    }
-    if (!sectionRecord) {
-      throw new NotFoundException('Section not found');
-    }
+    if (!classRecord) throw new LocalizedException('report_card.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
+    if (!sectionRecord) throw new LocalizedException('report_card.section_not_found_f649d604', undefined, HttpStatus.NOT_FOUND, 'Section not found');
     const academicYearKeys = Array.from(
       new Set([academicYear, academicYearRecord?.id, academicYearRecord?.name].filter(Boolean) as string[]),
     );
@@ -2037,9 +2006,7 @@ export class ReportCardService {
       },
     });
 
-    if (!reportCard) {
-      throw new NotFoundException('Report card not found');
-    }
+    if (!reportCard) throw new LocalizedException('report_card.report_card_not_found_7ab38473', undefined, HttpStatus.NOT_FOUND, 'Report card not found');
     const gradeDetails = await this.resolveReportCardGradeDetails(reportCard);
 
     return {
@@ -2154,9 +2121,7 @@ export class ReportCardService {
   }
 
   async uploadCertificateWatermark(schoolId: string, file: Express.Multer.File): Promise<string> {
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
-      throw new BadRequestException('Watermark must be a PNG, JPG, or WEBP image');
-    }
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) throw new LocalizedException('report_card.watermark_must_be_a_png_jpg_or_webp_image_17a9de60', undefined, undefined, 'Watermark must be a PNG, JPG, or WEBP image');
     const extension =
       file.mimetype === 'image/png' ? '.png' :
       file.mimetype === 'image/webp' ? '.webp' :
@@ -2191,9 +2156,7 @@ export class ReportCardService {
       },
     });
 
-    if (!reportCard) {
-      throw new NotFoundException('Report card not found');
-    }
+    if (!reportCard) throw new LocalizedException('report_card.report_card_not_found_7ab38473', undefined, HttpStatus.NOT_FOUND, 'Report card not found');
     const gradeDetails = await this.resolveReportCardGradeDetails(reportCard);
     const academicYearRecord = await this.prisma.academicYear.findFirst({
       where: {
@@ -2548,7 +2511,7 @@ export class ReportCardService {
 
   async generateCertificateBulkZip(schoolId: string, reportCardIds: string[]): Promise<Buffer> {
     const ids = (reportCardIds || []).filter(Boolean);
-    if (!ids.length) throw new BadRequestException('No report card IDs provided');
+    if (!ids.length) throw new LocalizedException('report_card.no_report_card_ids_provided_cc8a09f6', undefined, undefined, 'No report card IDs provided');
     const reportCards = await this.prisma.reportCard.findMany({
       where: { id: { in: ids }, schoolId },
       select: {
@@ -2587,9 +2550,7 @@ export class ReportCardService {
         failures.push(`${id}: ${error?.message || 'Failed to generate PDF'}`);
       }
     }
-    if (failures.length === ids.length) {
-      throw new BadRequestException('No report card PDFs could be generated');
-    }
+    if (failures.length === ids.length) throw new LocalizedException('report_card.no_report_card_pdfs_could_be_generated_78c9110c', undefined, undefined, 'No report card PDFs could be generated');
     if (failures.length) {
       archive.append(failures.join('\n'), { name: 'download-errors.txt' });
     }
@@ -2616,9 +2577,7 @@ export class ReportCardService {
       where: { id: { in: ids }, schoolId },
     });
 
-    if (reportCards.length === 0) {
-      throw new NotFoundException('No report cards found');
-    }
+    if (reportCards.length === 0) throw new LocalizedException('report_card.no_report_cards_found_f68bd5ef', undefined, HttpStatus.NOT_FOUND, 'No report cards found');
 
     const updated = await this.prisma.reportCard.updateMany({
       where: { id: { in: ids }, schoolId },
@@ -2660,9 +2619,7 @@ export class ReportCardService {
       new Set([academicYearId, academicYearName].filter(Boolean)),
     );
 
-    if (!classRecord) {
-      throw new NotFoundException('Class not found');
-    }
+    if (!classRecord) throw new LocalizedException('report_card.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     const [enrollments, reportCards, assessmentSubjects] = await Promise.all([
       this.prisma.studentClass.findMany({
@@ -2732,9 +2689,7 @@ export class ReportCardService {
       enrollments.map((enrollment) => enrollment.studentId),
     );
 
-    if (uniqueEnrollmentStudentIds.size === 0) {
-      throw new BadRequestException('No enrolled students found for this class');
-    }
+    if (uniqueEnrollmentStudentIds.size === 0) throw new LocalizedException('report_card.no_enrolled_students_found_for_this_class_1f5e0688', undefined, undefined, 'No enrolled students found for this class');
 
     const studentIdsByClass = new Map<string, Set<string>>();
     const studentIdsByClassSection = new Map<string, Set<string>>();
@@ -2962,9 +2917,7 @@ export class ReportCardService {
     const reportCard = await this.prisma.reportCard.findFirst({
       where: { id, schoolId },
     });
-    if (!reportCard) {
-      throw new NotFoundException('Report card not found');
-    }
+    if (!reportCard) throw new LocalizedException('report_card.report_card_not_found_7ab38473', undefined, HttpStatus.NOT_FOUND, 'Report card not found');
 
     return this.prisma.reportCard.update({
       where: { id },
@@ -2985,13 +2938,9 @@ export class ReportCardService {
     const reportCard = await this.prisma.reportCard.findFirst({
       where: { id, schoolId },
     });
-    if (!reportCard) {
-      throw new NotFoundException('Report card not found');
-    }
+    if (!reportCard) throw new LocalizedException('report_card.report_card_not_found_7ab38473', undefined, HttpStatus.NOT_FOUND, 'Report card not found');
 
-    if (reportCard.status === ReportCardStatus.PUBLISHED) {
-      throw new BadRequestException('Cannot delete a published report card');
-    }
+    if (reportCard.status === ReportCardStatus.PUBLISHED) throw new LocalizedException('report_card.cannot_delete_a_published_report_card_3110b7a6', undefined, undefined, 'Cannot delete a published report card');
 
     await this.prisma.reportCard.delete({ where: { id } });
     return { deleted: true };
@@ -3012,9 +2961,7 @@ export class ReportCardService {
       },
     });
 
-    if (!classInfo) {
-      throw new NotFoundException('Class not found');
-    }
+    if (!classInfo) throw new LocalizedException('report_card.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     const students = await this.prisma.studentClass.findMany({
       where: { classId, academicYear },
@@ -3276,9 +3223,7 @@ export class ReportCardService {
       },
     });
 
-    if (!currentClass) {
-      throw new NotFoundException('Class not found');
-    }
+    if (!currentClass) throw new LocalizedException('report_card.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     const schoolId = currentClass.schoolId;
     const targetAcademicYearName =
@@ -3321,9 +3266,7 @@ export class ReportCardService {
 
   async getNextGradeOptions(schoolId: string, grade: number, toAcademicYear?: string) {
     const range = await this.getSchoolGradeRange(schoolId);
-    if (grade < range.min || grade > range.max) {
-      throw new BadRequestException(`Grade ${grade} is not available in this school's grade system`);
-    }
+    if (grade < range.min || grade > range.max) throw new LocalizedException('report_card.grade_is_not_available_in_this_schools_grade_system_bb8e19de', undefined, undefined, 'Grade ${grade} is not available in this school\'s grade system');
     if (grade >= range.max) {
       return { currentGrade: grade, nextGrades: [], isLastGrade: true, graduationEnabled: true };
     }
@@ -3404,12 +3347,8 @@ export class ReportCardService {
       where: { id: toClassId },
       include: { sections: true },
     });
-    if (!toClass) {
-      throw new NotFoundException('Target class not found');
-    }
-    if (toClass.id === fromClassId) {
-      throw new BadRequestException('Target class must be different from source class');
-    }
+    if (!toClass) throw new LocalizedException('report_card.target_class_not_found_460a51f1', undefined, HttpStatus.NOT_FOUND, 'Target class not found');
+    if (toClass.id === fromClassId) throw new LocalizedException('report_card.target_class_must_be_different_from_source_class_4e71febc', undefined, undefined, 'Target class must be different from source class');
 
     const sourceEnrollment = await this.prisma.studentClass.findFirst({
       where: {
@@ -3507,9 +3446,7 @@ export class ReportCardService {
       },
     });
 
-    if (!targetClass) {
-      throw new NotFoundException('Target class not found');
-    }
+    if (!targetClass) throw new LocalizedException('report_card.target_class_not_found_460a51f1', undefined, HttpStatus.NOT_FOUND, 'Target class not found');
 
     if (preferredSectionName) {
       const matchedSection = targetClass.sections.find(
@@ -3593,9 +3530,7 @@ export class ReportCardService {
       });
     }
 
-    if (!fromClassId) {
-      throw new BadRequestException('Source class is required');
-    }
+    if (!fromClassId) throw new LocalizedException('report_card.source_class_is_required_492e76aa', undefined, undefined, 'Source class is required');
 
     const allowFailedSubjects = await this.getPromotionAllowFailedSubjects(schoolId);
 
@@ -3619,12 +3554,8 @@ export class ReportCardService {
           where: { id: toClassId! },
         })
       : null;
-    if (!isGraduation && !toClass) {
-      throw new NotFoundException('Target class not found');
-    }
-    if (!isGraduation && toClassId === fromClassId) {
-      throw new BadRequestException('Target class must be different from source class');
-    }
+    if (!isGraduation && !toClass) throw new LocalizedException('report_card.target_class_not_found_460a51f1', undefined, HttpStatus.NOT_FOUND, 'Target class not found');
+    if (!isGraduation && toClassId === fromClassId) throw new LocalizedException('report_card.target_class_must_be_different_from_source_class_4e71febc', undefined, undefined, 'Target class must be different from source class');
 
     const results = {
       promoted: 0,
@@ -3722,18 +3653,10 @@ export class ReportCardService {
 
     const isGraduation = !toGrade;
     const gradeRange = await this.getSchoolGradeRange(schoolId);
-    if (fromGrade < gradeRange.min || fromGrade > gradeRange.max) {
-      throw new BadRequestException(`Grade ${fromGrade} is not available in this school's grade system`);
-    }
-    if (!isGraduation && (toGrade! < gradeRange.min || toGrade! > gradeRange.max)) {
-      throw new BadRequestException(`Grade ${toGrade} is not available in this school's grade system`);
-    }
-    if (fromGrade >= gradeRange.max && !isGraduation) {
-      throw new BadRequestException(`Grade ${fromGrade} is the final grade for this school and must graduate`);
-    }
-    if (!isGraduation && toGrade !== fromGrade + 1) {
-      throw new BadRequestException('Destination grade must be the next grade level');
-    }
+    if (fromGrade < gradeRange.min || fromGrade > gradeRange.max) throw new LocalizedException('report_card.grade_is_not_available_in_this_schools_grade_system_f6a4f7cc', undefined, undefined, 'Grade ${fromGrade} is not available in this school\'s grade system');
+    if (!isGraduation && (toGrade! < gradeRange.min || toGrade! > gradeRange.max)) throw new LocalizedException('report_card.grade_is_not_available_in_this_schools_grade_system_c24f1045', undefined, undefined, 'Grade ${toGrade} is not available in this school\'s grade system');
+    if (fromGrade >= gradeRange.max && !isGraduation) throw new LocalizedException('report_card.grade_is_the_final_grade_for_this_school_and_must_graduate_84ef154e', undefined, undefined, 'Grade ${fromGrade} is the final grade for this school and must graduate');
+    if (!isGraduation && toGrade !== fromGrade + 1) throw new LocalizedException('report_card.destination_grade_must_be_the_next_grade_level_c8166e61', undefined, undefined, 'Destination grade must be the next grade level');
     const [defaultMinAvg, allowFailedSubjects] = await Promise.all([
       this.getPromotionMinAverageGrade(schoolId),
       this.getPromotionAllowFailedSubjects(schoolId),
@@ -3815,7 +3738,7 @@ export class ReportCardService {
       where: { schoolId, name: toAcademicYear },
       select: { id: true, name: true },
     });
-    if (!targetAcademicYear) throw new NotFoundException('Target academic year not found');
+    if (!targetAcademicYear) throw new LocalizedException('report_card.target_academic_year_not_found_cda5a09c', undefined, HttpStatus.NOT_FOUND, 'Target academic year not found');
 
     const gradeLevel = await this.prisma.gradeLevel.findFirst({
       where: { schoolId, level: toGrade },
@@ -3880,9 +3803,7 @@ export class ReportCardService {
                   streams[enrollment.studentId],
               )
           : null;
-        if ([11, 12].includes(toGrade!) && !targetStream) {
-          throw new BadRequestException(`${enrollment.student.name} is missing stream for Grade ${toGrade}`);
-        }
+        if ([11, 12].includes(toGrade!) && !targetStream) throw new LocalizedException('report_card.is_missing_stream_for_grade_c8b0c50d', undefined, undefined, '${enrollment.student.name} is missing stream for Grade ${toGrade}');
         const groupKey = targetStream || 'GENERAL';
         const groupIndex = sectionCounters.get(groupKey) || 0;
         sectionCounters.set(groupKey, groupIndex + 1);

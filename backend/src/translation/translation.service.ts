@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -293,9 +294,7 @@ export class TranslationService {
       body: JSON.stringify([{ Text: text }]),
     });
 
-    if (!response.ok) {
-      throw new BadRequestException(`Azure Translator returned ${response.status}`);
-    }
+    if (!response.ok) throw new LocalizedException('translation.azure_translator_returned_518154ca', undefined, undefined, 'Azure Translator returned ${response.status}');
 
     const payload = (await response.json()) as Array<{
       detectedLanguage?: { language?: string };
@@ -303,9 +302,7 @@ export class TranslationService {
     }>;
     const first = payload[0];
     const translatedText = first?.translations?.[0]?.text;
-    if (!translatedText) {
-      throw new BadRequestException('Azure Translator returned an empty translation');
-    }
+    if (!translatedText) throw new LocalizedException('translation.azure_translator_returned_an_empty_translation_b9b5ba0c', undefined, undefined, 'Azure Translator returned an empty translation');
 
     return {
       translatedText,
@@ -335,9 +332,7 @@ export class TranslationService {
       }),
     });
 
-    if (!response.ok) {
-      throw new BadRequestException(`Google Translation returned ${response.status}`);
-    }
+    if (!response.ok) throw new LocalizedException('translation.google_translation_returned_da5ab1d3', undefined, undefined, 'Google Translation returned ${response.status}');
 
     const payload = (await response.json()) as {
       data?: {
@@ -348,9 +343,7 @@ export class TranslationService {
       };
     };
     const first = payload.data?.translations?.[0];
-    if (!first?.translatedText) {
-      throw new BadRequestException('Google Translation returned an empty translation');
-    }
+    if (!first?.translatedText) throw new LocalizedException('translation.google_translation_returned_an_empty_translation_9315c943', undefined, undefined, 'Google Translation returned an empty translation');
 
     return {
       translatedText: first.translatedText,

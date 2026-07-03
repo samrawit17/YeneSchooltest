@@ -1,0 +1,48 @@
+{
+  "user": {
+    "created": "User {{userName}} created by {{actorName}}",
+    "updated": "User {{userName}} updated by {{actorName}}",
+    "deleted": "User {{userName}} deleted by {{actorName}}",
+    "login": "User {{userName}} logged in from {{ipAddress}}",
+    "logout": "User {{userName}} logged out",
+    "password_changed": "User {{userName}} changed password",
+    "password_reset": "Password reset for user {{userName}} by {{actorName}}",
+    "role_changed": "User {{userName}} role changed to {{newRole}} by {{actorName}}",
+    "status_changed": "User {{userName}} status changed to {{status}} by {{actorName}}"
+  },
+  "student": {
+    "enrolled": "Student {{studentName}} enrolled in {{className}} by {{actorName}}",
+    "transferred": "Student {{studentName}} transferred to {{newClass}} by {{actorName}}",
+    "promoted": "Student {{studentName}} promoted to {{grade}} by {{actorName}}",
+    "graduated": "Student {{studentName}} graduated by {{actorName}}",
+    "suspended": "Student {{studentName}} suspended by {{actorName}}",
+    "expelled": "Student {{studentName}} expelled by {{actorName}}"
+  },
+  "fee": {
+    "payment_received": "Payment of {{amount}} received from {{studentName}} by {{actorName}}",
+    "payment_waived": "Fee of {{amount}} waived for {{studentName}} by {{actorName}}",
+    "fee_structure_created": "Fee structure {{name}} created by {{actorName}}",
+    "fee_structure_updated": "Fee structure {{name}} updated by {{actorName}}",
+    "discount_applied": "Discount of {{amount}} applied to {{studentName}} by {{actorName}}"
+  },
+  "exam": {
+    "created": "Exam {{examName}} created by {{actorName}}",
+    "results_published": "Results for {{examName}} published by {{actorName}}",
+    "results_updated": "Results for {{examName}} updated by {{actorName}}"
+  },
+  "settings": {
+    "school_updated": "School settings updated by {{actorName}}",
+    "platform_updated": "Platform settings updated by {{actorName}}"
+  },
+  "security": {
+    "failed_login": "Failed login attempt for {{email}} from {{ipAddress}}",
+    "suspicious_activity": "Suspicious activity detected for user {{userName}}: {{details}}",
+    "permission_changed": "Permission {{permission}} {{action}} for role {{role}} by {{actorName}}"
+  },
+  "backup": {
+    "created": "System backup created by {{actorName}}",
+    "restored": "System backup restored by {{actorName}}",
+    "deleted": "Backup {{backupName}} deleted by {{actorName}}",
+    "downloaded": "Backup downloaded by {{actorName}}"
+  }
+}

@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { SchoolSettingsService } from '../school-settings/school-settings.service';
 import { EventBusService } from '../core/events/event-bus.service';
@@ -212,9 +213,7 @@ export class EnrollmentRequestService {
       where: { id: schoolId },
       select: { id: true },
     });
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('enrollment.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const gradeLevels =
       await this.schoolSettings.getGradeLevelsForSchool(schoolId);
@@ -365,12 +364,8 @@ export class EnrollmentRequestService {
     const schoolData = await this.prisma.school.findUnique({
       where: { id: dto.schoolId },
     });
-    if (!schoolData) {
-      throw new NotFoundException('School not found');
-    }
-    if (!schoolData.isActive) {
-      throw new BadRequestException('School is not active');
-    }
+    if (!schoolData) throw new LocalizedException('enrollment.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
+    if (!schoolData.isActive) throw new LocalizedException('enrollment.school_is_not_active_046ac9f6', undefined, undefined, 'School is not active');
 
     // Check if enrollment is open
     const enrollmentOpen = await this.schoolSettings.getSetting(
@@ -378,24 +373,18 @@ export class EnrollmentRequestService {
       'SELF_ENROLLMENT_ACTIVE',
     );
     const isOpen = enrollmentOpen === true || enrollmentOpen === 'true';
-    if (!isOpen) {
-      throw new BadRequestException('Online enrollment is currently closed');
-    }
+    if (!isOpen) throw new LocalizedException('enrollment.online_enrollment_is_currently_closed_6d41f9a8', undefined, undefined, 'Online enrollment is currently closed');
 
     await this.assertRequestedGradeAllowed(dto.schoolId, dto.requestedGrade);
 
     const faydaNumber = String(dto.faydaNumber || '').replace(/\D/g, '');
-    if (!/^\d{12}$/.test(faydaNumber)) {
-      throw new BadRequestException('Fayda Number (FAN) must be 12 digits');
-    }
+    if (!/^\d{12}$/.test(faydaNumber)) throw new LocalizedException('enrollment.fayda_number_fan_d385448e', undefined, undefined, '\'Fayda Number (FAN');
 
     const existingStudentFayda = await this.prisma.studentProfile.findFirst({
       where: { schoolId: dto.schoolId, faydaNumber },
       select: { id: true },
     });
-    if (existingStudentFayda) {
-      throw new BadRequestException('Fayda Number (FAN) is already registered');
-    }
+    if (existingStudentFayda) throw new LocalizedException('enrollment.fayda_number_fan_d385448e', undefined, undefined, '\'Fayda Number (FAN');
 
     const existingEnrollmentFayda =
       await this.prisma.enrollmentRequest.findFirst({
@@ -434,9 +423,7 @@ export class EnrollmentRequestService {
       const existingUser = await this.prisma.user.findFirst({
         where: { email: dto.email, schoolId: dto.schoolId },
       });
-      if (existingUser) {
-        throw new BadRequestException('A user with this email already exists');
-      }
+      if (existingUser) throw new LocalizedException('enrollment.a_user_with_this_email_already_exists_daaa1c70', undefined, undefined, 'A user with this email already exists');
     }
 
     // Check for duplicate parent phone
@@ -453,9 +440,7 @@ export class EnrollmentRequestService {
     const academicYear = await this.prisma.academicYear.findUnique({
       where: { id: dto.academicYearId },
     });
-    if (!academicYear) {
-      throw new NotFoundException('Academic year not found');
-    }
+    if (!academicYear) throw new LocalizedException('enrollment.academic_year_not_found_561c725b', undefined, HttpStatus.NOT_FOUND, 'Academic year not found');
     if (academicYear.schoolId !== dto.schoolId) {
       throw new BadRequestException(
         'Academic year does not belong to the selected school',
@@ -587,9 +572,7 @@ export class EnrollmentRequestService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment request not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_request_not_found_e12aca15', undefined, HttpStatus.NOT_FOUND, 'Enrollment request not found');
 
     return enrollment;
   }
@@ -602,9 +585,7 @@ export class EnrollmentRequestService {
       where: { id, schoolId },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment request not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_request_not_found_e12aca15', undefined, HttpStatus.NOT_FOUND, 'Enrollment request not found');
 
     const approvableStatuses: EnrollmentRequestStatus[] = [
       EnrollmentRequestStatus.PENDING,
@@ -752,9 +733,7 @@ export class EnrollmentRequestService {
       studentProfile?.studentCode ||
       generatedCredentials?.username;
 
-    if (!studentCode) {
-      throw new BadRequestException('Failed to generate student username');
-    }
+    if (!studentCode) throw new LocalizedException('enrollment.failed_to_generate_student_username_6f663242', undefined, undefined, 'Failed to generate student username');
 
     const studentEmail = enrollment.email || null;
     const studentPassword =
@@ -1000,9 +979,7 @@ export class EnrollmentRequestService {
       where: { id, schoolId },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment request not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_request_not_found_e12aca15', undefined, HttpStatus.NOT_FOUND, 'Enrollment request not found');
 
     const rejectableStatuses: EnrollmentRequestStatus[] = [
       EnrollmentRequestStatus.PENDING,
@@ -1031,13 +1008,9 @@ export class EnrollmentRequestService {
       where: { id, schoolId },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment request not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_request_not_found_e12aca15', undefined, HttpStatus.NOT_FOUND, 'Enrollment request not found');
 
-    if (enrollment.status !== EnrollmentRequestStatus.PENDING) {
-      throw new BadRequestException('Enrollment request is not pending');
-    }
+    if (enrollment.status !== EnrollmentRequestStatus.PENDING) throw new LocalizedException('enrollment.enrollment_request_is_not_pending_19200b3a', undefined, undefined, 'Enrollment request is not pending');
 
     return this.prisma.enrollmentRequest.update({
       where: { id },
@@ -1055,13 +1028,9 @@ export class EnrollmentRequestService {
       where: { id, schoolId },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment request not found');
-    }
+    if (!enrollment) throw new LocalizedException('enrollment.enrollment_request_not_found_e12aca15', undefined, HttpStatus.NOT_FOUND, 'Enrollment request not found');
 
-    if (enrollment.status === EnrollmentRequestStatus.APPROVED) {
-      throw new BadRequestException('Cannot cancel an approved enrollment');
-    }
+    if (enrollment.status === EnrollmentRequestStatus.APPROVED) throw new LocalizedException('enrollment.cannot_cancel_an_approved_enrollment_71c5999b', undefined, undefined, 'Cannot cancel an approved enrollment');
 
     return this.prisma.enrollmentRequest.update({
       where: { id },

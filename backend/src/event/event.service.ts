@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
 import { Role } from '../auth/types/role.enum';
@@ -616,9 +617,7 @@ export class EventService {
       },
     });
 
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
+    if (!event) throw new LocalizedException('event.event_not_found_a3bf16d4', undefined, HttpStatus.NOT_FOUND, 'Event not found');
 
     return event;
   }
@@ -628,9 +627,7 @@ export class EventService {
       where: { id, schoolId },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Event not found');
-    }
+    if (!existing) throw new LocalizedException('event.event_not_found_a3bf16d4', undefined, HttpStatus.NOT_FOUND, 'Event not found');
 
     return this.prisma.schoolEvent.update({
       where: { id },
@@ -673,9 +670,7 @@ export class EventService {
       where: { id, schoolId },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Event not found');
-    }
+    if (!existing) throw new LocalizedException('event.event_not_found_a3bf16d4', undefined, HttpStatus.NOT_FOUND, 'Event not found');
 
     return this.prisma.schoolEvent.delete({
       where: { id },

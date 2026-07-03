@@ -1,0 +1,322 @@
+{
+  "attendance": {
+    "marked": {
+      "title": "Attendance Marked",
+      "message": "Attendance marked for {{className}}"
+    },
+    "session_opened": {
+      "title": "Attendance Session Opened",
+      "message": "Attendance session is ready for {{className}} - {{subject}}"
+    },
+    "session_closed": {
+      "title": "Attendance Session Closed",
+      "message": "Attendance session closed for {{className}}"
+    },
+    "low_attendance": {
+      "title": "Low Attendance Alert",
+      "message": "Attendance Alert: {{studentName}} attendance is at {{percentage}}%"
+    },
+    "missing_detected": {
+      "title": "Missing Attendance",
+      "message": "{{count}} student(s) missing attendance for {{date}}"
+    },
+    "absent": {
+      "title": "Absence Alert",
+      "message": "{{studentName}} was absent on {{date}} ({{className}})"
+    },
+    "late": {
+      "title": "Late Arrival Notice",
+      "message": "{{studentName}} arrived late at {{time}} for {{className}}"
+    },
+    "reminder": {
+      "title": "Attendance Reminder",
+      "message": "Attendance for {{className}} - {{subject}} starts at {{startTime}}. Don't forget to take attendance!"
+    },
+    "missing": {
+      "title": "Missing Attendance",
+      "message": "Please take attendance for Grade {{grade}} - {{section}} ({{className}}) for {{date}}. Attendance has not been recorded yet."
+    },
+    "bulk_marked": {
+      "title": "Bulk Attendance",
+      "message": "Bulk attendance marked for {{count}} students"
+    }
+  },
+  "fee": {
+    "due": {
+      "title": "Fee Due",
+      "message": "{{amount}} due by {{dueDate}} for {{studentName}}"
+    },
+    "overdue": {
+      "title": "Fee Overdue",
+      "message": "Fee overdue: {{amount}} - Payment was due on {{dueDate}}"
+    },
+    "paid": {
+      "title": "Payment Received",
+      "message": "{{amount}} received (Receipt: {{receiptNumber}})"
+    },
+    "reminder": {
+      "title": "Fee Payment Reminder",
+      "message": "Payment of {{amount}} is due on {{dueDate}}"
+    },
+    "receipt_available": {
+      "title": "Payment Receipt",
+      "message": "Payment receipt available for {{description}}"
+    },
+    "waived": {
+      "title": "Fee Waived",
+      "message": "Fee of {{amount}} has been waived for {{studentName}}"
+    }
+  },
+  "exam": {
+    "created": {
+      "title": "New Exam",
+      "message": "New exam scheduled: {{examName}} on {{date}}"
+    },
+    "result_published": {
+      "title": "Results Published",
+      "message": "Results for {{term}} ({{className}}) are now available"
+    },
+    "result_updated": {
+      "title": "Results Updated",
+      "message": "Exam results updated for {{examName}}"
+    },
+    "reminder": {
+      "title": "Exam Reminder",
+      "message": "Reminder: {{examName}} is tomorrow at {{time}}"
+    },
+    "seating_available": {
+      "title": "Exam Seating",
+      "message": "Exam seating arrangement available for {{examName}}"
+    },
+    "assessment_started": {
+      "title": "Assessment Started",
+      "message": "{{assessmentType}}: {{assessmentTitle}} - {{className}} ({{subjectName}})"
+    }
+  },
+  "grade": {
+    "published": {
+      "title": "Grade Published",
+      "message": "Grades published for {{subjectName}}"
+    },
+    "updated": {
+      "title": "Grade Updated",
+      "message": "Grades updated for {{subjectName}}"
+    },
+    "report_available": {
+      "title": "Report Card",
+      "message": "Report card available for {{termName}}"
+    }
+  },
+  "announcement": {
+    "new": {
+      "title": "New Announcement",
+      "message": "New announcement: {{title}}"
+    },
+    "urgent": {
+      "title": "Urgent Announcement",
+      "message": "URGENT: {{title}}"
+    },
+    "school_wide": {
+      "title": "School Announcement",
+      "message": "School-wide announcement from {{schoolName}}"
+    }
+  },
+  "enrollment": {
+    "pending": {
+      "title": "New Enrollment Request",
+      "message": "{{studentName}} has submitted an enrollment request for Grade {{grade}}"
+    },
+    "approved": {
+      "title": "Enrollment Approved",
+      "message": "Congratulations! {{studentName}}'s enrollment has been approved for {{className}}"
+    },
+    "rejected": {
+      "title": "Enrollment Rejected",
+      "message": "{{studentName}} was not approved: {{reason}}"
+    },
+    "rejected_no_reason": {
+      "title": "Enrollment Rejected",
+      "message": "{{studentName}} was not approved"
+    },
+    "created": {
+      "title": "Student Enrolled",
+      "message": "Student {{studentName}} enrolled in {{className}}"
+    }
+  },
+  "assignment": {
+    "created": {
+      "title": "New Assignment",
+      "message": "New assignment \"{{assignmentTitle}}\" has been posted for {{className}}. Due: {{dueDate}}"
+    },
+    "parent": {
+      "title": "New Assignment for Your Child",
+      "message": "{{studentName}} has a new assignment \"{{assignmentTitle}}\" due on {{dueDate}}"
+    },
+    "graded": {
+      "title": "Assignment Graded",
+      "message": "Your assignment \"{{assignmentTitle}}\" for {{className}} has been graded. Grade: {{grade}}"
+    },
+    "child_graded": {
+      "title": "Child's Assignment Graded",
+      "message": "{{studentName}}'s assignment \"{{assignmentTitle}}\" has been graded. Grade: {{grade}}"
+    }
+  },
+  "communication": {
+    "new_message": {
+      "title": "New Message",
+      "message": "{{senderName}}: {{preview}}"
+    },
+    "reply_received": {
+      "title": "Reply Received",
+      "message": "Reply received from {{senderName}}"
+    },
+    "book_entry": {
+      "title": "Communication Book",
+      "message": "New communication book entry from {{teacherName}}"
+    }
+  },
+  "account": {
+    "created": {
+      "title": "Account Created",
+      "message": "Welcome! Your account has been created. You can now log in."
+    },
+    "created_with_temp_password": {
+      "title": "Account Created",
+      "message": "Welcome! Use your temporary password to log in."
+    },
+    "deactivated": {
+      "title": "Account Deactivated",
+      "message": "Your account has been deactivated. Please contact school administration for more information."
+    },
+    "deactivated_with_reason": {
+      "title": "Account Deactivated",
+      "message": "Reason: {{reason}}"
+    },
+    "activated": {
+      "title": "Account Activated",
+      "message": "Your account has been activated. You can now log in."
+    }
+  },
+  "schedule": {
+    "changed": {
+      "title": "Schedule Changed",
+      "message": "{{message}}"
+    },
+    "class_cancelled": {
+      "title": "Class Cancelled",
+      "message": "{{className}} on {{date}} has been cancelled. Reason: {{reason}}"
+    },
+    "class_cancelled_no_reason": {
+      "title": "Class Cancelled",
+      "message": "{{className}} on {{date}} has been cancelled."
+    },
+    "student_class_cancelled": {
+      "title": "Class Cancelled",
+      "message": "{{subject}} class for {{className}} on {{date}} has been cancelled"
+    },
+    "pickup_reminder": {
+      "title": "Pickup Reminder",
+      "message": "School ends at {{schoolEndTime}}. Please arrange pickup."
+    },
+    "class_starting": {
+      "title": "Your Class Is Starting",
+      "message": "The bell has rung for your current class. Please proceed to your classroom."
+    },
+    "class_ended": {
+      "title": "Your Class Has Ended",
+      "message": "The bell has rung to end your current class."
+    }
+  },
+  "timetable": {
+    "updated": {
+      "title": "Timetable Updated",
+      "message": "The timetable for {{className}} has been updated. Please check your new schedule."
+    }
+  },
+  "discipline": {
+    "incident_reported": {
+      "title": "Discipline Record",
+      "message": "A {{severity}} severity incident \"{{incidentTitle}}\" has been recorded for {{studentName}}."
+    },
+    "incident_resolved": {
+      "title": "Discipline Incident Resolved",
+      "message": "Discipline incident resolved for {{studentName}}"
+    }
+  },
+  "general": {
+    "welcome": {
+      "title": "Welcome",
+      "message": "Welcome to {{schoolName}}, {{name}}!"
+    },
+    "system_notification": {
+      "title": "System Notification",
+      "message": "System notification"
+    },
+    "update_available": {
+      "title": "Update Available",
+      "message": "System update available"
+    },
+    "scheduled_maintenance": {
+      "title": "Scheduled Maintenance",
+      "message": "Scheduled maintenance on {{date}} at {{time}}"
+    },
+    "backup_completed": {
+      "title": "Backup Completed",
+      "message": "System backup completed successfully"
+    },
+    "backup_failed": {
+      "title": "Backup Failed",
+      "message": "System backup failed"
+    },
+    "backup_overdue": {
+      "title": "Platform Backup Overdue",
+      "message": "Last backup {{daysSince}} days ago"
+    },
+    "backup_overdue_never": {
+      "title": "Platform Backup Overdue",
+      "message": "Last backup never recorded"
+    },
+    "db_critical": {
+      "title": "Database Size Critical",
+      "message": "Database is {{dbSize}} MB (threshold: {{threshold}} MB)"
+    },
+    "weekly_summary": {
+      "title": "Weekly Platform Summary",
+      "message": "{{activeSchools}} active schools, {{activeUsers}} active users, DB {{dbSize}} MB"
+    }
+  },
+  "siren": {
+    "activated": {
+      "title": "Siren Alert",
+      "message": "{{type}} triggered"
+    },
+    "scheduled": {
+      "title": "Siren Test",
+      "message": "Siren test scheduled for {{time}}"
+    },
+    "cancelled": {
+      "title": "Siren Alert Cancelled",
+      "message": "Siren alert cancelled"
+    }
+  },
+  "messaging": {
+    "new_message": {
+      "title": "New Message",
+      "message": "New message from {{senderName}}"
+    },
+    "group_message": {
+      "title": "Group Message",
+      "message": "New message in {{groupName}}"
+    }
+  },
+  "bell": {
+    "class_bell": {
+      "title": "Class Bell",
+      "message": "{{sirenLabel}} bell has rung for your timetable."
+    },
+    "school_bell": {
+      "title": "School Bell",
+      "message": "The school bell has been triggered."
+    }
+  }
+}

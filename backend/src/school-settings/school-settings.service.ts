@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { HttpStatus, Injectable, BadRequestException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
@@ -274,9 +275,7 @@ export class SchoolSettingsService {
 
   private assertAllowedSettingKey(key: string) {
     const canonicalKey = this.canonicalizeSettingKey(key);
-    if (!this.allowedSettingKeys.has(canonicalKey)) {
-      throw new BadRequestException(`Unsupported school setting: ${key}`);
-    }
+    if (!this.allowedSettingKeys.has(canonicalKey)) throw new LocalizedException('school_settings.unsupported_school_setting_a3d6c066', undefined, undefined, 'Unsupported school setting: ${key}');
     return canonicalKey;
   }
 
@@ -638,9 +637,7 @@ export class SchoolSettingsService {
       );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      throw new BadRequestException('Login image must be less than 5MB');
-    }
+    if (file.size > 5 * 1024 * 1024) throw new LocalizedException('school_settings.login_image_must_be_less_than_5mb_325631ad', undefined, undefined, 'Login image must be less than 5MB');
 
     const extension =
       file.mimetype === 'image/png'

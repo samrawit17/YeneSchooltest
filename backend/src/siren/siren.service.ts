@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
@@ -122,7 +123,7 @@ export class SirenService {
       where: { id, schoolId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Siren schedule not found');
+    if (!existing) throw new LocalizedException('siren.siren_schedule_not_found_67a88d43', undefined, HttpStatus.NOT_FOUND, 'Siren schedule not found');
 
     return this.prisma.sirenSchedule.update({
       where: { id },
@@ -135,7 +136,7 @@ export class SirenService {
       where: { id, schoolId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Siren schedule not found');
+    if (!existing) throw new LocalizedException('siren.siren_schedule_not_found_67a88d43', undefined, HttpStatus.NOT_FOUND, 'Siren schedule not found');
 
     return this.prisma.sirenSchedule.delete({ where: { id } });
   }
@@ -167,7 +168,7 @@ export class SirenService {
       where: { id, schoolId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Siren hardware config not found');
+    if (!existing) throw new LocalizedException('siren.siren_hardware_config_not_found_74742d39', undefined, HttpStatus.NOT_FOUND, 'Siren hardware config not found');
 
     return this.prisma.sirenHardwareConfig.update({
       where: { id },

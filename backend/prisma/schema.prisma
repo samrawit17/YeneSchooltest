@@ -327,6 +327,7 @@ model SchoolSettings {
   id                    String       @id @default(cuid())
   schoolId              String       @unique
   calendarType          CalendarType @default(GREGORIAN)
+  defaultLanguage       String       @default("en")
   defaultAcademicYearId String?
   assessmentTypes       Json? // Custom assessment types config per school
 
@@ -360,6 +361,7 @@ model User {
   phone                       String?
   avatarUrl                   String?
   theme                       ThemePreference            @default(LIGHT)
+  language                    String                     @default("en")
   lastLoginAt                 DateTime?
   schoolId                    String?
   createdAt                   DateTime                   @default(now())

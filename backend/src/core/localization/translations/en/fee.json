@@ -1,0 +1,36 @@
+{
+  "created": "Fee structure '{{name}}' created successfully",
+  "updated": "Fee structure '{{name}}' updated successfully",
+  "deleted": "Fee structure '{{name}}' deleted successfully",
+  "not_found": "Fee structure not found",
+  "payment": {
+    "success": "Payment of {{amount}} received successfully. Receipt: {{receiptNumber}}",
+    "failed": "Payment failed: {{reason}}",
+    "partial": "Partial payment of {{amount}} received. Remaining balance: {{balance}}",
+    "refunded": "Payment of {{amount}} refunded successfully",
+    "cancelled": "Payment cancelled"
+  },
+  "invoice": {
+    "generated": "Invoice generated for {{studentName}}: {{amount}}",
+    "overdue": "Invoice for {{studentName}} is overdue: {{amount}}",
+    "paid": "Invoice {{invoiceNumber}} marked as paid"
+  },
+  "discount": {
+    "applied": "Discount of {{amount}} applied to {{studentName}}",
+    "removed": "Discount removed from {{studentName}}",
+    "invalid": "Invalid discount code or criteria not met"
+  },
+  "waiver": {
+    "applied": "Fee waiver applied to {{studentName}} for {{description}}",
+    "removed": "Fee waiver removed from {{studentName}}"
+  },
+  "receipt": {
+    "generated": "Receipt generated: {{receiptNumber}}",
+    "not_found": "Receipt not found",
+    "duplicate": "Duplicate receipt requested for {{receiptNumber}}"
+  },
+  "due_date": "Payment due date: {{date}}",
+  "overdue_reminder": "Reminder: {{amount}} overdue since {{date}}. Late fee may apply",
+  "balance": "Current balance: {{amount}}",
+  "total_due": "Total due: {{amount}}"
+}

@@ -1,4 +1,4 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   ForbiddenException,
@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
   Res,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import type { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -115,20 +116,14 @@ export class AuthService {
       },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!user) throw new LocalizedException('auth.invalid_credentials_e6839791', undefined, HttpStatus.UNAUTHORIZED, 'Invalid credentials');
 
     // Check if account is active
-    if (!user.isActive) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!user.isActive) throw new LocalizedException('auth.invalid_credentials_e6839791', undefined, HttpStatus.UNAUTHORIZED, 'Invalid credentials');
 
     // Verify password
     const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!isValid) throw new LocalizedException('auth.invalid_credentials_e6839791', undefined, HttpStatus.UNAUTHORIZED, 'Invalid credentials');
 
     // Enforce school slug login for restricted roles
     const restrictedRoles = new Set([
@@ -956,13 +951,9 @@ export class AuthService {
     requester: { id: string; role: Role | string; schoolId?: string | null },
     file?: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('Avatar file is required');
-    }
+    if (!file) throw new LocalizedException('auth.avatar_file_is_required_40fe46be', undefined, undefined, 'Avatar file is required');
 
-    if (file.size > AVATAR_MAX_BYTES) {
-      throw new BadRequestException('Avatar image must be 2MB or smaller');
-    }
+    if (file.size > AVATAR_MAX_BYTES) throw new LocalizedException('auth.avatar_image_must_be_2mb_or_smaller_e19844a5', undefined, undefined, 'Avatar image must be 2MB or smaller');
 
     const extension = AVATAR_EXTENSIONS_BY_MIME[file.mimetype];
     if (!extension) {
@@ -981,9 +972,7 @@ export class AuthService {
       },
     });
 
-    if (!targetUser) {
-      throw new NotFoundException('User not found');
-    }
+    if (!targetUser) throw new LocalizedException('auth.user_not_found_b846d114', undefined, HttpStatus.NOT_FOUND, 'User not found');
 
     const requesterRole = String(requester.role).toUpperCase();
     const targetRole = String(targetUser.role).toUpperCase();
@@ -995,9 +984,7 @@ export class AuthService {
       requester.schoolId === targetUser.schoolId;
     const canManageAnyAvatar = requesterRole === Role.SUPER_ADMIN;
 
-    if (!isSelf && !canManageSchoolAvatars && !canManageAnyAvatar) {
-      throw new ForbiddenException('You cannot update this user photo');
-    }
+    if (!isSelf && !canManageSchoolAvatars && !canManageAnyAvatar) throw new LocalizedException('auth.you_cannot_update_this_user_photo_33e64987', undefined, HttpStatus.FORBIDDEN, 'You cannot update this user photo');
 
     const storedFile = await this.storageService.upload(
       file.buffer,
@@ -1060,15 +1047,11 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new LocalizedException('auth.user_not_found_b846d114', undefined, HttpStatus.NOT_FOUND, 'User not found');
 
     // Verify current password
     const isValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isValid) {
-      throw new UnauthorizedException('Current password is incorrect');
-    }
+    if (!isValid) throw new LocalizedException('auth.current_password_is_incorrect_cbf6e471', undefined, HttpStatus.UNAUTHORIZED, 'Current password is incorrect');
 
     // Validate new password strength
     const passwordValidation =
@@ -1168,9 +1151,7 @@ export class AuthService {
     // Validate token and get user ID
     const userId =
       await this.credentialService.validatePasswordResetToken(token);
-    if (!userId) {
-      throw new BadRequestException('Invalid or expired reset token');
-    }
+    if (!userId) throw new LocalizedException('auth.invalid_or_expired_reset_token_0549bc77', undefined, undefined, 'Invalid or expired reset token');
 
     // Hash new password
     const hashedPassword =
@@ -1203,26 +1184,18 @@ export class AuthService {
     adminRole: Role,
     requestedTemporaryPassword?: string,
   ) {
-    if (![Role.ADMIN, Role.IT_MANAGER].includes(adminRole)) {
-      throw new ForbiddenException('Not allowed to reset user passwords');
-    }
+    if (![Role.ADMIN, Role.IT_MANAGER].includes(adminRole)) throw new LocalizedException('auth.not_allowed_to_reset_user_passwords_edccdb01', undefined, HttpStatus.FORBIDDEN, 'Not allowed to reset user passwords');
 
-    if (!adminSchoolId) {
-      throw new ForbiddenException('Admin is not associated with any school');
-    }
+    if (!adminSchoolId) throw new LocalizedException('auth.admin_is_not_associated_with_any_school_be0b8584', undefined, HttpStatus.FORBIDDEN, 'Admin is not associated with any school');
 
     // Get target user
     const targetUser = await this.prismaService.user.findUnique({
       where: { id: targetUserId },
     });
 
-    if (!targetUser) {
-      throw new NotFoundException('User not found');
-    }
+    if (!targetUser) throw new LocalizedException('auth.user_not_found_b846d114', undefined, HttpStatus.NOT_FOUND, 'User not found');
 
-    if (targetUser.role === Role.SUPER_ADMIN) {
-      throw new ForbiddenException('Cannot reset a super admin password here');
-    }
+    if (targetUser.role === Role.SUPER_ADMIN) throw new LocalizedException('auth.cannot_reset_a_super_admin_password_here_7580eeb2', undefined, HttpStatus.FORBIDDEN, 'Cannot reset a super admin password here');
 
     if (targetUser.schoolId !== adminSchoolId) {
       throw new ForbiddenException(

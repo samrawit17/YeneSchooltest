@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomInt } from 'crypto';
 import { Prisma, PracticeExamAttemptStatus, PracticeExamOption, PracticeExamQuestionType, PracticeExamStatus } from '@prisma/client';
@@ -32,9 +33,7 @@ export class PracticeExamsService {
 
   private normalizeGrade(value: any) {
     const grade = Number(value);
-    if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
-      throw new BadRequestException('Practice exam grade must be between 1 and 12');
-    }
+    if (!Number.isInteger(grade) || grade < 1 || grade > 12) throw new LocalizedException('practice_exams.practice_exam_grade_must_be_between_1_and_12_a38c6477', undefined, undefined, 'Practice exam grade must be between 1 and 12');
     return grade;
   }
 
@@ -45,25 +44,19 @@ export class PracticeExamsService {
     });
     const range = gradeSystemRanges[String(setting?.value || '1-12')] || gradeSystemRanges['1-12'];
     const min = Math.max(1, range.min);
-    if (grade < min || grade > range.max) {
-      throw new BadRequestException(`Grade ${grade} is not available in this school's grade system`);
-    }
+    if (grade < min || grade > range.max) throw new LocalizedException('practice_exams.grade_is_not_available_in_this_schools_grade_system_bb8e19de', undefined, undefined, 'Grade ${grade} is not available in this school\'s grade system');
   }
 
   private normalizeStream(value: any, grade: number) {
     if (![11, 12].includes(grade)) return null;
     const stream = String(value || '').trim().toUpperCase();
-    if (!['NATURAL', 'SOCIAL'].includes(stream)) {
-      throw new BadRequestException(`Grade ${grade} practice exams require stream NATURAL or SOCIAL`);
-    }
+    if (!['NATURAL', 'SOCIAL'].includes(stream)) throw new LocalizedException('practice_exams.grade_practice_exams_require_stream_natural_or_social_4bc931bf', undefined, undefined, 'Grade ${grade} practice exams require stream NATURAL or SOCIAL');
     return stream;
   }
 
   private normalizeStatus(value: any): PracticeExamStatus {
     const status = String(value || 'DRAFT').trim().toUpperCase();
-    if (!['DRAFT', 'READY', 'ACTIVE', 'ARCHIVED'].includes(status)) {
-      throw new BadRequestException('Exam status must be DRAFT, READY, ACTIVE, or ARCHIVED');
-    }
+    if (!['DRAFT', 'READY', 'ACTIVE', 'ARCHIVED'].includes(status)) throw new LocalizedException('practice_exams.exam_status_must_be_draft_ready_active_or_archived_d8b03561', undefined, undefined, 'Exam status must be DRAFT, READY, ACTIVE, or ARCHIVED');
     return status as PracticeExamStatus;
   }
 
@@ -91,16 +84,12 @@ export class PracticeExamsService {
     const classId = String(body.classId || '').trim();
     const sectionId = String(body.sectionId || '').trim();
     const subjectId = String(body.subjectId || '').trim();
-    if (!classId || !sectionId || !subjectId) {
-      throw new BadRequestException('Class, section, and subject are required');
-    }
+    if (!classId || !sectionId || !subjectId) throw new LocalizedException('practice_exams.class_section_and_subject_are_required_9ba4beda', undefined, undefined, 'Class, section, and subject are required');
     const assignment = await this.prisma.teacherSubjectAssignment.findFirst({
       where: { schoolId, teacherId, classId, sectionId, subjectId, isActive: true },
       include: { class: true, section: true, subject: true },
     });
-    if (!assignment) {
-      throw new ForbiddenException('You can only create exams for your assigned classes and subjects');
-    }
+    if (!assignment) throw new LocalizedException('practice_exams.you_can_only_create_exams_for_your_assigned_classes_and_subj_5ca13439', undefined, HttpStatus.FORBIDDEN, 'You can only create exams for your assigned classes and subjects');
     return assignment;
   }
 
@@ -108,7 +97,7 @@ export class PracticeExamsService {
     const where: any = { id: examId, schoolId };
     if (!this.isAdminRole(role)) where.createdById = userId;
     const exam = await this.prisma.practiceExam.findFirst({ where, include });
-    if (!exam) throw new NotFoundException('Practice exam not found');
+    if (!exam) throw new LocalizedException('practice_exams.practice_exam_not_found_e8d822b2', undefined, HttpStatus.NOT_FOUND, 'Practice exam not found');
     return exam;
   }
 
@@ -116,37 +105,27 @@ export class PracticeExamsService {
     const activeQuestions = await this.prisma.practiceExamQuestion.count({
       where: { schoolId, examId, isActive: true },
     });
-    if (activeQuestions === 0) {
-      throw new BadRequestException('Add at least one active question before activating this online exam');
-    }
+    if (activeQuestions === 0) throw new LocalizedException('practice_exams.add_at_least_one_active_question_before_activating_this_onli_cb506cd5', undefined, undefined, 'Add at least one active question before activating this online exam');
   }
 
   private async assertQuestionBankEditable(schoolId: string, examId: string, userId?: string, role?: string) {
     const exam = await this.assertCanManageExam(schoolId, examId, userId, role, {
       _count: { select: { attempts: true } },
     });
-    if (exam.status === 'ACTIVE') {
-      throw new BadRequestException('Question changes are locked while the online exam is active');
-    }
-    if (((exam as any)._count?.attempts || 0) > 0) {
-      throw new BadRequestException('Question changes are locked after students start this online exam');
-    }
+    if (exam.status === 'ACTIVE') throw new LocalizedException('practice_exams.question_changes_are_locked_while_the_online_exam_is_active_eb25afaf', undefined, undefined, 'Question changes are locked while the online exam is active');
+    if (((exam as any)._count?.attempts || 0) > 0) throw new LocalizedException('practice_exams.question_changes_are_locked_after_students_start_this_online_15aca89e', undefined, undefined, 'Question changes are locked after students start this online exam');
     return exam;
   }
 
   private normalizeOption(value: any): PracticeExamOption {
     const option = String(value || '').trim().toUpperCase();
-    if (!allowedOptions.has(option)) {
-      throw new BadRequestException('Correct option must be A, B, C, or D');
-    }
+    if (!allowedOptions.has(option)) throw new LocalizedException('practice_exams.correct_option_must_be_a_b_c_or_d_9f846e73', undefined, undefined, 'Correct option must be A, B, C, or D');
     return option as PracticeExamOption;
   }
 
   private normalizeQuestionType(value: any): PracticeExamQuestionType {
     const type = String(value || 'MCQ').trim().toUpperCase().replace(/[\s-]+/g, '_');
-    if (!allowedQuestionTypes.has(type)) {
-      throw new BadRequestException('Question type must be MCQ, TRUE_FALSE, or SHORT_ANSWER');
-    }
+    if (!allowedQuestionTypes.has(type)) throw new LocalizedException('practice_exams.question_type_must_be_mcq_true_false_or_short_answer_7d0817fb', undefined, undefined, 'Question type must be MCQ, TRUE_FALSE, or SHORT_ANSWER');
     return type as PracticeExamQuestionType;
   }
 
@@ -196,14 +175,10 @@ export class PracticeExamsService {
     let correctOption: PracticeExamOption | null = null;
     let correctText: string | null = null;
 
-    if (!subject || !questionText) {
-      throw new BadRequestException('Subject and question are required');
-    }
+    if (!subject || !questionText) throw new LocalizedException('practice_exams.subject_and_question_are_required_5bfed71e', undefined, undefined, 'Subject and question are required');
 
     if (questionType === 'MCQ') {
-      if (!optionA || !optionB || !optionC || !optionD) {
-        throw new BadRequestException('Multiple choice questions require all A/B/C/D options');
-      }
+      if (!optionA || !optionB || !optionC || !optionD) throw new LocalizedException('practice_exams.multiple_choice_questions_require_all_a_b_c_d_options_867fc7d6', undefined, undefined, 'Multiple choice questions require all A/B/C/D options');
       correctOption = this.normalizeOption(body.correctOption || body.correct_option || body.correctAnswer || body.correct_answer);
     } else if (questionType === 'TRUE_FALSE') {
       optionA = optionA || 'True';
@@ -212,18 +187,14 @@ export class PracticeExamsService {
       optionD = '';
       const rawCorrect = String(body.correctOption || body.correct_option || body.correctAnswer || body.correct_answer || '').trim().toUpperCase();
       correctOption = rawCorrect === 'TRUE' ? 'A' : rawCorrect === 'FALSE' ? 'B' : this.normalizeOption(rawCorrect);
-      if (!['A', 'B'].includes(correctOption)) {
-        throw new BadRequestException('True/false correct answer must be True or False');
-      }
+      if (!['A', 'B'].includes(correctOption)) throw new LocalizedException('practice_exams.true_false_correct_answer_must_be_true_or_false_4f84edc2', undefined, undefined, 'True/false correct answer must be True or False');
     } else {
       correctText = this.normalizeTextAnswer(body.correctText || body.correct_text || body.correctAnswer || body.correct_answer);
       optionA = '';
       optionB = '';
       optionC = '';
       optionD = '';
-      if (!correctText) {
-        throw new BadRequestException('Short answer questions require a correct answer');
-      }
+      if (!correctText) throw new LocalizedException('practice_exams.short_answer_questions_require_a_correct_answer_d3bce631', undefined, undefined, 'Short answer questions require a correct answer');
     }
     return {
       subject,
@@ -386,11 +357,9 @@ export class PracticeExamsService {
     await this.assertGradeAllowedForSchool(schoolId, grade);
     const stream = teacherAssignment ? this.normalizeStream(teacherAssignment.section.stream, grade) : this.normalizeStream(body.stream, grade);
     const title = String(body.title || '').trim();
-    if (!title) throw new BadRequestException('Exam title is required');
+    if (!title) throw new LocalizedException('practice_exams.exam_title_is_required_d2aef8ac', undefined, undefined, 'Exam title is required');
     const status = this.normalizeStatus(body.status);
-    if (status === 'ACTIVE') {
-      throw new BadRequestException('Create the online exam as draft or ready, add questions, then activate it');
-    }
+    if (status === 'ACTIVE') throw new LocalizedException('practice_exams.create_the_online_exam_as_draft_or_ready_add_questions_then__56f050fb', undefined, undefined, 'Create the online exam as draft or ready, add questions, then activate it');
     const classId = teacherAssignment?.classId || body.classId || null;
     let academicYearId: string | null = null;
     if (classId) {
@@ -437,15 +406,11 @@ export class PracticeExamsService {
     const grade = body.grade !== undefined ? this.normalizeGrade(body.grade) : existing.grade;
     await this.assertGradeAllowedForSchool(schoolId, grade);
     const status = body.status !== undefined ? this.normalizeStatus(body.status) : undefined;
-    if (!this.isAdminRole(role) && status === 'ACTIVE') {
-      throw new ForbiddenException('Only admins can make an online exam active');
-    }
+    if (!this.isAdminRole(role) && status === 'ACTIVE') throw new LocalizedException('practice_exams.only_admins_can_make_an_online_exam_active_4f6ebbbb', undefined, HttpStatus.FORBIDDEN, 'Only admins can make an online exam active');
     const lockedFieldUpdate = ['grade', 'stream', 'accessCode', 'durationMinutes', 'passMark', 'shuffleQuestions'].some((field) =>
       Object.prototype.hasOwnProperty.call(body, field),
     );
-    if (lockedFieldUpdate && (existing.status === 'ACTIVE' || ((existing as any)._count?.attempts || 0) > 0)) {
-      throw new BadRequestException('Exam setup fields are locked once the online exam is active or students have started');
-    }
+    if (lockedFieldUpdate && (existing.status === 'ACTIVE' || ((existing as any)._count?.attempts || 0) > 0)) throw new LocalizedException('practice_exams.exam_setup_fields_are_locked_once_the_online_exam_is_active__18f8a0ae', undefined, undefined, 'Exam setup fields are locked once the online exam is active or students have started');
     if (status === 'ACTIVE') {
       await this.assertExamCanBeActivated(schoolId, examId);
     }
@@ -469,9 +434,7 @@ export class PracticeExamsService {
     const exam = await this.assertCanManageExam(schoolId, examId, userId, role, {
       _count: { select: { attempts: true } },
     });
-    if (((exam as any)._count?.attempts || 0) > 0) {
-      throw new BadRequestException('Online exams with student attempts cannot be deleted. Archive it instead.');
-    }
+    if (((exam as any)._count?.attempts || 0) > 0) throw new LocalizedException('practice_exams.online_exams_with_student_attempts_cannot_be_deleted_archive_cbaf757f', undefined, undefined, 'Online exams with student attempts cannot be deleted. Archive it instead.');
     await this.prisma.practiceExam.delete({ where: { id: examId } });
     return { message: 'Practice exam deleted' };
   }
@@ -490,7 +453,7 @@ export class PracticeExamsService {
   async updateQuestion(schoolId: string, examId: string, questionId: string, body: any, userId?: string, role?: string) {
     await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const question = await this.prisma.practiceExamQuestion.findFirst({ where: { id: questionId, examId, schoolId } });
-    if (!question) throw new NotFoundException('Question not found');
+    if (!question) throw new LocalizedException('practice_exams.question_not_found_d6d16053', undefined, HttpStatus.NOT_FOUND, 'Question not found');
     return this.prisma.practiceExamQuestion.update({
       where: { id: questionId },
       data: this.ensureQuestionPayload({ ...question, ...body }),
@@ -500,7 +463,7 @@ export class PracticeExamsService {
   async deleteQuestion(schoolId: string, examId: string, questionId: string, userId?: string, role?: string) {
     await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const question = await this.prisma.practiceExamQuestion.findFirst({ where: { id: questionId, examId, schoolId } });
-    if (!question) throw new NotFoundException('Question not found');
+    if (!question) throw new LocalizedException('practice_exams.question_not_found_d6d16053', undefined, HttpStatus.NOT_FOUND, 'Question not found');
     await this.prisma.practiceExamQuestion.delete({ where: { id: questionId } });
     return { message: 'Question deleted' };
   }
@@ -530,7 +493,7 @@ export class PracticeExamsService {
   async importQuestions(schoolId: string, examId: string, csv: string, userId?: string, role?: string) {
     await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const lines = csv.split(/\r?\n/).filter((line) => line.trim());
-    if (lines.length < 2) throw new BadRequestException('CSV must include a header and at least one question');
+    if (lines.length < 2) throw new LocalizedException('practice_exams.csv_must_include_a_header_and_at_least_one_question_489181b9', undefined, undefined, 'CSV must include a header and at least one question');
     const headers = this.parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, '_'));
     const rows = lines.slice(1);
     const created: any[] = [];
@@ -608,10 +571,10 @@ export class PracticeExamsService {
   private async assertExamAvailableForStudent(schoolId: string, studentId: string, exam: any) {
     const profile = await this.prisma.studentProfile.findFirst({ where: { userId: studentId, schoolId } });
     const grade = this.extractGrade(profile?.className);
-    if (!grade || grade !== exam.grade) throw new NotFoundException('Active practice exam not found');
+    if (!grade || grade !== exam.grade) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
     if ([11, 12].includes(grade)) {
       const stream = String(profile?.stream || '').trim().toUpperCase();
-      if (exam.stream && exam.stream !== stream) throw new NotFoundException('Active practice exam not found');
+      if (exam.stream && exam.stream !== stream) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
     } else if (exam.stream) {
       throw new NotFoundException('Active practice exam not found');
     }
@@ -620,9 +583,9 @@ export class PracticeExamsService {
         where: { studentId, schoolId },
         orderBy: { createdAt: 'desc' },
       });
-      if (!studentClass) throw new NotFoundException('Active practice exam not found');
-      if (exam.classId && exam.classId !== studentClass.classId) throw new NotFoundException('Active practice exam not found');
-      if (exam.sectionId && exam.sectionId !== studentClass.sectionId) throw new NotFoundException('Active practice exam not found');
+      if (!studentClass) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
+      if (exam.classId && exam.classId !== studentClass.classId) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
+      if (exam.sectionId && exam.sectionId !== studentClass.sectionId) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
     }
   }
 
@@ -631,12 +594,10 @@ export class PracticeExamsService {
       where: { id: examId, schoolId, status: 'ACTIVE' },
       include: { questions: { where: { isActive: true }, orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] } },
     });
-    if (!exam) throw new NotFoundException('Active practice exam not found');
+    if (!exam) throw new LocalizedException('practice_exams.active_practice_exam_not_found_acbe3df2', undefined, HttpStatus.NOT_FOUND, 'Active practice exam not found');
     await this.assertExamAvailableForStudent(schoolId, studentId, exam);
-    if (exam.questions.length === 0) throw new BadRequestException('This exam has no active questions');
-    if (this.normalizeAccessCode(accessCode) !== exam.accessCode) {
-      throw new ForbiddenException('Invalid exam access code');
-    }
+    if (exam.questions.length === 0) throw new LocalizedException('practice_exams.this_exam_has_no_active_questions_05c15fb1', undefined, undefined, 'This exam has no active questions');
+    if (this.normalizeAccessCode(accessCode) !== exam.accessCode) throw new LocalizedException('practice_exams.invalid_exam_access_code_5e027168', undefined, HttpStatus.FORBIDDEN, 'Invalid exam access code');
     const existing = await this.prisma.practiceExamAttempt.findUnique({
       where: { examId_studentId: { examId, studentId } },
     });
@@ -661,7 +622,7 @@ export class PracticeExamsService {
         answers: true,
       },
     });
-    if (!attempt) throw new NotFoundException('Attempt not found');
+    if (!attempt) throw new LocalizedException('practice_exams.attempt_not_found_53a98620', undefined, HttpStatus.NOT_FOUND, 'Attempt not found');
     if (this.isAttemptExpired(attempt)) {
       attempt = await this.finalizeAttempt(attempt, [], 'EXPIRED', false);
     }
@@ -705,7 +666,7 @@ export class PracticeExamsService {
       where: { id: attemptId, schoolId, studentId },
       include: { exam: { include: { questions: { where: { isActive: true } } } } },
     });
-    if (!attempt) throw new NotFoundException('Attempt not found');
+    if (!attempt) throw new LocalizedException('practice_exams.attempt_not_found_53a98620', undefined, HttpStatus.NOT_FOUND, 'Attempt not found');
     if (attempt.status !== 'IN_PROGRESS') return this.getAttemptForStudent(schoolId, studentId, attemptId);
     if (this.isAttemptExpired(attempt)) {
       await this.finalizeAttempt(attempt, [], 'EXPIRED', false);
@@ -756,8 +717,8 @@ export class PracticeExamsService {
         where: { id: attemptId, schoolId, studentId },
         include: { exam: { include: { questions: { where: { isActive: true } } } } },
       });
-      if (!attempt) throw new NotFoundException('Attempt not found');
-      if (attempt.status !== 'IN_PROGRESS') throw new BadRequestException('Attempt is already submitted');
+      if (!attempt) throw new LocalizedException('practice_exams.attempt_not_found_53a98620', undefined, HttpStatus.NOT_FOUND, 'Attempt not found');
+      if (attempt.status !== 'IN_PROGRESS') throw new LocalizedException('practice_exams.attempt_is_already_submitted_3d3fab01', undefined, undefined, 'Attempt is already submitted');
       const status = new Date() >= attempt.expiresAt ? 'EXPIRED' : 'SUBMITTED';
       await this.finalizeAttempt(attempt, answers, status, true, tx);
     });

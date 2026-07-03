@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import * as fs from 'fs';
 import * as path from 'path';
 import { StorageService } from '../storage/storage.service';
@@ -136,9 +137,7 @@ export class StudentService {
       return null;
     }
 
-    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
-      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
-    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) throw new LocalizedException('student.student_stream_must_be_social_or_natural_for_grade_11_and_12_8c69d008', undefined, undefined, 'Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
 
     return normalized;
   }
@@ -185,9 +184,7 @@ export class StudentService {
       },
     });
 
-    if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
-      throw new BadRequestException('Selected section is already at capacity');
-    }
+    if (targetSection.capacity && enrolledCount >= targetSection.capacity) throw new LocalizedException('student.selected_section_is_already_at_capacity_00ec9761', undefined, undefined, 'Selected section is already at capacity');
 
     return {
       class: targetClass,
@@ -307,18 +304,14 @@ export class StudentService {
     const school = await this.prismaService.school.findUnique({
       where: { id: schoolId },
     });
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('student.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     // Check if email already exists
     if (email) {
       const existingUser = await this.prismaService.user.findUnique({
         where: { email },
       });
-      if (existingUser) {
-        throw new BadRequestException('Email already exists');
-      }
+      if (existingUser) throw new LocalizedException('student.email_already_exists_d76fd2d8', undefined, undefined, 'Email already exists');
     }
 
     // Generate professional credentials using CredentialService
@@ -736,9 +729,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     // Get enrollment separately
     const enrollment = await this.prismaService.enrollment.findFirst({
@@ -902,9 +893,7 @@ export class StudentService {
       },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('student.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     // Build the where clause for student profiles
     const where: any = {
@@ -1158,9 +1147,7 @@ export class StudentService {
   }
 
   async uploadIdCardWatermark(schoolId: string, file: Express.Multer.File): Promise<string> {
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
-      throw new BadRequestException('Watermark must be a PNG, JPG, or WEBP image');
-    }
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) throw new LocalizedException('student.watermark_must_be_a_png_jpg_or_webp_image_17a9de60', undefined, undefined, 'Watermark must be a PNG, JPG, or WEBP image');
     const extension =
       file.mimetype === 'image/png' ? '.png' :
       file.mimetype === 'image/webp' ? '.webp' :
@@ -1210,7 +1197,7 @@ export class StudentService {
     const template = await this.getIdCardTemplate(schoolId);
     const list = await this.getStudentsForIdCards(schoolId, { studentIds: [studentId] });
     const student = list.students?.[0];
-    if (!student) throw new NotFoundException('Student not found for ID card');
+    if (!student) throw new LocalizedException('student.student_not_found_for_id_card_cc52d3e4', undefined, HttpStatus.NOT_FOUND, 'Student not found for ID card');
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([336, 212]);
@@ -1331,7 +1318,7 @@ export class StudentService {
           .filter(Boolean),
       ),
     );
-    if (!ids.length) throw new BadRequestException('No student IDs provided');
+    if (!ids.length) throw new LocalizedException('student.no_student_ids_provided_30ba7a1e', undefined, undefined, 'No student IDs provided');
     if (ids.length > MAX_ID_CARD_BULK_COUNT) {
       throw new BadRequestException(
         `You can generate up to ${MAX_ID_CARD_BULK_COUNT} ID cards per ZIP download`,
@@ -1368,9 +1355,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const {
       name,
@@ -1430,9 +1415,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const archivedAt = new Date();
     await this.prismaService.$transaction([
@@ -1557,13 +1540,9 @@ export class StudentService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('student.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new BadRequestException('Enrollment is not pending');
-    }
+    if (enrollment.status !== EnrollmentStatus.PENDING) throw new LocalizedException('student.enrollment_is_not_pending_5a9c23f5', undefined, undefined, 'Enrollment is not pending');
 
     const { className, section, rollNumber } = approveData;
     const placement = await this.resolveSectionWithCapacity(
@@ -1630,13 +1609,9 @@ export class StudentService {
       },
     });
 
-    if (!enrollment) {
-      throw new NotFoundException('Enrollment not found');
-    }
+    if (!enrollment) throw new LocalizedException('student.enrollment_not_found_a5c5ebf0', undefined, HttpStatus.NOT_FOUND, 'Enrollment not found');
 
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new BadRequestException('Enrollment is not pending');
-    }
+    if (enrollment.status !== EnrollmentStatus.PENDING) throw new LocalizedException('student.enrollment_is_not_pending_5a9c23f5', undefined, undefined, 'Enrollment is not pending');
 
     // Update enrollment status
     await this.prismaService.enrollment.update({
@@ -1672,9 +1647,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const { className, section, rollNumber, classId, sectionId, stream } = assignData;
 
@@ -1687,9 +1660,7 @@ export class StudentService {
         include: { class: true },
       });
 
-      if (!targetSection) {
-        throw new BadRequestException('Selected class and section are not valid');
-      }
+      if (!targetSection) throw new LocalizedException('student.selected_class_and_section_are_not_valid_7e616270', undefined, undefined, 'Selected class and section are not valid');
 
       const activeAcademicYear = await this.prismaService.academicYear.findFirst({
         where: { schoolId, isActive: true },
@@ -1708,9 +1679,7 @@ export class StudentService {
         },
       });
 
-      if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
-        throw new BadRequestException('Selected section is already at capacity');
-      }
+      if (targetSection.capacity && enrolledCount >= targetSection.capacity) throw new LocalizedException('student.selected_section_is_already_at_capacity_00ec9761', undefined, undefined, 'Selected section is already at capacity');
 
       await this.prismaService.studentClass.upsert({
         where: {
@@ -1767,9 +1736,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     // Get existing documents
     const existingDocs = student.documents ? JSON.parse(student.documents) : [];
@@ -1807,9 +1774,7 @@ export class StudentService {
       },
     });
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new LocalizedException('student.student_not_found_2525e0b2', undefined, HttpStatus.NOT_FOUND, 'Student not found');
 
     const existingDocs = student.documents ? JSON.parse(student.documents) : [];
     const normalizedKey = decodeURIComponent(documentKey || '').toLowerCase();
@@ -1825,9 +1790,7 @@ export class StudentService {
       return !candidates.includes(normalizedKey);
     });
 
-    if (updatedDocs.length === existingDocs.length) {
-      throw new NotFoundException('Document not found');
-    }
+    if (updatedDocs.length === existingDocs.length) throw new LocalizedException('student.document_not_found_9d4ed206', undefined, HttpStatus.NOT_FOUND, 'Document not found');
 
     await this.prismaService.studentProfile.update({
       where: { id: student.id },
@@ -1850,9 +1813,7 @@ export class StudentService {
     file: Express.Multer.File,
     data: { title?: string; type?: string; description?: string },
   ) {
-    if (!file) {
-      throw new BadRequestException('Document file is required');
-    }
+    if (!file) throw new LocalizedException('student.document_file_is_required_6e96c09b', undefined, undefined, 'Document file is required');
 
     const allowedTypes = [
       'application/pdf',
@@ -1861,9 +1822,7 @@ export class StudentService {
       'image/jpg',
       'image/webp',
     ];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Document must be a PDF, PNG, JPG, or WEBP file');
-    }
+    if (!allowedTypes.includes(file.mimetype)) throw new LocalizedException('student.document_must_be_a_pdf_png_jpg_or_webp_file_cf722ced', undefined, undefined, 'Document must be a PDF, PNG, JPG, or WEBP file');
 
     const extension = path.extname(file.originalname || '') || (
       file.mimetype === 'application/pdf'
@@ -2261,9 +2220,7 @@ export class StudentService {
       select: { name: true },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('student.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const schoolPrefix = school.name.substring(0, 3).toUpperCase();
     const timestamp = Date.now().toString().slice(-6);

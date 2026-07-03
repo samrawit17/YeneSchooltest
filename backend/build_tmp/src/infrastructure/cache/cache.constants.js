@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CACHE_TTL = void 0;
+exports.CACHE_TTL = {
+    GRADES_SCHOOL: 300,
+    GRADES_TEACHER: 300,
+    GRADES_STUDENT: 300,
+    STUDENT_FINAL_GRADES: 300,
+    DASHBOARD_SCHOOL: 120,
+    DASHBOARD_USER: 120,
+    STUDENTS_LIST: 900,
+    SCHOOL_SETTINGS: 3600,
+    PLATFORM_SETTINGS: 3600,
+};
+//# sourceMappingURL=cache.constants.js.map

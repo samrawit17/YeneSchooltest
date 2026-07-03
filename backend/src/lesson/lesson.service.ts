@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLessonDto, UpdateLessonDto, LessonQueryDto } from './dto';
 import {
@@ -60,9 +61,7 @@ export class LessonService {
     schoolId: string,
     periodNumber: number | undefined,
   ) {
-    if (!Number.isInteger(periodNumber) || (periodNumber ?? 0) < 1) {
-      throw new BadRequestException('A valid period number is required');
-    }
+    if (!Number.isInteger(periodNumber) || (periodNumber ?? 0) < 1) throw new LocalizedException('lesson.a_valid_period_number_is_required_33484f91', undefined, undefined, 'A valid period number is required');
 
     const configuredPeriods = await this.prisma.periodTime.findMany({
       where: { schoolId },
@@ -369,8 +368,7 @@ export class LessonService {
         academicYearId: data.academicYearId,
       },
     });
-    if (!classRecord)
-      throw new NotFoundException(`Class not found for grade ${data.grade}`);
+    if (!classRecord) throw new LocalizedException('lesson.class_not_found_for_grade_2d1f2d09', undefined, HttpStatus.NOT_FOUND, 'Class not found for grade ${data.grade}');
 
     const sectionRecord = await this.prisma.section.findFirst({
       where: {
@@ -378,8 +376,7 @@ export class LessonService {
         classId: classRecord.id,
       },
     });
-    if (!sectionRecord)
-      throw new NotFoundException(`Section ${data.section} not found for grade ${data.grade}`);
+    if (!sectionRecord) throw new LocalizedException('lesson.section_not_found_for_grade_65bebebf', undefined, HttpStatus.NOT_FOUND, 'Section ${data.section} not found for grade ${data.grade}');
 
     const canCreateForAssignment = await this.teacherCanCreateLessonForAssignment(
       teacherId,
@@ -418,7 +415,7 @@ export class LessonService {
         type: ContentType.LESSON,
       },
     });
-    if (existingLesson) throw new BadRequestException('Lesson already exists');
+    if (existingLesson) throw new LocalizedException('lesson.lesson_already_exists_c3540565', undefined, undefined, 'Lesson already exists');
 
     // Create lesson, homework and resources inside a transaction to ensure atomicity.
     const result = await this.prisma.$transaction(async (tx) => {
@@ -502,12 +499,9 @@ export class LessonService {
         type: ContentType.LESSON,
       },
     });
-    if (!lesson)
-      throw new NotFoundException('Lesson not found');
-    if (lesson.teacherId !== teacherId)
-      throw new ForbiddenException('Only creator can update');
-    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any))
-      throw new BadRequestException('Cannot update lessons that are pending review or published');
+    if (!lesson) throw new LocalizedException('lesson.lesson_not_found_e459bc16', undefined, HttpStatus.NOT_FOUND, 'Lesson not found');
+    if (lesson.teacherId !== teacherId) throw new LocalizedException('lesson.only_creator_can_update_660427ea', undefined, HttpStatus.FORBIDDEN, 'Only creator can update');
+    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any)) throw new LocalizedException('lesson.cannot_update_lessons_that_are_pending_review_or_published_866ce81b', undefined, undefined, 'Cannot update lessons that are pending review or published');
     if (data.periodNumber !== undefined) {
       await this.assertValidLessonPeriod(schoolId, data.periodNumber);
     }
@@ -545,14 +539,10 @@ export class LessonService {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
-      throw new NotFoundException('Lesson not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
-    if (lesson.teacherId !== teacherId)
-      throw new ForbiddenException('Only creator can submit');
-    if (lesson.status !== LessonStatus.DRAFT)
-      throw new BadRequestException('Only draft lessons can be submitted');
+    if (!lesson || lesson.type !== ContentType.LESSON) throw new LocalizedException('lesson.lesson_not_found_e459bc16', undefined, HttpStatus.NOT_FOUND, 'Lesson not found');
+    if (lesson.schoolId !== schoolId) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
+    if (lesson.teacherId !== teacherId) throw new LocalizedException('lesson.only_creator_can_submit_4b55f2d8', undefined, HttpStatus.FORBIDDEN, 'Only creator can submit');
+    if (lesson.status !== LessonStatus.DRAFT) throw new LocalizedException('lesson.only_draft_lessons_can_be_submitted_9b4af7b6', undefined, undefined, 'Only draft lessons can be submitted');
 
     return this.prisma.content.update({
       where: { id: lessonId },
@@ -568,12 +558,9 @@ export class LessonService {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
-      throw new NotFoundException('Lesson not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
-    if (lesson.status !== ('PENDING_REVIEW' as any))
-      throw new BadRequestException('Only pending review can be approved');
+    if (!lesson || lesson.type !== ContentType.LESSON) throw new LocalizedException('lesson.lesson_not_found_e459bc16', undefined, HttpStatus.NOT_FOUND, 'Lesson not found');
+    if (lesson.schoolId !== schoolId) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
+    if (lesson.status !== ('PENDING_REVIEW' as any)) throw new LocalizedException('lesson.only_pending_review_can_be_approved_7a82e0f4', undefined, undefined, 'Only pending review can be approved');
 
     const updated = await this.prisma.content.update({
       where: { id: lessonId },
@@ -739,12 +726,9 @@ export class LessonService {
       where: { id: lessonId },
       include: { subject: true },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
-      throw new NotFoundException('Lesson not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
-    if (lesson.status !== ('PENDING_REVIEW' as any))
-      throw new BadRequestException('Only pending review can be rejected');
+    if (!lesson || lesson.type !== ContentType.LESSON) throw new LocalizedException('lesson.lesson_not_found_e459bc16', undefined, HttpStatus.NOT_FOUND, 'Lesson not found');
+    if (lesson.schoolId !== schoolId) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
+    if (lesson.status !== ('PENDING_REVIEW' as any)) throw new LocalizedException('lesson.only_pending_review_can_be_rejected_4a8ef4ff', undefined, undefined, 'Only pending review can be rejected');
 
     return this.prisma.content.update({
       where: { id: lessonId },
@@ -816,8 +800,7 @@ export class LessonService {
         },
       },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
-      throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON) throw new LocalizedException('lesson.lesson_not_found_e459bc16', undefined, HttpStatus.NOT_FOUND, 'Lesson not found');
 
     const homework = this.buildHomeworkFromLesson(lesson);
     const submission = lesson.submissions[0] || null;
@@ -859,10 +842,8 @@ export class LessonService {
         type: ContentType.LESSON,
       },
     });
-    if (!homework) throw new NotFoundException('Homework not found');
-    if (!this.buildHomeworkFromLesson(homework)) {
-      throw new BadRequestException('This lesson does not have homework');
-    }
+    if (!homework) throw new LocalizedException('lesson.homework_not_found_ab4f0e59', undefined, HttpStatus.NOT_FOUND, 'Homework not found');
+    if (!this.buildHomeworkFromLesson(homework)) throw new LocalizedException('lesson.this_lesson_does_not_have_homework_7d413af1', undefined, undefined, 'This lesson does not have homework');
 
     const existing = await this.prisma.contentSubmission.findUnique({
       where: { contentId_studentId: { contentId: homeworkId, studentId } },
@@ -901,13 +882,9 @@ export class LessonService {
       where: { id: submissionId },
       include: { content: true },
     });
-    if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.content.type !== ContentType.LESSON) {
-      throw new BadRequestException('Submission is not for a lesson homework');
-    }
-    if (submission.content.teacherId !== teacherId) {
-      throw new ForbiddenException('Only the lesson teacher can grade this submission');
-    }
+    if (!submission) throw new LocalizedException('lesson.submission_not_found_0e3901c5', undefined, HttpStatus.NOT_FOUND, 'Submission not found');
+    if (submission.content.type !== ContentType.LESSON) throw new LocalizedException('lesson.submission_is_not_for_a_lesson_homework_a9690116', undefined, undefined, 'Submission is not for a lesson homework');
+    if (submission.content.teacherId !== teacherId) throw new LocalizedException('lesson.only_the_lesson_teacher_can_grade_this_submission_29961945', undefined, HttpStatus.FORBIDDEN, 'Only the lesson teacher can grade this submission');
 
     return this.prisma.contentSubmission.update({
       where: { id: submissionId },
@@ -1008,12 +985,12 @@ export class LessonService {
         schoolId,
       },
     });
-    if (!classRecord) throw new NotFoundException(`Class not found`);
+    if (!classRecord) throw new LocalizedException('lesson.class_not_found_7fd09a97', undefined, HttpStatus.NOT_FOUND, 'Class not found');
 
     const sectionRecord = await this.prisma.section.findFirst({
       where: { name: data.section, classId: classRecord.id },
     });
-    if (!sectionRecord) throw new NotFoundException(`Section not found`);
+    if (!sectionRecord) throw new LocalizedException('lesson.section_not_found_f649d604', undefined, HttpStatus.NOT_FOUND, 'Section not found');
 
     const classSubject = await this.prisma.classSubject.findFirst({
       where: {
@@ -1023,7 +1000,7 @@ export class LessonService {
         teacherId,
       },
     });
-    if (!classSubject) throw new ForbiddenException('Not assigned');
+    if (!classSubject) throw new LocalizedException('lesson.not_assigned_63d8c71d', undefined, HttpStatus.FORBIDDEN, 'Not assigned');
 
     const existing = await this.prisma.content.findFirst({
       where: {
@@ -1034,7 +1011,7 @@ export class LessonService {
         periodNumber: data.periodNumber,
       },
     });
-    if (existing) throw new BadRequestException('Lesson exists');
+    if (existing) throw new LocalizedException('lesson.lesson_exists_6de939a6', undefined, undefined, 'Lesson exists');
 
     const lesson = await this.prisma.content.create({
       data: {
@@ -1246,10 +1223,8 @@ export class LessonService {
         attachmentsNew: true,
       },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
-      throw new NotFoundException('Not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
+    if (!lesson || lesson.type !== ContentType.LESSON) throw new LocalizedException('lesson.not_found_9e076f58', undefined, HttpStatus.NOT_FOUND, 'Not found');
+    if (lesson.schoolId !== schoolId) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
     if (
       role === 'TEACHER' &&
       lesson.teacherId !== userId &&
@@ -1257,8 +1232,7 @@ export class LessonService {
     )
       throw new ForbiddenException('Access denied');
     if (role === 'STUDENT') {
-      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus))
-        throw new ForbiddenException('Not visible');
+      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus)) throw new LocalizedException('lesson.not_visible_f6730d9e', undefined, HttpStatus.FORBIDDEN, 'Not visible');
       const studentClass = await this.prisma.studentClass.findFirst({
         where: { studentId: userId, schoolId },
         include: { section: { include: { class: true } } },
@@ -1272,12 +1246,11 @@ export class LessonService {
       }
     }
     if (role === 'PARENT') {
-      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus))
-        throw new ForbiddenException('Not visible');
+      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus)) throw new LocalizedException('lesson.not_visible_f6730d9e', undefined, HttpStatus.FORBIDDEN, 'Not visible');
       const parentProfile = await this.prisma.parentProfile.findFirst({
         where: { userId, schoolId },
       });
-      if (!parentProfile) throw new ForbiddenException('Access denied');
+      if (!parentProfile) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
 
       const childLinks = await this.prisma.parentStudent.findMany({
         where: { parentId: parentProfile.id, schoolId },
@@ -1292,7 +1265,7 @@ export class LessonService {
           class: { grade: lesson.grade || undefined },
         },
       });
-      if (!matchingClass) throw new ForbiddenException('Access denied');
+      if (!matchingClass) throw new LocalizedException('lesson.access_denied_08de2fda', undefined, HttpStatus.FORBIDDEN, 'Access denied');
     }
     return {
       ...lesson,
@@ -1310,10 +1283,8 @@ export class LessonService {
     const lesson = await this.prisma.content.findFirst({
       where: { id, schoolId, type: ContentType.LESSON },
     });
-    if (!lesson)
-      throw new NotFoundException('Not found');
-    if (lesson.teacherId !== teacherId)
-      throw new ForbiddenException('Only creator');
+    if (!lesson) throw new LocalizedException('lesson.not_found_9e076f58', undefined, HttpStatus.NOT_FOUND, 'Not found');
+    if (lesson.teacherId !== teacherId) throw new LocalizedException('lesson.only_creator_a9e6ff97', undefined, HttpStatus.FORBIDDEN, 'Only creator');
     if (data.periodNumber !== undefined) {
       await this.assertValidLessonPeriod(schoolId, data.periodNumber);
     }
@@ -1340,12 +1311,9 @@ export class LessonService {
     const lesson = await this.prisma.content.findFirst({
       where: { id, schoolId, type: ContentType.LESSON },
     });
-    if (!lesson)
-      throw new NotFoundException('Not found');
-    if (lesson.teacherId !== teacherId)
-      throw new ForbiddenException('Only creator');
-    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any))
-      throw new BadRequestException('Cannot delete lessons that are pending review or published');
+    if (!lesson) throw new LocalizedException('lesson.not_found_9e076f58', undefined, HttpStatus.NOT_FOUND, 'Not found');
+    if (lesson.teacherId !== teacherId) throw new LocalizedException('lesson.only_creator_a9e6ff97', undefined, HttpStatus.FORBIDDEN, 'Only creator');
+    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any)) throw new LocalizedException('lesson.cannot_delete_lessons_that_are_pending_review_or_published_0bb77bda', undefined, undefined, 'Cannot delete lessons that are pending review or published');
     await this.prisma.content.delete({ where: { id } });
     return { message: 'Deleted' };
   }

@@ -1,0 +1,234 @@
+{
+  "attendance": {
+    "marked": {
+      "title": "Dhufaatii Galmeeffame",
+      "message": "Dhufaatii {{className}} galmeeffameera"
+    },
+    "session_opened": {
+      "title": "Sessiini Argamaa Banameera",
+      "message": "Sessiini argamaa {{className}} - {{subject}} tiif qophiidha"
+    },
+    "low_attendance": {
+      "title": "Akeekkachiisa Dhufaatii Gadhee",
+      "message": "Beeksisa: Dhufaatii {{studentName}} {{percentage}}%"
+    },
+    "missing_detected": {
+      "title": "Dhufaatii Dhabame",
+      "message": "Barattoota {{count}} dhufaatii guyyaa {{date}} hin galmeeffamne"
+    },
+    "absent": {
+      "title": "Akeekkachiisa Argamaa",
+      "message": "{{studentName}} guyyaa {{date}} kutaa {{className}} keessatti hin argamne jedhamee galmaa'eera"
+    },
+    "late": {
+      "title": "Yaadannoo Dhiyeenya",
+      "message": "{{studentName}} sa'aatii {{time}} irratti kutaa {{className}} tiif dhiyeenyaan dhufeera"
+    },
+    "reminder": {
+      "title": "Yaadannoo Argamaa",
+      "message": "Argamni {{className}} - {{subject}} sa'aatii {{startTime}} jalqabama. Argama galmeessuu hin dagatinaa!"
+    },
+    "missing": {
+      "title": "Yaadannoo Argamaa Dhabame",
+      "message": "Maaloo kutaa {{grade}} - {{section}} ({{className}}) guyyaa {{date}} tiif argama galmeessaa. Argamni ammaatti hin galmoofne."
+    }
+  },
+  "fee": {
+    "due": {
+      "title": "Guyyaa Kaffaltii",
+      "message": "{{amount}} guyyaa {{dueDate}} kaffaluu qaba {{studentName}}f"
+    },
+    "overdue": {
+      "title": "Kaffaltiin Tursiifame",
+      "message": "Kaffaltiin tursiifame: {{amount}} - Guyyaan kaffaltii {{dueDate}} ture"
+    },
+    "paid": {
+      "title": "Kaffaltiin Fudhatameera",
+      "message": "Kaffaltii keessan {{amount}} fudhatameera. Rasiitii: {{receiptNumber}}"
+    },
+    "reminder": {
+      "title": "Yaadannoo Kaffaltii",
+      "message": "Yaadachiisa: {{amount}} guyyaa {{dueDate}} kaffaluu qaba"
+    }
+  },
+  "exam": {
+    "created": {
+      "title": "Qormaata Haaraa",
+      "message": "Sagantaa qormaata haaraa: {{examName}} guyyaa {{date}}"
+    },
+    "result_published": {
+      "title": "Bu'aan Maxxanfameera",
+      "message": "Bu'aan {{term}} kutaa {{className}} keessatti maxxanfameera"
+    },
+    "reminder": {
+      "title": "Yaadachiisa Qormaata",
+      "message": "Yaadachiisa: {{examName}} boru sa'aatii {{time}}"
+    },
+    "assessment_started": {
+      "title": "Madaallii Jalqabameera",
+      "message": "{{assessmentType}} \"{{assessmentTitle}}\" amma {{className}} - {{subjectName}} tiif hojii irra jira. Maaloo qabxii galchaa."
+    }
+  },
+  "grade": {
+    "published": {
+      "title": "Bu'aan Maxxanfame",
+      "message": "Bu'aan {{subjectName}} maxxanfameera"
+    },
+    "report_available": {
+      "title": "Kardii Bu'aa",
+      "message": "Kardii bu'aa {{termName}} qophaa'ee jira"
+    }
+  },
+  "announcement": {
+    "new": {
+      "title": "Ittii Akeekkachiisa Haaraa",
+      "message": "Ittii akeekkachiisa haaraa: {{title}}"
+    },
+    "urgent": {
+      "title": "Ittii Akeekkachiisa Daddammaa",
+      "message": "DADDAMBA: {{title}}"
+    }
+  },
+  "enrollment": {
+    "pending": {
+      "title": "Gaaffii Galmee Haaraa",
+      "message": "{{studentName}} kutaa {{grade}} tiif gaaffii galmee dhiyeesseera"
+    },
+    "approved": {
+      "title": "Galmee Mirkanaa'e",
+      "message": "Baga gammaddan! Galmee {{studentName}} tiif {{className}} mirkanaa'eera"
+    },
+    "rejected": {
+      "title": "Galmee Didame",
+      "message": "Galmee {{studentName}} akka hin mirkanoofne: {{reason}}"
+    },
+    "rejected_no_reason": {
+      "title": "Galmee Didame",
+      "message": "Galmee {{studentName}} akka hin mirkanoofne"
+    }
+  },
+  "assignment": {
+    "created": {
+      "title": "Hojii Haaraa",
+      "message": "Hojiin haaraa \"{{assignmentTitle}}\" kutaa {{className}} tiif maxxanfameera. Guyyaa xumuraa: {{dueDate}}"
+    },
+    "parent": {
+      "title": "Hojii Haaraa Mucaa Keessaniif",
+      "message": "{{studentName}} hojii haaraa \"{{assignmentTitle}}\" qaba guyyaa xumuraa {{dueDate}}"
+    },
+    "graded": {
+      "title": "Hojiin Sadarkaa Argateera",
+      "message": "Hojiin keessan \"{{assignmentTitle}}\" kutaa {{className}} tiif sadarkaa argateera. Sadarkaa: {{grade}}"
+    },
+    "child_graded": {
+      "title": "Hojiin Mucaa Sadarkaa Argateera",
+      "message": "Hojiin {{studentName}} \"{{assignmentTitle}}\" sadarkaa argateera. Sadarkaa: {{grade}}"
+    }
+  },
+  "communication": {
+    "new_message": {
+      "title": "Ergaa Haaraa",
+      "message": "{{senderName}}: {{preview}}"
+    },
+    "reply_received": {
+      "title": "Deebii Dhufe",
+      "message": "Deebii {{senderName}} irraa dhufe"
+    }
+  },
+  "account": {
+    "created": {
+      "title": "Baga Gara Sirna Dhufte",
+      "message": "Akkaawuntiin keessan uumameera. Amma seenaa dandeessu."
+    },
+    "created_with_temp_password": {
+      "title": "Baga Gara Sirna Dhufte",
+      "message": "Akkaawuntiin keessan uumameera. Maaloo odeeffannoo seensaa tiif email keessan ilaalaa."
+    },
+    "deactivated": {
+      "title": "Akkaawuntii Hojii Irraa Kaafame",
+      "message": "Akkaawuntiin keessan hojii irraa kaafameera. Odeeffannoo dabalataaf maatii mana barumsaa qunnamaa."
+    },
+    "deactivated_with_reason": {
+      "title": "Akkaawuntii Hojii Irraa Kaafame",
+      "message": "Sababa: {{reason}}"
+    },
+    "activated": {
+      "title": "Akkaawuntii Hojii Irra Oole",
+      "message": "Akkaawuntiin keessan hojii irra ooleera. Amma seenaa dandeessu."
+    }
+  },
+  "schedule": {
+    "changed": {
+      "title": "Jijjiirama Sagantaa",
+      "message": "{{message}}"
+    },
+    "class_cancelled": {
+      "title": "Kutaan Haqameera",
+      "message": "{{className}} guyyaa {{date}} haqameera. Sababa: {{reason}}"
+    },
+    "class_cancelled_no_reason": {
+      "title": "Kutaan Haqameera",
+      "message": "{{className}} guyyaa {{date}} haqameera"
+    },
+    "student_class_cancelled": {
+      "title": "Kutaan Haqameera",
+      "message": "Kutaa {{subject}} kutaa {{className}} tiif guyyaa {{date}} haqameera"
+    },
+    "pickup_reminder": {
+      "title": "Yaadannoo Fudhachuu",
+      "message": "Maatii jaalatamoo, kutaa dhumaa xumuramaa jira. Maaloo dhufaa mucaa keessan fudhaa."
+    },
+    "class_starting": {
+      "title": "Kutaan Keessan Jalqabamaa Jira",
+      "message": "Bellii kutaa ammaaf rukutameera. Maaloo gara kutaa keessan deemsisaa."
+    },
+    "class_ended": {
+      "title": "Kutaan Keessan Xumurameera",
+      "message": "Bellii kutaa ammaa xumuruuf rukutameera."
+    }
+  },
+  "timetable": {
+    "updated": {
+      "title": "Sagantaan Yeroo Haaromfameera",
+      "message": "Sagantaan yeroo {{className}} tiif haaromfameera. Maaloo sagantaa haaraa keessan ilaalaa."
+    }
+  },
+  "discipline": {
+    "incident_reported": {
+      "title": "Galmee Adaba",
+      "message": "Rakkinni \"{{incidentTitle}}\" sadarkaa {{severity}} {{studentName}} wabii galmaa'eera."
+    }
+  },
+  "general": {
+    "welcome": {
+      "title": "Bagaggaltuu",
+      "message": "Bagaggaltuu gara {{schoolName}}, {{name}}!"
+    },
+    "system_notification": {
+      "title": "Beeksisa Sirnaa",
+      "message": "Beeksisa sirnaa"
+    }
+  },
+  "siren": {
+    "activated": {
+      "title": "Akeekkachiisa Sireenii",
+      "message": "{{type}} hojiirra oole"
+    }
+  },
+  "messaging": {
+    "new_message": {
+      "title": "Ergaa Haaraa",
+      "message": "Ergaa haaraa {{senderName}} irraa"
+    }
+  },
+  "bell": {
+    "class_bell": {
+      "title": "Bellii Kutaa",
+      "message": "Bellii {{sirenLabel}} sagantaa yeroo keessaniif rukutameera."
+    },
+    "school_bell": {
+      "title": "Bellii Mana Barumsaa",
+      "message": "Bellii mana barumsaa hojiirra ooleera."
+    }
+  }
+}

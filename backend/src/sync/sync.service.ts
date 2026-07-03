@@ -8,7 +8,8 @@
  * - Returns server versions for client updates
  */
 
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus } from '@prisma/client';
 
@@ -77,9 +78,7 @@ export class SyncService {
     const schoolId = user?.schoolId;
     const actorId = user?.id;
 
-    if (!schoolId || !actorId) {
-      throw new BadRequestException('Authenticated school and user are required for sync');
-    }
+    if (!schoolId || !actorId) throw new LocalizedException('sync.authenticated_school_and_user_are_required_for_sync_27b57cd1', undefined, undefined, 'Authenticated school and user are required for sync');
 
     try {
       switch (operation) {
@@ -339,9 +338,7 @@ export class SyncService {
     }>;
     cachedAt: string;
   }> {
-    if (!user?.schoolId) {
-      throw new BadRequestException('Authenticated school is required');
-    }
+    if (!user?.schoolId) throw new LocalizedException('sync.authenticated_school_is_required_e729adbd', undefined, undefined, 'Authenticated school is required');
 
     const studentClasses = await this.prisma.studentClass.findMany({
       where: {
@@ -385,9 +382,7 @@ export class SyncService {
     classId: string,
     sectionId: string,
   ) {
-    if (!studentId || !classId || !sectionId) {
-      throw new BadRequestException('studentId, classId, and sectionId are required');
-    }
+    if (!studentId || !classId || !sectionId) throw new LocalizedException('sync.studentid_classid_and_sectionid_are_required_25054980', undefined, undefined, 'studentId, classId, and sectionId are required');
 
     const enrollment = await this.prisma.studentClass.findFirst({
       where: {
@@ -399,16 +394,12 @@ export class SyncService {
       select: { id: true },
     });
 
-    if (!enrollment) {
-      throw new BadRequestException('Student is not enrolled in this class/section for your school');
-    }
+    if (!enrollment) throw new LocalizedException('sync.student_is_not_enrolled_in_this_class_section_for_your_schoo_1d425733', undefined, undefined, 'Student is not enrolled in this class/section for your school');
   }
 
   private normalizeAttendanceStatus(status: string): AttendanceStatus {
     const normalized = String(status || '').trim().toUpperCase();
-    if (!['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'].includes(normalized)) {
-      throw new BadRequestException('Invalid attendance status');
-    }
+    if (!['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'].includes(normalized)) throw new LocalizedException('sync.invalid_attendance_status_7ce25012', undefined, undefined, 'Invalid attendance status');
     return normalized as AttendanceStatus;
   }
 
@@ -486,9 +477,7 @@ export class SyncService {
       where: { id },
     });
 
-    if (!conflict) {
-      throw new BadRequestException('Conflict not found');
-    }
+    if (!conflict) throw new LocalizedException('sync.conflict_not_found_2889071e', undefined, undefined, 'Conflict not found');
 
     await this.prisma.syncConflict.update({
       where: { id },

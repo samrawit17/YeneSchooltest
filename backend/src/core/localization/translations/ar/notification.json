@@ -1,0 +1,204 @@
+{
+  "attendance": {
+    "marked": {
+      "title": "تم تسجيل الحضور",
+      "message": "تم تسجيل الحضور لـ {{className}}"
+    },
+    "session_opened": {
+      "title": "تم فتح جلسة الحضور",
+      "message": "جلسة الحضور جاهزة لـ {{className}} - {{subject}}"
+    },
+    "low_attendance": {
+      "title": "تنبيه الحضور المنخفض",
+      "message": "تنبيه الحضور: نسبة حضور {{studentName}} هي {{percentage}}%"
+    },
+    "missing_detected": {
+      "title": "حضور مفقود",
+      "message": "{{count}} طالب/طلاب فقدوا الحضور لتاريخ {{date}}"
+    },
+    "absent": {
+      "title": "تنبيه الحضور",
+      "message": "تم تسجيل {{studentName}} غائباً في {{className}} بتاريخ {{date}}"
+    },
+    "late": {
+      "title": "إشعار التأخر",
+      "message": "وصل {{studentName}} متأخراً في {{time}} لـ {{className}}"
+    },
+    "reminder": {
+      "title": "تذكير الحضور",
+      "message": "حضور {{className}} - {{subject}} يبدأ في {{startTime}}. لا تنسَ تسجيل الحضور!"
+    },
+    "missing": {
+      "title": "تذكير الحضور المفقود",
+      "message": "يرجى تسجيل الحضور للصف {{grade}} - {{section}} ({{className}}) بتاريخ {{date}}. لم يتم تسجيل الحضور بعد."
+    }
+  },
+  "fee": {
+    "due": {
+      "title": "رسوم مستحقة",
+      "message": "الدفع بمبلغ {{amount}} مستحق في {{dueDate}}"
+    },
+    "paid": {
+      "title": "تم استلام الدفع",
+      "message": "تم استلام دفعتك بمبلغ {{amount}}. رقم الإيصال: {{receiptNumber}}"
+    },
+    "reminder": {
+      "title": "تذكير بدفع الرسوم",
+      "message": "الدفع بمبلغ {{amount}} مستحق في {{dueDate}}"
+    }
+  },
+  "exam": {
+    "result_published": {
+      "title": "تم نشر النتائج",
+      "message": "تم نشر نتائج {{term}} في {{className}}"
+    },
+    "assessment_started": {
+      "title": "بدأ التقييم",
+      "message": "{{assessmentType}} \"{{assessmentTitle}}\" نشط الآن لـ {{className}} - {{subjectName}}. يرجى إدخال الدرجات."
+    }
+  },
+  "enrollment": {
+    "pending": {
+      "title": "طلب تسجيل جديد",
+      "message": "قدم {{studentName}} طلب تسجيل للصف {{grade}}"
+    },
+    "approved": {
+      "title": "تم قبول التسجيل",
+      "message": "تهانينا! تم قبول تسجيل {{studentName}} في {{className}}"
+    },
+    "rejected": {
+      "title": "رفض التسجيل",
+      "message": "نأسف لإبلاغك بأن طلب تسجيل {{studentName}} لم يتم قبوله. السبب: {{reason}}"
+    },
+    "rejected_no_reason": {
+      "title": "رفض التسجيل",
+      "message": "نأسف لإبلاغك بأن طلب تسجيل {{studentName}} لم يتم قبوله."
+    }
+  },
+  "assignment": {
+    "created": {
+      "title": "واجب جديد",
+      "message": "تم نشر واجب جديد \"{{assignmentTitle}}\" لـ {{className}}. الموعد النهائي: {{dueDate}}"
+    },
+    "parent": {
+      "title": "واجب جديد لطفلك",
+      "message": "{{studentName}} لديه واجب جديد \"{{assignmentTitle}}\" الموعد النهائي {{dueDate}}"
+    },
+    "graded": {
+      "title": "تم تصحيح الواجب",
+      "message": "تم تصحيح واجبك \"{{assignmentTitle}}\" لـ {{className}}. الدرجة: {{grade}}"
+    },
+    "child_graded": {
+      "title": "تم تصحيح واجب الطفل",
+      "message": "تم تصحيح واجب {{studentName}} \"{{assignmentTitle}}\". الدرجة: {{grade}}"
+    }
+  },
+  "communication": {
+    "new_message": {
+      "title": "رسالة جديدة",
+      "message": "{{senderName}}: {{preview}}"
+    }
+  },
+  "account": {
+    "created": {
+      "title": "مرحباً بك",
+      "message": "تم إنشاء حسابك. يمكنك الآن تسجيل الدخول."
+    },
+    "created_with_temp_password": {
+      "title": "مرحباً بك",
+      "message": "تم إنشاء حسابك. يرجى التحقق من بريدك الإلكتروني للحصول على بيانات الدخول."
+    },
+    "deactivated": {
+      "title": "تم تعطيل الحساب",
+      "message": "تم تعطيل حسابك. يرجى الاتصال بإدارة المدرسة لمزيد من المعلومات."
+    },
+    "deactivated_with_reason": {
+      "title": "تم تعطيل الحساب",
+      "message": "السبب: {{reason}}"
+    },
+    "activated": {
+      "title": "تم تفعيل الحساب",
+      "message": "تم تفعيل حسابك. يمكنك الآن تسجيل الدخول."
+    }
+  },
+  "schedule": {
+    "changed": {
+      "title": "تغيير الجدول",
+      "message": "{{message}}"
+    },
+    "class_cancelled": {
+      "title": "تم إلغاء الحصة",
+      "message": "تم إلغاء {{className}} في {{date}}. السبب: {{reason}}"
+    },
+    "class_cancelled_no_reason": {
+      "title": "تم إلغاء الحصة",
+      "message": "تم إلغاء {{className}} في {{date}}"
+    },
+    "student_class_cancelled": {
+      "title": "تم إلغاء الحصة",
+      "message": "تم إلغاء حصة {{subject}} لـ {{className}} في {{date}}"
+    },
+    "pickup_reminder": {
+      "title": "تذكير بالاستلام",
+      "message": "ولي الأمر العزيز، الحصة الأخيرة على وشك الانتهاء. يرجى الحضور لاستلام طفلك."
+    },
+    "class_starting": {
+      "title": "حصتك على وشك البدء",
+      "message": "رن الجرس لحصتك الحالية. يرجى التوجه إلى فصلك."
+    },
+    "class_ended": {
+      "title": "انتهت حصتك",
+      "message": "رن الجرس لإنهاء حصتك الحالية."
+    }
+  },
+  "timetable": {
+    "updated": {
+      "title": "تم تحديث الجدول",
+      "message": "تم تحديث الجدول لـ {{className}}. يرجى التحقق من جدولك الجديد."
+    }
+  },
+  "discipline": {
+    "incident_reported": {
+      "title": "سجل الانضباط",
+      "message": "تم تسجيل حادثة \"{{incidentTitle}}\" بخطورة {{severity}} لـ {{studentName}}."
+    }
+  },
+  "general": {
+    "system_notification": {
+      "title": "إشعار النظام",
+      "message": "إشعار النظام"
+    },
+    "backup_overdue": {
+      "title": "النسخ الاحتياطي متأخر",
+      "message": "آخر نسخة احتياطية منذ {{daysSince}} يوم"
+    },
+    "backup_overdue_never": {
+      "title": "النسخ الاحتياطي متأخر",
+      "message": "لم يتم تسجيل نسخة احتياطية من قبل"
+    },
+    "db_critical": {
+      "title": "حجم قاعدة البيانات حرج",
+      "message": "حجم قاعدة البيانات {{dbSize}} ميغابايت (الحد الأقصى: {{threshold}} ميغابايت)"
+    },
+    "weekly_summary": {
+      "title": "الملخص الأسبوعي للمنصة",
+      "message": "{{activeSchools}} مدرسة نشطة، {{activeUsers}} مستخدم نشط، حجم قاعدة البيانات {{dbSize}} ميغابايت"
+    }
+  },
+  "siren": {
+    "activated": {
+      "title": "إنذار صفارة",
+      "message": "تم تفعيل {{type}}"
+    }
+  },
+  "bell": {
+    "class_bell": {
+      "title": "جرس الحصة",
+      "message": "رن جرس {{sirenLabel}} لجدولك."
+    },
+    "school_bell": {
+      "title": "جرس المدرسة",
+      "message": "تم تشغيل جرس المدرسة."
+    }
+  }
+}

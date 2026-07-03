@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { HttpStatus, Injectable, BadRequestException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../auth/types/role.enum';
 import { CredentialService } from '../credential/credential.service';
@@ -103,9 +104,7 @@ export class BulkUploadService {
     if (!normalized) {
       return null;
     }
-    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
-      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
-    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) throw new LocalizedException('bulk_upload.student_stream_must_be_social_or_natural_for_grade_11_and_12_8c69d008', undefined, undefined, 'Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
     return normalized;
   }
 

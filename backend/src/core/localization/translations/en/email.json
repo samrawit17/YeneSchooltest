@@ -1,0 +1,42 @@
+{
+  "welcome": {
+    "subject": "Welcome to {{schoolName}}",
+    "body": "<h1>Welcome to {{schoolName}}</h1><p>Dear {{name}},</p><p>Your account has been created successfully.</p><p><strong>Login details:</strong><br>Email: {{email}}<br>Password: {{password}}</p><p>Please log in and change your password on first login.</p><p>Best regards,<br>{{schoolName}} Team</p>"
+  },
+  "password_reset": {
+    "subject": "Password Reset Request",
+    "body": "<h1>Password Reset</h1><p>Dear {{name}},</p><p>We received a request to reset your password.</p><p>Click the link below to reset your password. This link expires in 1 hour.</p><p><a href='{{resetLink}}'>Reset Password</a></p><p>If you did not request this, please ignore this email.</p><p>Best regards,<br>{{schoolName}} Team</p>"
+  },
+  "attendance_warning": {
+    "subject": "Attendance Warning - {{studentName}}",
+    "body": "<h1>Attendance Warning</h1><p>Dear {{parentName}},</p><p>This is to inform you that {{studentName}}'s attendance has dropped to <strong>{{percentage}}%</strong>.</p><p>Please ensure regular attendance to avoid academic consequences.</p><p>Best regards,<br>{{schoolName}} Administration</p>"
+  },
+  "exam_result": {
+    "subject": "Exam Results Published - {{examName}}",
+    "body": "<h1>Exam Results</h1><p>Dear {{name}},</p><p>The results for <strong>{{examName}}</strong> have been published.</p><p>You can view your results by logging into the parent/student portal.</p><p>Best regards,<br>{{schoolName}} Administration</p>"
+  },
+  "fee_reminder": {
+    "subject": "Fee Payment Reminder",
+    "body": "<h1>Fee Payment Reminder</h1><p>Dear {{parentName}},</p><p>This is a reminder that the following fee is due:</p><p><strong>Fee:</strong> {{feeDescription}}<br><strong>Amount:</strong> {{amount}}<br><strong>Due Date:</strong> {{dueDate}}</p><p>Please make the payment before the due date to avoid penalties.</p><p>Best regards,<br>{{schoolName}} Finance Department</p>"
+  },
+  "admission_approved": {
+    "subject": "Admission Approved - {{studentName}}",
+    "body": "<h1>Admission Approved</h1><p>Dear {{parentName}},</p><p>We are pleased to inform you that {{studentName}}'s admission to <strong>{{schoolName}}</strong> has been approved.</p><p>Please visit the school to complete the enrollment process.</p><p>Best regards,<br>{{schoolName}} Admissions</p>"
+  },
+  "admission_rejected": {
+    "subject": "Admission Status - {{studentName}}",
+    "body": "<h1>Admission Update</h1><p>Dear {{parentName}},</p><p>After careful review, we regret to inform you that {{studentName}}'s admission to {{schoolName}} has been rejected.</p><p>Reason: {{reason}}</p><p>Best regards,<br>{{schoolName}} Admissions</p>"
+  },
+  "payment_receipt": {
+    "subject": "Payment Receipt - {{receiptNumber}}",
+    "body": "<h1>Payment Receipt</h1><p>Dear {{name}},</p><p>Your payment has been received successfully.</p><p><strong>Receipt Number:</strong> {{receiptNumber}}<br><strong>Amount:</strong> {{amount}}<br><strong>Date:</strong> {{date}}<br><strong>Description:</strong> {{description}}</p><p>Thank you for your payment.</p><p>Best regards,<br>{{schoolName}} Finance Department</p>"
+  },
+  "report_card": {
+    "subject": "Report Card Available - {{termName}}",
+    "body": "<h1>Report Card Available</h1><p>Dear {{parentName}},</p><p>The report card for {{studentName}} for <strong>{{termName}}</strong> is now available.</p><p>Please log into the parent portal to view and download the report card.</p><p>Best regards,<br>{{schoolName}} Administration</p>"
+  },
+  "enrollment_request": {
+    "subject": "New Enrollment Request - {{studentName}}",
+    "body": "<h1>New Enrollment Request</h1><p>A new enrollment request has been submitted.</p><p><strong>Student:</strong> {{studentName}}<br><strong>Grade:</strong> {{grade}}<br><strong>Submitted:</strong> {{date}}</p><p>Please review and process the request.</p><p>Best regards,<br>{{schoolName}} System</p>"
+  }
+}

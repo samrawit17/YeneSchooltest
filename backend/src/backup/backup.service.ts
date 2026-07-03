@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   BadRequestException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { spawn } from 'child_process';
 import * as archiver from 'archiver';
 import * as fs from 'fs';
@@ -163,18 +164,14 @@ export class BackupService {
     type: SchoolBackupType,
     context: BackupContext = {},
   ): Promise<BackupArtifact> {
-    if (!SCHOOL_BACKUP_TYPES.includes(type)) {
-      throw new BadRequestException('Unsupported backup type');
-    }
+    if (!SCHOOL_BACKUP_TYPES.includes(type)) throw new LocalizedException('backup.unsupported_backup_type_d0d87a35', undefined, undefined, 'Unsupported backup type');
 
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       select: { id: true, name: true, code: true },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('backup.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeSchoolName = this.toSafeFileName(school.code || school.name || school.id);

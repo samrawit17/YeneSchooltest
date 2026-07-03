@@ -1,8 +1,9 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -197,9 +198,7 @@ export class CredentialService {
       select: { name: true, code: true, logoUrl: true },
     });
 
-    if (!school) {
-      throw new NotFoundException('School not found');
-    }
+    if (!school) throw new LocalizedException('credential.school_not_found_c75997d5', undefined, HttpStatus.NOT_FOUND, 'School not found');
 
     return credentials.map((cred) => ({
       schoolLogo: school.logoUrl,
@@ -785,9 +784,7 @@ export class CredentialService {
       where: { id, schoolId },
     });
 
-    if (!credential) {
-      throw new NotFoundException('Credential not found');
-    }
+    if (!credential) throw new LocalizedException('credential.credential_not_found_09d2d2a2', undefined, HttpStatus.NOT_FOUND, 'Credential not found');
 
     return this.prismaService.pendingCredential.update({
       where: { id },
@@ -829,9 +826,7 @@ export class CredentialService {
       },
     });
 
-    if (!credential) {
-      throw new NotFoundException('Credential not found');
-    }
+    if (!credential) throw new LocalizedException('credential.credential_not_found_09d2d2a2', undefined, HttpStatus.NOT_FOUND, 'Credential not found');
 
     // Also delete the user if exists and not activated
     if (credential.userId && credential.user) {

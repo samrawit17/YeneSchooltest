@@ -1,9 +1,10 @@
-import {
+import { HttpStatus,
   Injectable,
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -26,9 +27,7 @@ export class SectionService {
       select: { id: true, academicYearId: true },
     });
 
-    if (!classExists) {
-      throw new BadRequestException('Class not found for this school');
-    }
+    if (!classExists) throw new LocalizedException('section.class_not_found_for_this_school_f597ea4b', undefined, undefined, 'Class not found for this school');
 
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: classExists.academicYearId, schoolId },
@@ -51,9 +50,7 @@ export class SectionService {
       );
     }
 
-    if (data.capacity < 1) {
-      throw new BadRequestException('Capacity must be at least 1');
-    }
+    if (data.capacity < 1) throw new LocalizedException('section.capacity_must_be_at_least_1_cc111a99', undefined, undefined, 'Capacity must be at least 1');
 
     const createData: any = {
       classId: data.classId,
@@ -64,9 +61,7 @@ export class SectionService {
     if (data.stream !== undefined) {
       const normalizedStream = String(data.stream || '').trim().toUpperCase();
       createData.stream = normalizedStream || null;
-      if (createData.stream && !['SOCIAL', 'NATURAL'].includes(createData.stream)) {
-        throw new BadRequestException('Section stream must be SOCIAL or NATURAL');
-      }
+      if (createData.stream && !['SOCIAL', 'NATURAL'].includes(createData.stream)) throw new LocalizedException('section.section_stream_must_be_social_or_natural_d5e85c4a', undefined, undefined, 'Section stream must be SOCIAL or NATURAL');
     }
 
     if (data.roomNumber !== undefined) {
@@ -178,9 +173,7 @@ export class SectionService {
       },
     });
 
-    if (!section) {
-      throw new NotFoundException('Section not found');
-    }
+    if (!section) throw new LocalizedException('section.section_not_found_f649d604', undefined, HttpStatus.NOT_FOUND, 'Section not found');
 
     return section;
   }
@@ -231,9 +224,7 @@ export class SectionService {
     if (data.stream !== undefined) {
       const normalizedStream = String(data.stream || '').trim().toUpperCase();
       updateData.stream = normalizedStream || null;
-      if (updateData.stream && !['SOCIAL', 'NATURAL'].includes(updateData.stream)) {
-        throw new BadRequestException('Section stream must be SOCIAL or NATURAL');
-      }
+      if (updateData.stream && !['SOCIAL', 'NATURAL'].includes(updateData.stream)) throw new LocalizedException('section.section_stream_must_be_social_or_natural_d5e85c4a', undefined, undefined, 'Section stream must be SOCIAL or NATURAL');
     }
     if (data.homeroomTeacherId !== undefined) {
       updateData.homeroomTeacherId =

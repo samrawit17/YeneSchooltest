@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpStatus, BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CalendarType, ETHIOPIAN_MONTH_NAMES, toEthiopianDate, toGregorianDate } from '../common/date.util';
@@ -117,7 +118,7 @@ export class FeeStructureService {
 
   async updateFeeStructure(id: string, schoolId: string, dto: UpdateFeeStructureDto) {
     const fs = await this.prisma.feeStructure.findUnique({ where: { id } });
-    if (!fs || fs.schoolId !== schoolId) throw new NotFoundException('Fee structure not found for this school');
+    if (!fs || fs.schoolId !== schoolId) throw new LocalizedException('fee_structure.fee_structure_not_found_for_this_school_19de76b3', undefined, HttpStatus.NOT_FOUND, 'Fee structure not found for this school');
     return this.prisma.feeStructure.update({
       where: { id },
       data: {
@@ -133,7 +134,7 @@ export class FeeStructureService {
 
   async deleteFeeStructure(id: string, schoolId: string) {
     const fs = await this.prisma.feeStructure.findUnique({ where: { id } });
-    if (!fs || fs.schoolId !== schoolId) throw new NotFoundException('Fee structure not found for this school');
+    if (!fs || fs.schoolId !== schoolId) throw new LocalizedException('fee_structure.fee_structure_not_found_for_this_school_19de76b3', undefined, HttpStatus.NOT_FOUND, 'Fee structure not found for this school');
     return this.prisma.feeStructure.delete({ where: { id } });
   }
 
@@ -472,7 +473,7 @@ export class FeeStructureService {
       where: { id: academicYearId, schoolId },
       select: { id: true, name: true, curriculumType: true },
     });
-    if (!academicYear) throw new NotFoundException('Academic year not found for this school');
+    if (!academicYear) throw new LocalizedException('fee_structure.academic_year_not_found_for_this_school_bdabd329', undefined, HttpStatus.NOT_FOUND, 'Academic year not found for this school');
     return academicYear;
   }
 
@@ -482,7 +483,7 @@ export class FeeStructureService {
       where: { id: termId, academicYear: { schoolId } },
       select: { id: true, name: true, order: true, academicYearId: true, startDate: true, endDate: true },
     });
-    if (!term) throw new NotFoundException('Term not found for this school');
+    if (!term) throw new LocalizedException('fee_structure.term_not_found_for_this_school_ebcb66de', undefined, HttpStatus.NOT_FOUND, 'Term not found for this school');
     return term;
   }
 
