@@ -82,7 +82,7 @@ export class NotificationService {
     metadata?: any;
     bypassPreferences?: boolean;
   }) {
-    const channels: NotificationChannelType[] = ['in-app'];
+    const channels: NotificationChannelType[] = ['in-app', 'sms'];
     const results = await this.router.route(
       {
         schoolId: data.schoolId,

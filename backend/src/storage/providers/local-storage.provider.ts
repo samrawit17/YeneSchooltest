@@ -1,4 +1,5 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Optional, Inject } from '@nestjs/common';
+export const UPLOAD_ROOT_PATH = 'UPLOAD_ROOT_PATH';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { StorageProvider, StoredFile, UploadOptions } from '../storage.interface';
@@ -9,7 +10,7 @@ export class LocalStorageProvider implements StorageProvider {
   private readonly rootPath: string;
 
   constructor(
-    rootPath: string = 'public/uploads',
+    @Optional() @Inject(UPLOAD_ROOT_PATH) rootPath: string = 'public/uploads',
     @Optional() private schoolInfoService?: SchoolInfoService,
   ) {
     this.rootPath = path.isAbsolute(rootPath) ? rootPath : path.join(process.cwd(), rootPath);

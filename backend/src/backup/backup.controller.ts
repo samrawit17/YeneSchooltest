@@ -6,6 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { BackupService } from './backup.service';
 import { AuditService } from '../audit/audit.service';
+import { SchoolBackupQueryDto } from './dto/school-backup-query.dto';
 
 @Controller('backups')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,7 +19,9 @@ export class BackupController {
   @Get('download')
   @Roles(Role.SUPER_ADMIN)
   async download(@Request() req: any, @Res() res: Response) {
-    const backup = await this.backupService.createPlatformBackup();
+    const backup = await this.backupService.createPlatformBackup({
+      downloadedBy: req.user?.id,
+    });
     await this.auditService.log({
       actor: req.user,
       action: 'BACKUP_DOWNLOAD',
@@ -30,17 +33,7 @@ export class BackupController {
       request: this.auditService.fromRequest(req),
     });
 
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${backup.fileName}"`);
-
-    res.on('finish', () => {
-      void this.backupService.cleanupBackup(backup.tempDir);
-    });
-    res.on('close', () => {
-      void this.backupService.cleanupBackup(backup.tempDir);
-    });
-
-    res.sendFile(backup.zipPath);
+    this.sendBackupFile(res, backup);
   }
 
   @Get('school-types')
@@ -54,10 +47,12 @@ export class BackupController {
   async downloadSchoolBackup(
     @Request() req: any,
     @Param('schoolId') schoolId: string,
-    @Query('type') type: any = 'FULL_SCHOOL',
+    @Query() query: SchoolBackupQueryDto,
     @Res() res: Response,
   ) {
-    const backup = await this.backupService.createSchoolBackup(schoolId, type);
+    const backup = await this.backupService.createSchoolBackup(schoolId, query.type, {
+      downloadedBy: req.user?.id,
+    });
     await this.auditService.log({
       actor: req.user,
       schoolId,
@@ -67,20 +62,32 @@ export class BackupController {
       metadata: {
         fileName: backup.fileName,
         backupScope: 'SCHOOL',
-        backupType: type,
+        backupType: query.type,
       },
       request: this.auditService.fromRequest(req),
     });
 
+    this.sendBackupFile(res, backup);
+  }
+
+  private sendBackupFile(
+    res: Response,
+    backup: { tempDir: string; zipPath: string; fileName: string },
+  ) {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${backup.fileName}"`);
 
-    res.on('finish', () => {
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) {
+        return;
+      }
+      cleanedUp = true;
       void this.backupService.cleanupBackup(backup.tempDir);
-    });
-    res.on('close', () => {
-      void this.backupService.cleanupBackup(backup.tempDir);
-    });
+    };
+
+    res.on('finish', cleanup);
+    res.on('close', cleanup);
 
     res.sendFile(backup.zipPath);
   }

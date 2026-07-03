@@ -6,11 +6,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { Role } from '../auth/types/role.enum';
 
 @Injectable()
 export class ClassService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   private async assertAcademicYearBelongsToSchool(
     schoolId: string,
@@ -64,7 +68,7 @@ export class ClassService {
       );
     }
 
-    return this.prisma.class.create({
+    const created = await this.prisma.class.create({
       data: {
         schoolId: data.schoolId,
         academicYearId: data.academicYearId,
@@ -73,6 +77,18 @@ export class ClassService {
         name: data.name || `Grade ${data.grade}`,
       },
     });
+
+    void this.eventBus.emit('class.created', {
+      schoolId: data.schoolId,
+      classId: created.id,
+      name: created.name,
+      grade: created.grade,
+      section: created.section,
+      academicYearId: data.academicYearId,
+      createdBy: 'system',
+    });
+
+    return created;
   }
 
   async findAll(schoolId: string, academicYearId?: string) {
@@ -253,6 +269,17 @@ export class ClassService {
       },
     });
 
+    const changedFields = Object.keys(updateData);
+    void this.eventBus.emit('class.updated', {
+      schoolId,
+      classId: id,
+      name: updatedClass.name,
+      grade: updatedClass.grade,
+      section: updatedClass.section,
+      changes: changedFields,
+      updatedBy: 'system',
+    });
+
     return updatedClass;
   }
 
@@ -270,9 +297,20 @@ export class ClassService {
       );
     }
 
-    return this.prisma.class.delete({
+    const deleted = await this.prisma.class.delete({
       where: { id },
     });
+
+    void this.eventBus.emit('class.deleted', {
+      schoolId,
+      classId: id,
+      name: classData.name,
+      grade: classData.grade,
+      section: classData.section,
+      deletedBy: 'system',
+    });
+
+    return deleted;
   }
 
   async getOrCreate(

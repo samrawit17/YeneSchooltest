@@ -134,6 +134,7 @@ export class AnnouncementService {
     const visibleTo =
       data.visibleTo && data.visibleTo.length > 0 ? data.visibleTo.join(',') : null;
 
+    const isPinned = data.isPinned ?? false;
     const announcement = await this.prisma.announcement.create({
       data: {
         title: data.title,
@@ -143,6 +144,8 @@ export class AnnouncementService {
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         priority: data.priority || 'MEDIUM',
+        isPinned,
+        pinnedAt: isPinned ? new Date() : null,
         location: data.location || null,
         academicYearId: data.academicYearId || null,
         createdById: userId,
@@ -224,6 +227,8 @@ export class AnnouncementService {
         },
       },
       orderBy: [
+        { isPinned: 'desc' },
+        { pinnedAt: { sort: 'desc', nulls: 'last' } },
         { priority: 'desc' },
         { createdAt: 'desc' },
       ],
@@ -336,6 +341,7 @@ export class AnnouncementService {
           : null
         : undefined;
 
+    const pinChanged = data.isPinned !== undefined && data.isPinned !== existing.isPinned;
     return this.prisma.announcement.update({
       where: { id },
       data: {
@@ -348,6 +354,8 @@ export class AnnouncementService {
           endDate: data.endDate ? new Date(data.endDate) : null,
         }),
         ...(data.priority && { priority: data.priority }),
+        ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+        ...(pinChanged && { pinnedAt: data.isPinned ? new Date() : null }),
         ...(data.location !== undefined && { location: data.location || null }),
         ...(data.academicYearId !== undefined && { academicYearId: data.academicYearId || null }),
       },
@@ -373,6 +381,37 @@ export class AnnouncementService {
           },
         },
       },
+    });
+  }
+
+  async addAttachment(
+    id: string,
+    schoolId: string,
+    file: { name: string; url: string; mimeType: string; size: number },
+  ) {
+    const existing = await this.prisma.announcement.findFirst({ where: { id, schoolId }, select: { attachments: true } });
+    if (!existing) throw new NotFoundException('Announcement not found');
+
+    const attachments = existing.attachments ? JSON.parse(existing.attachments) : [];
+    attachments.push(file);
+
+    return this.prisma.announcement.update({
+      where: { id },
+      data: { attachments: JSON.stringify(attachments) },
+    });
+  }
+
+  async removeAttachment(id: string, schoolId: string, index: number) {
+    const existing = await this.prisma.announcement.findFirst({ where: { id, schoolId }, select: { attachments: true } });
+    if (!existing) throw new NotFoundException('Announcement not found');
+
+    const attachments = existing.attachments ? JSON.parse(existing.attachments) : [];
+    if (index < 0 || index >= attachments.length) throw new BadRequestException('Invalid attachment index');
+    attachments.splice(index, 1);
+
+    return this.prisma.announcement.update({
+      where: { id },
+      data: { attachments: attachments.length > 0 ? JSON.stringify(attachments) : null },
     });
   }
 

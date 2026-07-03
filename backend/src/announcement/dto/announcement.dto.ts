@@ -44,6 +44,10 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsString()
   academicYearId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPinned?: boolean;
 }
 
 export class UpdateAnnouncementDto {
@@ -82,4 +86,8 @@ export class UpdateAnnouncementDto {
   @IsOptional()
   @IsString()
   academicYearId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPinned?: boolean;
 }

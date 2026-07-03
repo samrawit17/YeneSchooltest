@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SchoolSettingsService } from '../school-settings/school-settings.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { toEthiopian } from 'ethiopian-calendar-new';
 
 // Curriculum type enum - matches schema.prisma
@@ -217,6 +218,7 @@ export class AcademicYearService {
   constructor(
     private prismaService: PrismaService,
     private schoolSettingsService: SchoolSettingsService,
+    private eventBus: EventBusService,
   ) {}
 
   private requireSchoolId(schoolId?: string | null) {
@@ -409,6 +411,13 @@ export class AcademicYearService {
       finalSchoolId,
       academicYear.id,
     );
+
+    void this.eventBus.emit('academic-year.created', {
+      schoolId: finalSchoolId,
+      academicYearId: academicYear.id,
+      name: trimmedName,
+      createdBy: 'system',
+    });
 
     // Return with terms
     return this.prismaService.academicYear.findUnique({
@@ -736,6 +745,13 @@ export class AcademicYearService {
       return updated;
     });
 
+    void this.eventBus.emit('academic-year.activated', {
+      schoolId: academicYear.schoolId,
+      academicYearId: activated.id,
+      name: activated.name,
+      activatedBy: 'system',
+    });
+
     await this.schoolSettingsService.ensureDefaultClassesForAcademicYear(
       academicYear.schoolId,
       activated.id,
@@ -926,7 +942,7 @@ export class AcademicYearService {
       );
     }
 
-    return this.prismaService.term.create({
+    const term = await this.prismaService.term.create({
       data: {
         academicYearId,
         name,
@@ -937,6 +953,15 @@ export class AcademicYearService {
         isLocked: false,
       },
     });
+
+    void this.eventBus.emit('term.activated', {
+      schoolId: academicYear.schoolId,
+      academicYearId,
+      termId: term.id,
+      name: term.name,
+    });
+
+    return term;
   }
 
   /**

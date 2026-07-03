@@ -13,28 +13,20 @@ import { PlanTier } from '@prisma/client';
 const isSuperAdmin = (user: any): boolean =>
   String(user?.role || '').toLowerCase() === 'super_admin';
 
-@Injectable()
-export class SubscriptionGuard implements CanActivate {
+abstract class BaseSubscriptionGuard implements CanActivate {
   constructor(
-    private reflector: Reflector,
-    private subscriptionService: SubscriptionService,
+    protected readonly reflector: Reflector,
+    protected readonly subscriptionService: SubscriptionService,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredFeatures = this.reflector.getAllAndOverride<string[]>(
-      SUBSCRIPTION_FEATURE_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+  abstract canActivate(context: ExecutionContext): Promise<boolean>;
 
-    if (!requiredFeatures || requiredFeatures.length === 0) {
-      return true;
-    }
-
+  protected async resolveSchoolPlan(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
     if (isSuperAdmin(user)) {
-      return true;
+      return { plan: null, isSuperAdmin: true };
     }
 
     if (!user || !user.schoolId) {
@@ -53,6 +45,29 @@ export class SubscriptionGuard implements CanActivate {
         'No subscription plan found for this school. Please contact support.',
         HttpStatus.FORBIDDEN,
       );
+    }
+
+    return { plan: schoolPlan, isSuperAdmin: false };
+  }
+}
+
+@Injectable()
+export class SubscriptionGuard extends BaseSubscriptionGuard {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const requiredFeatures = this.reflector.getAllAndOverride<string[]>(
+      SUBSCRIPTION_FEATURE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredFeatures || requiredFeatures.length === 0) {
+      return true;
+    }
+
+    const { plan: schoolPlan, isSuperAdmin } =
+      await this.resolveSchoolPlan(context);
+
+    if (isSuperAdmin) {
+      return true;
     }
 
     for (const feature of requiredFeatures) {
@@ -67,7 +82,7 @@ export class SubscriptionGuard implements CanActivate {
             statusCode: HttpStatus.FORBIDDEN,
             message: `Feature '${feature}' is not available on your current plan.`,
             requiredTier: this.subscriptionService.getFeatureTier(feature),
-            currentTier: schoolPlan.tier,
+            currentTier: schoolPlan!.tier,
             upgradeRequired: true,
           },
           HttpStatus.FORBIDDEN,
@@ -80,12 +95,7 @@ export class SubscriptionGuard implements CanActivate {
 }
 
 @Injectable()
-export class MinimumTierGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private subscriptionService: SubscriptionService,
-  ) {}
-
+export class MinimumTierGuard extends BaseSubscriptionGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredTier = this.reflector.get<string>(
       'minimumTier',
@@ -96,39 +106,19 @@ export class MinimumTierGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const { plan: schoolPlan, isSuperAdmin } =
+      await this.resolveSchoolPlan(context);
 
-    if (isSuperAdmin(user)) {
+    if (isSuperAdmin) {
       return true;
     }
 
-    if (!user || !user.schoolId) {
-      throw new HttpException(
-        'School not found in request',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    const schoolPlan = await this.subscriptionService.getSchoolPlan(
-      user.schoolId,
+    const requiredTierLevel = this.subscriptionService.getTierLevel(
+      requiredTier as PlanTier,
     );
-
-    if (!schoolPlan) {
-      throw new HttpException(
-        'No subscription plan found for this school. Please contact support.',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    const tierHierarchy: Record<PlanTier, number> = {
-      CORE: 1,
-      STANDARD: 2,
-      ULTIMATE: 3,
-    };
-
-    const requiredTierLevel = tierHierarchy[requiredTier as PlanTier];
-    const currentTierLevel = tierHierarchy[schoolPlan.tier];
+    const currentTierLevel = this.subscriptionService.getTierLevel(
+      schoolPlan!.tier,
+    );
 
     if (currentTierLevel < requiredTierLevel) {
       throw new HttpException(
@@ -136,7 +126,7 @@ export class MinimumTierGuard implements CanActivate {
           statusCode: HttpStatus.FORBIDDEN,
           message: `This feature requires ${requiredTier} plan or higher.`,
           requiredTier,
-          currentTier: schoolPlan.tier,
+          currentTier: schoolPlan!.tier,
           upgradeRequired: true,
         },
         HttpStatus.FORBIDDEN,

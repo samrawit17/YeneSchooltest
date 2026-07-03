@@ -7,13 +7,17 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { CreateTimetableSlotDto } from './dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
 @Injectable()
 export class TimetableSlotService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   private readonly teachingWeekDays = [1, 2, 3, 4, 5];
   private readonly defaultMaxPeriodsPerDay = 7;
@@ -421,7 +425,7 @@ export class TimetableSlotService {
       data.room,
     );
 
-    return this.prisma.timetableSlot.create({
+    const slot = await this.prisma.timetableSlot.create({
       data: {
         schoolId: data.schoolId,
         classId: data.classId,
@@ -442,6 +446,22 @@ export class TimetableSlotService {
         },
       },
     });
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    void this.eventBus.emit('timetable.created', {
+      schoolId: data.schoolId,
+      slotId: slot.id,
+      classId: data.classId,
+      sectionId: data.sectionId,
+      subjectName: slot.subject?.name || 'Unknown',
+      day: dayNames[data.dayOfWeek] || String(data.dayOfWeek),
+      startTime: data.startTime,
+      endTime: data.endTime,
+      teacherId: data.teacherId,
+      createdBy: 'system',
+    });
+
+    return slot;
   }
 
   async findAll(
@@ -593,7 +613,7 @@ export class TimetableSlotService {
       id,
     );
 
-    return this.prisma.timetableSlot.update({
+    const updated = await this.prisma.timetableSlot.update({
       where: { id },
       data: {
         classId: data.classId,
@@ -614,13 +634,40 @@ export class TimetableSlotService {
         },
       },
     });
+
+    const changedFields = Object.entries(data)
+      .filter(([, v]) => v !== undefined)
+      .map(([k]) => k);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    void this.eventBus.emit('timetable.updated', {
+      schoolId,
+      slotId: id,
+      classId: existing.classId,
+      sectionId: existing.sectionId,
+      subjectName: updated.subject?.name || 'Unknown',
+      changes: changedFields,
+      updatedBy: 'system',
+    });
+
+    return updated;
   }
 
   async delete(id: string, schoolId: string) {
-    await this.findOne(id, schoolId); // Validate exists
+    const existing = await this.findOne(id, schoolId); // Validate exists
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-    return this.prisma.timetableSlot.delete({
+    await this.prisma.timetableSlot.delete({
       where: { id },
+    });
+
+    void this.eventBus.emit('timetable.deleted', {
+      schoolId,
+      slotId: id,
+      classId: existing.classId,
+      sectionId: existing.sectionId,
+      subjectName: existing.subject?.name || 'Unknown',
+      day: dayNames[existing.dayOfWeek] || String(existing.dayOfWeek),
+      deletedBy: 'system',
     });
   }
 

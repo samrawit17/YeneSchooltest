@@ -2,10 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { BaseAction } from './base-action';
 import { AutomationEvent } from '../interfaces/event.interface';
 import { ActionResult } from '../interfaces/action.interface';
+import { EventBusService } from '../../core/events/event-bus.service';
+import { QueueName } from '../../infrastructure/queue/queue.constants';
 
 @Injectable()
 export class SmsAction extends BaseAction {
   readonly type = 'send_sms';
+
+  constructor(private readonly eventBus: EventBusService) {
+    super();
+  }
 
   async execute(event: AutomationEvent, config: Record<string, any>): Promise<ActionResult> {
     const { to, message } = config;
@@ -15,11 +21,25 @@ export class SmsAction extends BaseAction {
     const phone = to || event.payload.phone;
     const compiledMessage = this.compileTemplate(message || '', event.payload);
 
-    // SMS gateway not yet implemented — log and return
-    return this.success('SMS queued (provider not configured)', {
-      to: phone,
-      message: compiledMessage,
-    });
+    try {
+      await this.eventBus.emit(
+        'communication.send-sms',
+        {
+          schoolId: event.schoolId,
+          userId: event.payload?.userId || '',
+          to: phone,
+          message: compiledMessage,
+        },
+        { async: true, queue: QueueName.COMMUNICATION, schoolId: event.schoolId },
+      );
+
+      return this.success('SMS enqueued successfully', {
+        to: phone,
+        message: compiledMessage,
+      });
+    } catch (error: any) {
+      return this.fail(`SMS queue failed: ${error.message}`);
+    }
   }
 
   private compileTemplate(template: string, payload: Record<string, any>): string {
