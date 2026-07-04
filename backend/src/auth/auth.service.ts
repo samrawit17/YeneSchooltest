@@ -402,7 +402,13 @@ export class AuthService {
     }
   }
 
-  async logout(@Res({ passthrough: true }) res?: Response) {
+  async logout(user: { id: string }, @Res({ passthrough: true }) res?: Response) {
+    if (user?.id) {
+      await this.prismaService.user.update({
+        where: { id: user.id },
+        data: { tokenVersion: { increment: 1 } },
+      }).catch(() => {});
+    }
     if (res) {
       const cookieOptions = {
         httpOnly: true,
