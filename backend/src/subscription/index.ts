@@ -11,3 +11,10 @@ export {
   FEATURE_DESCRIPTIONS,
   TIER_DESCRIPTIONS,
 } from './decorators/subscription.decorator';
+export {
+  FEATURE_TIERS,
+  TIER_HIERARCHY,
+  SUBSCRIPTION_STATUS,
+  VALID_STATUS_TRANSITIONS,
+  type SubscriptionStatus,
+} from './constants/feature-tiers.const';

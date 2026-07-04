@@ -106,6 +106,9 @@ export const SCHOOL_SETTING_KEYS = {
   PROMOTION_MIN_AVERAGE_GRADE: 'PROMOTION_MIN_AVERAGE_GRADE',
   PROMOTION_MIN_ATTENDANCE: 'PROMOTION_MIN_ATTENDANCE',
   PROMOTION_ALLOW_FAILED_SUBJECTS: 'PROMOTION_ALLOW_FAILED_SUBJECTS',
+  IN_APP_NOTIFICATIONS_ENABLED: 'IN_APP_NOTIFICATIONS_ENABLED',
+  EMAIL_NOTIFICATIONS_ENABLED: 'EMAIL_NOTIFICATIONS_ENABLED',
+  SMS_NOTIFICATIONS_ENABLED: 'SMS_NOTIFICATIONS_ENABLED',
 } as const;
 
 const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
@@ -187,6 +190,9 @@ export class SchoolSettingsService {
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
     SCHOOL_SETTING_KEYS.MAINTENANCE_MODE,
+    SCHOOL_SETTING_KEYS.IN_APP_NOTIFICATIONS_ENABLED,
+    SCHOOL_SETTING_KEYS.EMAIL_NOTIFICATIONS_ENABLED,
+    SCHOOL_SETTING_KEYS.SMS_NOTIFICATIONS_ENABLED,
   ]);
 
   private readonly tierLevels: Record<PlanTier, number> = {
@@ -275,7 +281,7 @@ export class SchoolSettingsService {
 
   private assertAllowedSettingKey(key: string) {
     const canonicalKey = this.canonicalizeSettingKey(key);
-    if (!this.allowedSettingKeys.has(canonicalKey)) throw new LocalizedException('school_settings.unsupported_school_setting_a3d6c066', undefined, undefined, 'Unsupported school setting: ${key}');
+    if (!this.allowedSettingKeys.has(canonicalKey)) throw new LocalizedException('school_settings.unsupported_school_setting_a3d6c066', { key }, undefined, `Unsupported school setting: ${key}`);
     return canonicalKey;
   }
 

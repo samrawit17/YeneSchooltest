@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
+import { LocalizedExceptionFilter } from './core/localization/filters/localized-exception.filter';
+import { LocalizationInterceptor } from './core/localization/interceptors/localization.interceptor';
 
 const INSECURE_JWT_SECRETS = new Set([
   'your-super-secret-jwt-key-change-this-in-production',
@@ -68,6 +70,14 @@ async function bootstrap() {
   requireProductionSecrets();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Register global locale-aware exception filter
+  const filter = app.get(LocalizedExceptionFilter);
+  app.useGlobalFilters(filter);
+
+  // Register global localization interceptor
+  const interceptor = app.get(LocalizationInterceptor);
+  app.useGlobalInterceptors(interceptor);
 
   // Enable CORS as early as possible so even early 4xx (e.g. JSON parse errors)
   // include the CORS headers and browser clients can read the response.

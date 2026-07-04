@@ -3,6 +3,23 @@ import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBusService } from '../core/events/event-bus.service';
 import { PlanTier } from '@prisma/client';
+import {
+  FEATURE_TIERS,
+  TIER_HIERARCHY,
+  TIER_ORDER,
+  SUBSCRIPTION_STATUS,
+  VALID_STATUS_TRANSITIONS,
+  type SubscriptionStatus,
+} from './constants/feature-tiers.const';
+
+export interface PaginationParams {
+  skip?: number;
+  take?: number;
+}
+
+const DEFAULT_PAGE_SIZE = 20;
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class SubscriptionService {
@@ -11,52 +28,26 @@ export class SubscriptionService {
     private readonly eventBus: EventBusService,
   ) {}
 
-  private readonly tierHierarchy: Record<PlanTier, number> = {
-    CORE: 1,
-    STANDARD: 2,
-    ULTIMATE: 3,
-  };
+  private addOneYear(date: Date): Date {
+    return new Date(date.getTime() + ONE_YEAR_MS);
+  }
 
-  private readonly featureTiers: Record<string, PlanTier> = {
-    SCHOOL_PROFILE: 'CORE',
-    USER_MANAGEMENT: 'CORE',
-    ACADEMIC_STRUCTURE: 'CORE',
-    ATTENDANCE_TRACKING: 'CORE',
-    ANNOUNCEMENTS: 'CORE',
-    SCHOOL_CALENDAR: 'CORE',
-    BASIC_REPORTS: 'CORE',
-    NOTIFICATIONS: 'CORE',
-    GRADE_MANAGEMENT: 'STANDARD',
-    TIMETABLE_MANAGEMENT: 'STANDARD',
-    LESSON_MANAGEMENT: 'STANDARD',
-    EXAM_MANAGEMENT: 'STANDARD',
-    FINANCE_MANAGEMENT: 'STANDARD',
-    PARENT_PORTAL: 'STANDARD',
-    MESSAGING: 'STANDARD',
-    COMMUNICATION_BOOK: 'STANDARD',
-    DOCUMENT_MANAGEMENT: 'STANDARD',
-    ENROLLMENT_MANAGEMENT: 'STANDARD',
-    CREDENTIAL_MANAGEMENT: 'STANDARD',
-    DISCIPLINE_MANAGEMENT: 'STANDARD',
-    REPORT_CARDS: 'STANDARD',
-    EXAM_SEATING: 'ULTIMATE',
-    STUDENT_PROMOTION: 'ULTIMATE',
-    STUDENT_RANKINGS: 'ULTIMATE',
-    STUDENT_ID_CARDS: 'ULTIMATE',
-    CERTIFICATE_TEMPLATES: 'ULTIMATE',
-    TEMPLATE_MANAGER: 'ULTIMATE',
-    ADVANCED_ANALYTICS: 'ULTIMATE',
-    CUSTOM_BRANDING: 'ULTIMATE',
-    BULK_OPERATIONS: 'ULTIMATE',
-    PRIORITY_SUPPORT: 'ULTIMATE',
-    ADVANCED_REPORTING: 'ULTIMATE',
-    DATA_EXPORT: 'ULTIMATE',
-    SIREN_ALERT: 'ULTIMATE',
-  };
+  private validateStatusTransition(
+    currentStatus: string,
+    newStatus: string,
+  ): void {
+    if (currentStatus === newStatus) return;
+    const allowed = VALID_STATUS_TRANSITIONS[currentStatus];
+    if (!allowed || !allowed.includes(newStatus)) {
+      throw new BadRequestException(
+        `Cannot transition from '${currentStatus}' to '${newStatus}'. Allowed transitions: ${(allowed || []).join(', ') || 'none'}`,
+      );
+    }
+  }
 
   private normalizeFeatures(features: string[] = []) {
     const normalized = features.map((feature) => feature.trim().toUpperCase());
-    const invalid = normalized.filter((feature) => !this.featureTiers[feature]);
+    const invalid = normalized.filter((feature) => !FEATURE_TIERS[feature]);
     if (invalid.length > 0) {
       throw new BadRequestException(
         `Invalid subscription feature(s): ${invalid.join(', ')}`,
@@ -78,18 +69,43 @@ export class SubscriptionService {
     };
   }
 
-  async getAllPlans() {
-    const [plans, subscriptionCounts] = await Promise.all([
+  private buildActiveFilter() {
+    return {
+      status: SUBSCRIPTION_STATUS.ACTIVE,
+      OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+    };
+  }
+
+  private async syncSchoolPlan(
+    tx: any,
+    schoolId: string,
+    planId: string | null,
+    startDate: Date | null,
+  ) {
+    return tx.school.update({
+      where: { id: schoolId },
+      data: {
+        planId,
+        planAssignedAt: startDate,
+      },
+    });
+  }
+
+  async getAllPlans(pagination?: PaginationParams) {
+    const skip = pagination?.skip ?? 0;
+    const take = pagination?.take ?? DEFAULT_PAGE_SIZE;
+
+    const [plans, total, subscriptionCounts] = await Promise.all([
       this.prisma.plan.findMany({
         where: { isActive: true },
         orderBy: { tier: 'asc' },
+        skip,
+        take,
       }),
+      this.prisma.plan.count({ where: { isActive: true } }),
       this.prisma.subscription.groupBy({
         by: ['planId'],
-        where: {
-          status: 'ACTIVE',
-          OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-        },
+        where: this.buildActiveFilter(),
         _count: { _all: true },
       }),
     ]);
@@ -98,10 +114,15 @@ export class SubscriptionService {
       subscriptionCounts.map((row) => [row.planId, row._count._all]),
     );
 
-    return plans.map((plan) => ({
-      ...this.withEffectivePlanFeatures(plan),
-      assignedSchoolsCount: assignedSchoolsByPlan.get(plan.id) || 0,
-    }));
+    return {
+      data: plans.map((plan) => ({
+        ...this.withEffectivePlanFeatures(plan),
+        assignedSchoolsCount: assignedSchoolsByPlan.get(plan.id) || 0,
+      })),
+      total,
+      skip,
+      take,
+    };
   }
 
   async getPlanById(id: string) {
@@ -199,7 +220,7 @@ export class SubscriptionService {
     });
 
     if (schoolsWithPlan > 0 || subscriptionsWithPlan > 0) {
-      throw new Error(
+      throw new BadRequestException(
         `Cannot delete plan: ${schoolsWithPlan + subscriptionsWithPlan} school subscription references are using this plan`,
       );
     }
@@ -235,38 +256,29 @@ export class SubscriptionService {
     const result = await this.prisma.$transaction(async (tx) => {
       if (!planId) {
         await tx.subscription.deleteMany({ where: { schoolId } });
-        return tx.school.update({
-          where: { id: schoolId },
-          data: { planId: null, planAssignedAt: null },
-          include: { plan: true },
-        });
+        return this.syncSchoolPlan(tx, schoolId, null, null);
       }
 
       const now = new Date();
+      const endDate = this.addOneYear(now);
       await tx.subscription.upsert({
         where: { schoolId },
         create: {
           schoolId,
           planId,
-          status: 'ACTIVE',
+          status: SUBSCRIPTION_STATUS.ACTIVE,
           startDate: now,
+          endDate,
         },
         update: {
           planId,
-          status: 'ACTIVE',
+          status: SUBSCRIPTION_STATUS.ACTIVE,
           startDate: now,
-          endDate: null,
+          endDate,
         },
       });
 
-      return tx.school.update({
-        where: { id: schoolId },
-        data: {
-          planId,
-          planAssignedAt: now,
-        },
-        include: { plan: true },
-      });
+      return this.syncSchoolPlan(tx, schoolId, planId, now);
     });
 
     void this.eventBus.emit('subscription.assigned', {
@@ -283,7 +295,7 @@ export class SubscriptionService {
     const subscription = await this.prisma.subscription.findFirst({
       where: {
         schoolId,
-        status: 'ACTIVE',
+        status: SUBSCRIPTION_STATUS.ACTIVE,
         OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
       },
       include: { plan: true },
@@ -303,11 +315,10 @@ export class SubscriptionService {
   }
 
   private getTierFeatures(tier: PlanTier): string[] {
-    const tierOrder: PlanTier[] = ['CORE', 'STANDARD', 'ULTIMATE'];
-    const tierIndex = tierOrder.indexOf(tier);
+    const tierIndex = TIER_ORDER.indexOf(tier);
 
-    return Object.entries(this.featureTiers)
-      .filter(([_, featureTier]) => tierOrder.indexOf(featureTier) <= tierIndex)
+    return Object.entries(FEATURE_TIERS)
+      .filter(([_, featureTier]) => TIER_ORDER.indexOf(featureTier) <= tierIndex)
       .map(([key]) => key);
   }
 
@@ -315,7 +326,7 @@ export class SubscriptionService {
     return this.prisma.subscription.findFirst({
       where: {
         schoolId,
-        status: 'ACTIVE',
+        status: SUBSCRIPTION_STATUS.ACTIVE,
         OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
       },
       include: { plan: true },
@@ -328,25 +339,29 @@ export class SubscriptionService {
     endDate?: Date;
   }) {
     return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const endDate = data.endDate || this.addOneYear(now);
+
       const subscription = await tx.subscription.upsert({
         where: { schoolId: data.schoolId },
         create: {
           schoolId: data.schoolId,
           planId: data.planId,
-          endDate: data.endDate,
-          status: 'ACTIVE',
+          startDate: now,
+          endDate,
+          status: SUBSCRIPTION_STATUS.ACTIVE,
         },
         update: {
           planId: data.planId,
-          endDate: data.endDate,
-          status: 'ACTIVE',
+          startDate: now,
+          endDate,
+          status: SUBSCRIPTION_STATUS.ACTIVE,
         },
         include: { plan: true },
       });
-      await tx.school.update({
-        where: { id: data.schoolId },
-        data: { planId: data.planId, planAssignedAt: subscription.startDate },
-      });
+
+      await this.syncSchoolPlan(tx, data.schoolId, data.planId, subscription.startDate);
+
       return subscription;
     });
   }
@@ -356,6 +371,18 @@ export class SubscriptionService {
     data: { status?: string; endDate?: Date },
   ) {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.subscription.findUnique({
+        where: { id },
+        select: { status: true, schoolId: true, planId: true, startDate: true },
+      });
+      if (!existing) {
+        throw new NotFoundException('Subscription not found');
+      }
+
+      if (data.status) {
+        this.validateStatusTransition(existing.status, data.status);
+      }
+
       const subscription = await tx.subscription.update({
         where: { id },
         data,
@@ -363,97 +390,161 @@ export class SubscriptionService {
       });
 
       const isActive =
-        subscription.status === 'ACTIVE' &&
+        subscription.status === SUBSCRIPTION_STATUS.ACTIVE &&
         (!subscription.endDate || subscription.endDate > new Date());
-      await tx.school.update({
-        where: { id: subscription.schoolId },
-        data: {
-          planId: isActive ? subscription.planId : null,
-          planAssignedAt: isActive ? subscription.startDate : null,
-        },
-      });
+
+      await this.syncSchoolPlan(
+        tx,
+        subscription.schoolId,
+        isActive ? subscription.planId : null,
+        isActive ? subscription.startDate : null,
+      );
 
       return subscription;
     });
   }
 
-  async getSchoolsByPlan(planId: string) {
-    const schools = await this.prisma.school.findMany({
-      where: {
-        subscriptions: {
-          some: {
-            planId,
-            status: 'ACTIVE',
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-          },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isActive: true,
-        planAssignedAt: true,
-        _count: {
-          select: { users: true },
-        },
-        subscriptions: {
-          where: {
-            planId,
-            status: 'ACTIVE',
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-          },
-          include: { plan: true },
-          orderBy: { startDate: 'desc' },
-          take: 1,
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async renewSubscription(id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.subscription.findUnique({
+        where: { id },
+        select: { id: true, endDate: true, status: true, schoolId: true, planId: true },
+      });
+      if (!existing) {
+        throw new NotFoundException('Subscription not found');
+      }
 
-    return schools.map((school) => ({
-      ...school,
-      plan: school.subscriptions[0]?.plan
-        ? this.withEffectivePlanFeatures(school.subscriptions[0].plan)
-        : null,
-      subscription: school.subscriptions[0] || null,
-    }));
+      if (existing.status === SUBSCRIPTION_STATUS.CANCELLED) {
+        throw new BadRequestException('Cannot renew a cancelled subscription');
+      }
+
+      const now = new Date();
+      const baseDate =
+        existing.endDate && existing.endDate > now ? existing.endDate : now;
+      const newEndDate = this.addOneYear(baseDate);
+
+      const subscription = await tx.subscription.update({
+        where: { id },
+        data: {
+          status: SUBSCRIPTION_STATUS.ACTIVE,
+          endDate: newEndDate,
+        },
+        include: { plan: true },
+      });
+
+      await this.syncSchoolPlan(tx, existing.schoolId, existing.planId, now);
+
+      return subscription;
+    });
   }
 
-  async getSchoolsWithPlans() {
-    const schools = await this.prisma.school.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isActive: true,
-        planAssignedAt: true,
-        _count: {
-          select: { users: true },
-        },
-        subscriptions: {
-          where: {
-            status: 'ACTIVE',
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-          },
-          include: { plan: true },
-          orderBy: { startDate: 'desc' },
-          take: 1,
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getSchoolsByPlan(planId: string, pagination?: PaginationParams) {
+    const skip = pagination?.skip ?? 0;
+    const take = pagination?.take ?? DEFAULT_PAGE_SIZE;
 
-    return schools.map((school) => {
-      const activeSubscription = school.subscriptions[0] || null;
-      return {
+    const [schools, total] = await Promise.all([
+      this.prisma.school.findMany({
+        where: {
+          subscriptions: {
+            some: {
+              planId,
+              ...this.buildActiveFilter(),
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true,
+          planAssignedAt: true,
+          _count: {
+            select: { users: true },
+          },
+          subscriptions: {
+            where: {
+              planId,
+              ...this.buildActiveFilter(),
+            },
+            include: { plan: true },
+            orderBy: { startDate: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.school.count({
+        where: {
+          subscriptions: {
+            some: {
+              planId,
+              ...this.buildActiveFilter(),
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: schools.map((school) => ({
         ...school,
-        plan: activeSubscription?.plan
-          ? this.withEffectivePlanFeatures(activeSubscription.plan)
+        plan: school.subscriptions[0]?.plan
+          ? this.withEffectivePlanFeatures(school.subscriptions[0].plan)
           : null,
-        subscription: activeSubscription,
-      };
-    });
+        subscription: school.subscriptions[0] || null,
+      })),
+      total,
+      skip,
+      take,
+    };
+  }
+
+  async getSchoolsWithPlans(pagination?: PaginationParams) {
+    const skip = pagination?.skip ?? 0;
+    const take = pagination?.take ?? DEFAULT_PAGE_SIZE;
+
+    const [schools, total] = await Promise.all([
+      this.prisma.school.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true,
+          planAssignedAt: true,
+          _count: {
+            select: { users: true },
+          },
+          subscriptions: {
+            where: this.buildActiveFilter(),
+            include: { plan: true },
+            orderBy: { startDate: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.school.count(),
+    ]);
+
+    return {
+      data: schools.map((school) => {
+        const activeSubscription = school.subscriptions[0] || null;
+        return {
+          ...school,
+          plan: activeSubscription?.plan
+            ? this.withEffectivePlanFeatures(activeSubscription.plan)
+            : null,
+          subscription: activeSubscription,
+        };
+      }),
+      total,
+      skip,
+      take,
+    };
   }
 
   hasFeature(
@@ -482,17 +573,17 @@ export class SubscriptionService {
     }
 
     return (
-      this.tierHierarchy[schoolPlan.tier] >= this.tierHierarchy[requiredTier]
+      TIER_HIERARCHY[schoolPlan.tier] >= TIER_HIERARCHY[requiredTier]
     );
   }
 
   getTierLevel(tier: PlanTier): number {
-    return this.tierHierarchy[tier];
+    return TIER_HIERARCHY[tier];
   }
 
   getFeatureTier(feature: string): PlanTier | null {
     const normalizedFeature = this.normalizeFeatureName(feature);
-    return normalizedFeature ? this.featureTiers[normalizedFeature] || null : null;
+    return normalizedFeature ? FEATURE_TIERS[normalizedFeature] || null : null;
   }
 
   isFeatureAccessible(
@@ -521,12 +612,43 @@ export class SubscriptionService {
       };
     }
 
-    const tierLevel = this.tierHierarchy[schoolPlan.tier];
+    const tierLevel = TIER_HIERARCHY[schoolPlan.tier];
 
     return {
       accessible: schoolPlan.features || [],
       tier: schoolPlan.tier,
       tierLevel,
     };
+  }
+
+  async expireSubscriptions() {
+    const now = new Date();
+    const expired = await this.prisma.subscription.findMany({
+      where: {
+        status: SUBSCRIPTION_STATUS.ACTIVE,
+        endDate: { lt: now },
+      },
+      select: { id: true, schoolId: true, planId: true },
+    });
+
+    if (expired.length === 0) return [];
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.subscription.updateMany({
+        where: {
+          id: { in: expired.map((s) => s.id) },
+        },
+        data: { status: SUBSCRIPTION_STATUS.EXPIRED },
+      });
+
+      for (const sub of expired) {
+        await tx.school.update({
+          where: { id: sub.schoolId },
+          data: { planId: null, planAssignedAt: null },
+        });
+      }
+    });
+
+    return expired;
   }
 }

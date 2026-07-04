@@ -3,6 +3,7 @@ import { LocalizedException } from '../core/localization';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../auth/types/role.enum';
 import { CredentialService } from '../credential/credential.service';
+import { EventBusService } from '../core/events/event-bus.service';
 
 export interface BulkUserRecord {
   full_name?: string;
@@ -63,6 +64,7 @@ export class BulkUploadService {
   constructor(
     private prismaService: PrismaService,
     private credentialService: CredentialService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   private getSectionNameByIndex(index: number) {
@@ -581,6 +583,22 @@ export class BulkUploadService {
 
         const role = this.mapRoleToEnum(record.role);
 
+        if (role === Role.STUDENT || role === Role.PARENT) {
+          throw new Error(
+            `Row ${i + 1}: Role '${record.role}' is not allowed for staff upload. Valid roles: teacher, admin, finance, registrar, it-manager`,
+          );
+        }
+
+        const studentParentFields = ['current_class', 'fayda_number', 'section', 'stream', 'gender', 'mother_name', 'mother_phone', 'roll_number', 'student_code', 'parent_name', 'parent_phone', 'relation'] as const;
+        const presentFields = studentParentFields.filter(f => record[f as keyof BulkUserRecord]);
+        if (presentFields.length > 0) {
+          throw new Error(
+            `Row ${i + 1}: Student/parent field(s) '${presentFields.join("', '")}' not allowed in staff upload`,
+          );
+        }
+
+        let createdUser: any = null;
+
         await this.prismaService.$transaction(async (tx) => {
           if (record.email) {
             const existing = await tx.user.findUnique({
@@ -612,6 +630,7 @@ export class BulkUploadService {
               phone: record.phone?.trim() || null,
             },
           });
+          createdUser = { id: user.id, role: user.role };
 
           // Create Profiles
           if (role === Role.TEACHER) {
@@ -644,6 +663,16 @@ export class BulkUploadService {
             tx,
           );
         });
+
+        if (createdUser && (role === Role.ADMIN || role === Role.REGISTRAR)) {
+          void this.eventBus.emit('admin.created', {
+            adminId: createdUser.id,
+            email: record.email || '',
+            name: record.full_name || 'Staff Member',
+            schoolId,
+          });
+        }
+
         successfulCount++;
       } catch (err) {
         failedRecords.push({ record, error: err.message });
@@ -658,6 +687,8 @@ export class BulkUploadService {
       academicYear || null,
       credentials.map((c) => c.username),
     );
+    const firstError = failedRecords[0]?.error;
+
     return {
       status:
         successfulCount === 0
@@ -665,7 +696,10 @@ export class BulkUploadService {
           : failedRecords.length
             ? 'partial'
             : 'success',
-      message: `Processed ${successfulCount} staff members`,
+      message:
+        successfulCount === 0 && failedRecords.length > 0
+          ? `Upload failed: ${failedRecords.length} record(s) rejected. ${firstError ? `Sample: ${firstError}` : 'Check your CSV format.'}`
+          : `Processed ${successfulCount} staff members`,
       totalRecords: records.length,
       successfulCount,
       failedCount: failedRecords.length,
@@ -838,6 +872,16 @@ export class BulkUploadService {
         });
         continue;
       }
+
+      const staffRoles = ['teacher', 'admin', 'finance', 'registrar', 'it-manager', 'it_manager'];
+      if (record.role && staffRoles.includes(record.role.toLowerCase())) {
+        failedRecords.push({
+          record,
+          error: `Row ${i + 1}: Role '${record.role}' is not allowed for student upload. Student role is auto-assigned.`,
+        });
+        continue;
+      }
+
       const normalizedName = this.normalizeLookupValue(
         this.getNormalizedStudentName(record),
       );
@@ -1001,6 +1045,14 @@ export class BulkUploadService {
             }
           }
 
+          let txUser: any = null;
+          let txProfile: any = null;
+          let txClassCreated = false;
+          let txClass: any = null;
+          let txParentUser: any = null;
+          let txParentProf: any = null;
+          let txRollNumber: string | null = null;
+
           await this.prismaService.$transaction(async (tx) => {
             const username =
               await this.credentialService.generateStudentAdmissionNumber(
@@ -1024,6 +1076,7 @@ export class BulkUploadService {
                 mustChangePassword: true,
               },
             });
+            txUser = { id: user.id };
 
             const profile = await tx.studentProfile.create({
               data: {
@@ -1040,6 +1093,7 @@ export class BulkUploadService {
                 motherPhone: record.mother_phone || undefined,
               },
             });
+            txProfile = { id: profile.id };
 
             if (baseGradeName !== 'Unassigned') {
               // First try to find a class with the specific section
@@ -1081,6 +1135,7 @@ export class BulkUploadService {
                     gradeId: gradeInfo?.id ?? undefined,
                   },
                 });
+                txClassCreated = true;
               } else {
                 // Found existing class (possibly with empty section) - update it with the correct section
                 const updateData: {
@@ -1132,6 +1187,8 @@ export class BulkUploadService {
                 }
               }
 
+              txClass = { id: cls.id, name: cls.name, grade: cls.grade };
+
               let sec = await tx.section.findFirst({
                 where: { classId: cls.id, name: sectionName },
               });
@@ -1166,6 +1223,7 @@ export class BulkUploadService {
                   studentName,
                   tx,
                 );
+              txRollNumber = rollNumber;
 
               const currentEnrollment = await tx.studentClass.count({
                 where: {
@@ -1270,6 +1328,8 @@ export class BulkUploadService {
                 );
               }
 
+              txParentUser = { id: parentUser!.id };
+
               const parentProf = await tx.parentProfile.findUnique({
                 where: { userId: parentUser!.id },
               });
@@ -1290,6 +1350,7 @@ export class BulkUploadService {
                   },
                   update: { relation: record.relation || 'Guardian' },
                 });
+                txParentProf = { id: parentProf.id };
               }
             }
 
@@ -1314,6 +1375,47 @@ export class BulkUploadService {
               tx,
             );
           });
+
+          if (txUser) {
+            void this.eventBus.emit('student.created', {
+              schoolId,
+              studentId: txUser.id,
+              grade: String(gradeInfo?.level ?? ''),
+            });
+          }
+
+          if (txClassCreated && txClass) {
+            void this.eventBus.emit('class.created', {
+              schoolId,
+              classId: txClass.id,
+              name: txClass.name,
+              grade: txClass.grade ?? 0,
+              section: sectionName,
+              academicYearId: yearId,
+              createdBy: uploadedById,
+            });
+          }
+
+          if (txClass && txUser) {
+            void this.eventBus.emit('enrollment.created', {
+              schoolId,
+              studentId: txUser.id,
+              classId: txClass.id,
+              gradeId: gradeInfo?.id ?? '',
+            });
+          }
+
+          if (txParentProf && txParentUser && txProfile) {
+            void this.eventBus.emit('parent.linked', {
+              schoolId,
+              parentId: txParentProf.id,
+              parentName: record.parent_name?.trim() || '',
+              studentId: txProfile.id,
+              studentName: record.full_name || 'Student',
+              linkedBy: uploadedById,
+            });
+          }
+
           successfulCount++;
           if (gradeName !== 'Unassigned') {
             processedGradeNames.add(gradeName);
@@ -1330,6 +1432,8 @@ export class BulkUploadService {
 
     await this.credentialService.assignRollNumbersByAlphabet(schoolId, yearName);
 
+    const firstError = failedRecords[0]?.error;
+
     return {
       status:
         successfulCount === 0
@@ -1337,7 +1441,10 @@ export class BulkUploadService {
           : failedRecords.length
             ? 'partial'
             : 'success',
-      message: `Processed ${successfulCount} students with mixed alphabetical section assignment${skippedCount ? `, skipped ${skippedCount} existing records` : ''}`,
+      message:
+        successfulCount === 0 && failedRecords.length > 0
+          ? `Upload failed: ${failedRecords.length} record(s) rejected. ${firstError ? `Sample: ${firstError}` : 'Check your CSV format.'}`
+          : `Processed ${successfulCount} students with mixed alphabetical section assignment${skippedCount ? `, skipped ${skippedCount} existing records` : ''}`,
       totalRecords: records.length,
       successfulCount,
       failedCount: failedRecords.length,

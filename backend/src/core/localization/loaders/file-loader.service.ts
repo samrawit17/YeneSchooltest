@@ -20,16 +20,26 @@ export class FileTranslationLoader implements TranslationLoader {
     if (cached) return cached;
 
     try {
-      const filePath = path.join(this.translationsDir, locale, `${domain}.json`);
-      if (!fs.existsSync(filePath)) {
-        this.logger.warn(`Translation file not found: ${filePath}`);
-        return null;
+      // First try domain-specific file
+      const domainPath = path.join(this.translationsDir, locale, `${domain}.json`);
+      if (fs.existsSync(domainPath)) {
+        const content = fs.readFileSync(domainPath, 'utf-8');
+        const data = JSON.parse(content) as TranslationDomain;
+        this.cache.set(cacheKey, data);
+        return data;
       }
 
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(content) as TranslationDomain;
-      this.cache.set(cacheKey, data);
-      return data;
+      // Fallback to messages.json
+      const messagesPath = path.join(this.translationsDir, locale, 'messages.json');
+      if (fs.existsSync(messagesPath)) {
+        const content = fs.readFileSync(messagesPath, 'utf-8');
+        const data = JSON.parse(content) as TranslationDomain;
+        this.cache.set(cacheKey, data);
+        return data;
+      }
+
+      this.logger.warn(`Translation file not found: ${domainPath} or messages.json`);
+      return null;
     } catch (error) {
       this.logger.error(`Failed to load translation file for ${locale}/${domain}: ${(error as Error).message}`);
       return null;

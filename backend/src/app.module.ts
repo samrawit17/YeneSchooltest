@@ -57,6 +57,8 @@ import { AuditModule } from './audit/audit.module';
 import { TranslationModule } from './translation/translation.module';
 import { EventsModule } from './core/events/events.module';
 import { AutomationEngineModule } from './automation-engine/automation-engine.module';
+import { LocalizationModule } from './core/localization/localization.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -95,6 +97,7 @@ import { AutomationEngineModule } from './automation-engine/automation-engine.mo
     PaymentsModule,
     DiscountPolicyModule,
     ReportsModule,
+    AnalyticsModule,
     StudentFeeModule,
     GradingModule,
     AssessmentsModule,
@@ -115,6 +118,7 @@ import { AutomationEngineModule } from './automation-engine/automation-engine.mo
     TranslationModule,
     EventsModule,
     AutomationEngineModule,
+    LocalizationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

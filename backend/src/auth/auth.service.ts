@@ -325,17 +325,35 @@ export class AuthService {
   }
 
   async login(user: any, @Res({ passthrough: true }) res?: Response) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const token = this.jwtService.sign(payload);
+    // Fetch current tokenVersion for access token
+    const dbUser = await this.prismaService.user.findUnique({
+      where: { id: user.id },
+      select: { tokenVersion: true },
+    });
+    const tokenVersion = dbUser?.tokenVersion ?? (user.tokenVersion ?? 1);
 
-    // Set JWT as HTTP-only cookie
+    const payload = { email: user.email, sub: user.id, role: user.role, tokenVersion };
+    const token = this.jwtService.sign(payload, { expiresIn: '15m' }); // Short-lived access token
+
+    // Create refresh token with tokenVersion
+    const refreshPayload = { sub: user.id, tokenVersion };
+    const refreshToken = this.jwtService.sign(refreshPayload, { expiresIn: '7d' });
+
+    // Set JWTs as HTTP-only cookies
     if (res) {
-      res.cookie(JWT_COOKIE_NAME, token, {
+      const cookieOptions = {
         httpOnly: true,
         secure: shouldUseSecureCookies(),
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-        maxAge: this.parseJwtCookieMaxAge(),
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' as any,
         path: '/',
+      };
+      res.cookie(JWT_COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+      res.cookie('Refresh-Token', refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
     }
 
@@ -359,16 +377,51 @@ export class AuthService {
     };
   }
 
+  async refreshTokens(refreshTokenString: string, @Res({ passthrough: true }) res?: Response) {
+    try {
+      const payload = this.jwtService.verify(refreshTokenString);
+      const user = await this.prismaService.user.findUnique({
+        where: { id: payload.sub },
+        include: { school: { select: { schoolSettings: true } }, userPermissions: { include: { permission: true } } }
+      });
+
+      if (!user || !user.isActive || user.tokenVersion !== payload.tokenVersion) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      // Rotate refresh token: increment tokenVersion so old refresh tokens are invalidated
+      await this.prismaService.user.update({
+        where: { id: user.id },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
+      user.tokenVersion += 1;
+      return this.login(user, res);
+    } catch (e) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
   async logout(@Res({ passthrough: true }) res?: Response) {
     if (res) {
-      res.clearCookie(JWT_COOKIE_NAME, {
+      const cookieOptions = {
         httpOnly: true,
         secure: shouldUseSecureCookies(),
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' as any,
         path: '/',
-      });
+      };
+      res.clearCookie(JWT_COOKIE_NAME, cookieOptions);
+      res.clearCookie('Refresh-Token', cookieOptions);
     }
     return { message: 'Logged out successfully' };
+  }
+
+  async invalidateSessions(userId: string) {
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    return { message: 'All sessions invalidated' };
   }
 
   private parseJwtCookieMaxAge() {

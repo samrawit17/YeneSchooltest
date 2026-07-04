@@ -369,7 +369,9 @@ model User {
   deletedAt                   DateTime?
   deletedById                 String?
   mustChangePassword          Boolean                    @default(true)
+  tokenVersion                Int                        @default(1)
   username                    String?                    @unique
+  auditLogs                   AuditLog[]
   createdAnnouncements        Announcement[]
   recordedAttendances         Attendance[]               @relation("RecordedAttendances")
   studentAttendances          Attendance[]               @relation("StudentAttendances")
@@ -2767,4 +2769,20 @@ model DeadLetterEvent {
 
   @@index([originalQueue, failedAt])
   @@index([failedAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
