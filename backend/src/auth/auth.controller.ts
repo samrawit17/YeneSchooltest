@@ -70,8 +70,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res?: Response) {
-    return this.authService.logout(res);
+  async logout(@Request() req, @Res({ passthrough: true }) res?: Response) {
+    return this.authService.logout(req.user, res);
   }
 
   @Post('refresh')
