@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Query,
-  Param,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -16,135 +7,196 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
 import { Role } from '../auth/types/role.enum';
-import { ReportQueryDto } from './reports.dto';
 import { ReportsService } from './reports.service';
+import { PerformanceReportQuery, AttendanceReportQuery, FinanceReportQuery, ReportQueryDto } from './dto/reports.dto';
 
-@Controller('finance')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
-@RequiresFeature('FINANCE_MANAGEMENT')
+const REPORTS_GUARDS = [JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard];
+const ADMIN_ROLES = [Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER];
+
+@Controller('reports')
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(private readonly reports: ReportsService) {}
 
-  private resolveSchoolId(user: any, requestedSchoolId?: string) {
-    return user?.role === Role.SUPER_ADMIN
-      ? requestedSchoolId || user?.schoolId
-      : user?.schoolId;
+  private resolveSchoolId(user: any, requestedSchoolId?: string): string | undefined {
+    return user?.role === Role.SUPER_ADMIN ? requestedSchoolId || user?.schoolId : user?.schoolId;
   }
 
-  @Get('reports/daily')
-  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
+  // ─── Academic Reports ─────────────────────────────────────────────
+
+  @Get('academic/performance')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
+  @Permissions('reports:read')
+  @RequiresFeature('GRADE_MANAGEMENT')
+  async academicPerformance(@Query() query: PerformanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.academic.getPerformanceReport(query);
+  }
+
+  @Get('academic/exam-results')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.TEACHER)
+  @Permissions('reports:read')
+  @RequiresFeature('EXAM_MANAGEMENT')
+  async examResults(@Query() query: PerformanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.academic.getExamResultsReport(query);
+  }
+
+  @Get('academic/assessment-scores')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.TEACHER)
+  @Permissions('reports:read')
+  @RequiresFeature('GRADE_MANAGEMENT')
+  async assessmentScores(@Query() query: PerformanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.academic.getAssessmentScoresReport(query);
+  }
+
+  @Get('academic/report-cards')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.TEACHER)
+  @Permissions('reports:read')
+  @RequiresFeature('REPORT_CARDS')
+  async reportCards(@Query() query: PerformanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.academic.getReportCardsReport(query);
+  }
+
+  // ─── Attendance Reports ───────────────────────────────────────────
+
+  @Get('attendance/summary')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.TEACHER)
+  @Permissions('reports:read')
+  @RequiresFeature('ATTENDANCE_TRACKING')
+  async attendanceSummary(@Query() query: AttendanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.attendance.getAttendanceSummary(query);
+  }
+
+  @Get('attendance/trends')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES)
+  @Permissions('reports:read')
+  @RequiresFeature('ATTENDANCE_TRACKING')
+  async attendanceTrends(@Query() query: AttendanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.attendance.getAttendanceTrends(query);
+  }
+
+  // ─── Student Reports ──────────────────────────────────────────────
+
+  @Get('student/demographics')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.REGISTRAR)
+  @Permissions('reports:read')
+  @RequiresFeature('USER_MANAGEMENT')
+  async studentDemographics(@Query() query: ReportQueryDto, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.student.getDemographicsReport(query);
+  }
+
+  @Get('student/enrollment-trends')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.REGISTRAR)
+  @Permissions('reports:read')
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
+  async enrollmentTrends(@Query() query: ReportQueryDto, @Request() req: any) {
+    const schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.student.getEnrollmentTrends({ ...query, schoolId });
+  }
+
+  @Get('student/:id')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES, Role.TEACHER, Role.REGISTRAR)
+  @Permissions('reports:read')
+  async studentDetail(@Param('id') id: string, @Request() req: any) {
+    return this.reports.student.getStudentDetail(id);
+  }
+
+  // ─── Teacher Reports ──────────────────────────────────────────────
+
+  @Get('teacher/performance')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES)
+  @Permissions('reports:read')
+  @RequiresFeature('GRADE_MANAGEMENT')
+  async teacherPerformance(@Query() query: ReportQueryDto, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.teacher.getTeacherPerformanceReport(query);
+  }
+
+  @Get('teacher/leaderboard')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES)
+  @Permissions('reports:read')
+  @RequiresFeature('ADVANCED_ANALYTICS')
+  async teacherLeaderboard(@Query('schoolId') schoolId: string, @Request() req: any) {
+    return this.reports.teacher.getTeacherLeaderboard(this.resolveSchoolId(req.user, schoolId) as string);
+  }
+
+  // ─── Discipline Reports ──────────────────────────────────────────
+
+  @Get('discipline/incidents')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES)
+  @Permissions('reports:read')
+  @RequiresFeature('DISCIPLINE_MANAGEMENT')
+  async disciplineIncidents(@Query() query: ReportQueryDto, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.discipline.getDisciplineReport(query);
+  }
+
+  @Get('discipline/trends')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(...ADMIN_ROLES)
+  @Permissions('reports:read')
+  @RequiresFeature('DISCIPLINE_MANAGEMENT')
+  async disciplineTrends(@Query() query: ReportQueryDto, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.discipline.getDisciplineTrends(query);
+  }
+
+  // ─── Finance Reports ─────────────────────────────────────────────
+
+  @Get('finance/daily')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(Role.FINANCE, ...ADMIN_ROLES)
   @Permissions('finance:reports:read')
-  async dailyReport(@Query() query: ReportQueryDto, @Request() req: any) {
-    const result = await this.reportsService.dailyCollectionReport({
-      ...query,
-      schoolId: this.resolveSchoolId(req.user, query.schoolId),
-    });
-    return { success: true, ...result };
+  @RequiresFeature('FINANCE_MANAGEMENT')
+  async dailyFinance(@Query() query: FinanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.finance.getDailyCollection(query);
   }
 
-  @Get('reports/monthly')
-  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
+  @Get('finance/monthly')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(Role.FINANCE, ...ADMIN_ROLES)
   @Permissions('finance:reports:read')
-  async monthlyReport(
-    @Query('schoolId') schoolId: string,
-    @Query('month') month: string,
-    @Query('year') year: string,
-    @Request() req: any,
-  ) {
-    const result = await this.reportsService.monthlyRevenueReport(
-      this.resolveSchoolId(req.user, schoolId),
-      Number(month),
-      Number(year),
-    );
-    return { success: true, ...result };
+  @RequiresFeature('FINANCE_MANAGEMENT')
+  async monthlyFinance(@Query() query: FinanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.finance.getMonthlyRevenue(query);
   }
 
-  @Get('reports/outstanding')
-  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
+  @Get('finance/outstanding')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(Role.FINANCE, ...ADMIN_ROLES)
   @Permissions('finance:reports:read')
-  async outstanding(
-    @Query('schoolId') schoolId: string,
-    @Query('academicYearId') academicYearId: string,
-    @Query('termId') termId?: string,
-    @Query('calendarType') calendarType?: 'ETHIOPIAN' | 'GREGORIAN',
-    @Request() req?: any,
-  ) {
-    const result = await this.reportsService.outstandingBalancesReport(
-      this.resolveSchoolId(req?.user, schoolId),
-      academicYearId,
-      termId,
-      calendarType,
-    );
-    return { success: true, ...result };
+  @RequiresFeature('FINANCE_MANAGEMENT')
+  async outstandingFinance(@Query() query: FinanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.finance.getOutstandingBalances(query);
   }
 
-  @Post('fees/mark-overdue')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
-  @Permissions('finance:student_fees:generate')
-  async markOverdue(
-    @Body() body: { schoolId: string; academicYearId: string; termId?: string },
-    @Request() req: any,
-  ) {
-    const result = await this.reportsService.markOverdueFees(
-      this.resolveSchoolId(req.user, body.schoolId),
-      body.academicYearId,
-      body.termId,
-    );
-    return { success: true, ...result };
-  }
-
-  @Get('reports/overdue')
-  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
+  @Get('finance/overdue')
+  @UseGuards(...REPORTS_GUARDS)
+  @Roles(Role.FINANCE, ...ADMIN_ROLES)
   @Permissions('finance:reports:read')
-  async overdueReport(
-    @Query('schoolId') schoolId: string,
-    @Query('academicYearId') academicYearId: string,
-    @Query('termId') termId?: string,
-    @Request() req?: any,
-  ) {
-    const result = await this.reportsService.getOverdueFeesReport(
-      this.resolveSchoolId(req?.user, schoolId),
-      academicYearId,
-      termId,
-    );
-    return { success: true, ...result };
-  }
-
-  @Get('audit-logs')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
-  @Permissions('finance:reports:read')
-  async auditLogs(
-    @Query('schoolId') schoolId: string,
-    @Query('entityType') entityType?: string,
-    @Query('entityId') entityId?: string,
-    @Query('limit') limit?: number,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Request() req?: any,
-  ) {
-    const result = await this.reportsService.getAuditLogs(
-      this.resolveSchoolId(req?.user, schoolId),
-      entityType,
-      entityId,
-      limit ? Number(limit) : undefined,
-      from,
-      to,
-    );
-    return { success: true, data: result };
-  }
-
-  @Get('reports/student/:studentId/history')
-  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
-  @Permissions('finance:reports:read')
-  async studentHistory(
-    @Param('studentId') studentId: string,
-    @Query('schoolId') schoolId: string,
-    @Request() req?: any,
-  ) {
-    const result = await this.reportsService.paymentHistoryForStudent(
-      this.resolveSchoolId(req?.user, schoolId),
-      studentId,
-    );
-    return { success: true, ...result };
+  @RequiresFeature('FINANCE_MANAGEMENT')
+  async overdueFinance(@Query() query: FinanceReportQuery, @Request() req: any) {
+    query.schoolId = this.resolveSchoolId(req.user, query.schoolId) as string;
+    return this.reports.finance.getOverdueFees(query);
   }
 }

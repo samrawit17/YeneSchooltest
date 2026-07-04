@@ -920,8 +920,7 @@ export class CommunicationService {
       });
 
       if (!parentProfile) {
-        // Return impossible condition that matches no records
-        return { schoolId, id: { notIn: [] } };
+        return { schoolId, id: { in: [] } };
       }
 
       const studentProfileIds = parentProfile.children.map((c) => c.studentId);

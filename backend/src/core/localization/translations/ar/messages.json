@@ -277,7 +277,7 @@
   "school.logo_must_be_less_than_2mb_3224a69c": "Logo must be less than 2MB",
   "school.school_not_found_httpstatus_not_found_83cbabb7": "'School not found', HttpStatus.NOT_FOUND",
   "school_settings.login_image_must_be_less_than_5mb_325631ad": "Login image must be less than 5MB",
-  "school_settings.unsupported_school_setting_a3d6c066": "Unsupported school setting: ${key}",
+  "school_settings.unsupported_school_setting_a3d6c066": "Unsupported school setting: {{key}}",
   "section.capacity_must_be_at_least_1_cc111a99": "Capacity must be at least 1",
   "section.class_not_found_for_this_school_f597ea4b": "Class not found for this school",
   "section.section_not_found_f649d604": "Section not found",

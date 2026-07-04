@@ -74,6 +74,22 @@ export class AuthController {
     return this.authService.logout(res);
   }
 
+  @Post('refresh')
+  @RateLimit({ limit: 10, windowSec: 60 })
+  async refresh(@Request() req, @Res({ passthrough: true }) res?: Response) {
+    const refreshToken = req.cookies?.['Refresh-Token'];
+    if (!refreshToken) {
+      throw new HttpException('No refresh token found', HttpStatus.UNAUTHORIZED);
+    }
+    return this.authService.refreshTokens(refreshToken, res);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('sessions/invalidate')
+  async invalidateSessions(@Request() req) {
+    return this.authService.invalidateSessions(req.user.id);
+  }
+
   // SUPER_ADMIN creates ADMIN
   @Post('register/admin')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)

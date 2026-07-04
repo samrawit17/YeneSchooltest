@@ -59,6 +59,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return null;
     }
 
+    // If the access token includes a tokenVersion, verify it matches DB
+    if (payload.tokenVersion != null && user.tokenVersion !== payload.tokenVersion) {
+      return null;
+    }
+
     // Get role permissions
     const rolePermissions = await this.prismaService.rolePermission.findMany({
       where: { role: user.role },

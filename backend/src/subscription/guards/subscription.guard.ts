@@ -53,6 +53,13 @@ abstract class BaseSubscriptionGuard implements CanActivate {
 
 @Injectable()
 export class SubscriptionGuard extends BaseSubscriptionGuard {
+  constructor(
+    reflector: Reflector,
+    subscriptionService: SubscriptionService,
+  ) {
+    super(reflector, subscriptionService);
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredFeatures = this.reflector.getAllAndOverride<string[]>(
       SUBSCRIPTION_FEATURE_KEY,
@@ -96,6 +103,13 @@ export class SubscriptionGuard extends BaseSubscriptionGuard {
 
 @Injectable()
 export class MinimumTierGuard extends BaseSubscriptionGuard {
+  constructor(
+    reflector: Reflector,
+    subscriptionService: SubscriptionService,
+  ) {
+    super(reflector, subscriptionService);
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredTier = this.reflector.get<string>(
       'minimumTier',

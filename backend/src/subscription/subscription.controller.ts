@@ -10,6 +10,8 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
   Request,
   ForbiddenException,
   BadRequestException,
@@ -19,7 +21,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
-import { PlanTier } from '@prisma/client';
+import { CreatePlanDto } from './dto/create-plan.dto';
+import { UpdatePlanDto } from './dto/update-plan.dto';
+import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { AssignPlanDto } from './dto/assign-plan.dto';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('subscription')
 export class SubscriptionController {
@@ -28,9 +35,9 @@ export class SubscriptionController {
   @Get('plans')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async getAllPlans() {
+  async getAllPlans(@Query() pagination?: PaginationDto) {
     try {
-      return await this.subscriptionService.getAllPlans();
+      return await this.subscriptionService.getAllPlans(pagination);
     } catch (error) {
       throw new HttpException(
         'Failed to get plans: ' + error.message,
@@ -60,15 +67,8 @@ export class SubscriptionController {
   @Post('plans')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async createPlan(
-    @Body()
-    body: {
-      name: string;
-      tier: PlanTier;
-      description?: string;
-      features: string[];
-    },
-  ) {
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createPlan(@Body() body: CreatePlanDto) {
     try {
       return await this.subscriptionService.createPlan(body);
     } catch (error) {
@@ -82,15 +82,10 @@ export class SubscriptionController {
   @Put('plans/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
+  @UsePipes(new ValidationPipe({ transform: true }))
   async updatePlan(
     @Param('id') id: string,
-    @Body()
-    body: {
-      name?: string;
-      description?: string;
-      features?: string[];
-      isActive?: boolean;
-    },
+    @Body() body: UpdatePlanDto,
   ) {
     try {
       const plan = await this.subscriptionService.updatePlan(id, body);
@@ -123,11 +118,12 @@ export class SubscriptionController {
   @Post('assign')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async assignPlanToSchool(@Body() body: { schoolId: string; planId: string | null }) {
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async assignPlanToSchool(@Body() body: AssignPlanDto) {
     try {
       return await this.subscriptionService.assignPlanToSchool(
         body.schoolId,
-        body.planId,
+        body.planId ?? null,
       );
     } catch (error) {
       throw new HttpException(
@@ -171,14 +167,8 @@ export class SubscriptionController {
   @Post('subscription')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async createSubscription(
-    @Body()
-    body: {
-      schoolId: string;
-      planId: string;
-      endDate?: string;
-    },
-  ) {
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createSubscription(@Body() body: CreateSubscriptionDto) {
     try {
       return await this.subscriptionService.createSubscription({
         ...body,
@@ -195,9 +185,10 @@ export class SubscriptionController {
   @Put('subscription/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
+  @UsePipes(new ValidationPipe({ transform: true }))
   async updateSubscription(
     @Param('id') id: string,
-    @Body() body: { status?: string; endDate?: string },
+    @Body() body: UpdateSubscriptionDto,
   ) {
     try {
       return await this.subscriptionService.updateSubscription(id, {
@@ -212,12 +203,33 @@ export class SubscriptionController {
     }
   }
 
+  @Post('subscription/:id/renew')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  async renewSubscription(@Param('id') id: string) {
+    console.log(`[renewSubscription] called with id: ${id}`);
+    try {
+      const result = await this.subscriptionService.renewSubscription(id);
+      console.log(`[renewSubscription] success for id: ${id}`);
+      return result;
+    } catch (error) {
+      console.error(`[renewSubscription] error for id: ${id}`, error.message);
+      throw new HttpException(
+        'Failed to renew subscription: ' + error.message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   @Get('plan/:planId/schools')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async getSchoolsByPlan(@Param('planId') planId: string) {
+  async getSchoolsByPlan(
+    @Param('planId') planId: string,
+    @Query() pagination?: PaginationDto,
+  ) {
     try {
-      return await this.subscriptionService.getSchoolsByPlan(planId);
+      return await this.subscriptionService.getSchoolsByPlan(planId, pagination);
     } catch (error) {
       throw new HttpException(
         'Failed to get schools: ' + error.message,
@@ -229,12 +241,15 @@ export class SubscriptionController {
   @Get('schools')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async getSchoolsWithPlans(@Query('planId') planId?: string) {
+  async getSchoolsWithPlans(
+    @Query('planId') planId?: string,
+    @Query() pagination?: PaginationDto,
+  ) {
     try {
       if (planId) {
-        return await this.subscriptionService.getSchoolsByPlan(planId);
+        return await this.subscriptionService.getSchoolsByPlan(planId, pagination);
       }
-      return await this.subscriptionService.getSchoolsWithPlans();
+      return await this.subscriptionService.getSchoolsWithPlans(pagination);
     } catch (error) {
       throw new HttpException(
         'Failed to get schools: ' + error.message,
