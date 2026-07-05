@@ -8,7 +8,7 @@
  * - Priority-based sync queue
  */
 
-import { db, type CachedStudent, type OfflineAttendance, type SyncQueueItem, type ConflictRecord } from './index';
+import { db, type CachedStudent, type OfflineAttendance, type OfflineMarkEntry, type CachedSetting, type CachedGradeAssignment, type CachedGradingComponent, type CachedGradeEntryData, type SyncQueueItem, type ConflictRecord } from './index';
 import api from '@/lib/api/core';
 
 // ============================================
@@ -375,6 +375,250 @@ class SyncService {
     return this.addToQueue('create', 'announcement', String(payload.localId || Date.now()), payload, 5);
   }
 
+  // ============================================
+  // MARK ENTRY OFFLINE
+  // ============================================
+
+  async saveMarkEntryOffline(data: {
+    studentId: string;
+    examId: string;
+    subjectId: string;
+    academicYearId: string;
+    termId?: string;
+    score: number;
+    totalScore?: number;
+    grade?: string;
+    remarks?: string;
+    recordedBy: string;
+  }): Promise<string> {
+    const localId = `mark_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const now = new Date().toISOString();
+
+    await db.markEntries.add({
+      localId,
+      studentId: data.studentId,
+      examId: data.examId,
+      subjectId: data.subjectId,
+      academicYearId: data.academicYearId,
+      termId: data.termId,
+      score: data.score,
+      totalScore: data.totalScore,
+      grade: data.grade,
+      remarks: data.remarks,
+      recordedBy: data.recordedBy,
+      recordedAt: now,
+      isSynced: false,
+      lastModified: now,
+      deviceId: this.deviceId,
+    });
+
+    await this.addToQueue('create', 'mark_entry', localId, data, 6);
+    return localId;
+  }
+
+  async cacheMarkSession(data: {
+    examId: string;
+    examName: string;
+    subjectId: string;
+    subjectName: string;
+    classId: string;
+    academicYearId: string;
+    termId?: string;
+    totalStudents: number;
+    recordedBy: string;
+  }): Promise<void> {
+    await db.markSessions.put({
+      id: `${data.examId}_${data.subjectId}_${data.classId}`,
+      examId: data.examId,
+      examName: data.examName,
+      subjectId: data.subjectId,
+      subjectName: data.subjectName,
+      classId: data.classId,
+      academicYearId: data.academicYearId,
+      termId: data.termId,
+      totalStudents: data.totalStudents,
+      enteredCount: 0,
+      recordedBy: data.recordedBy,
+      isSynced: true,
+      cachedAt: Date.now(),
+    }, `${data.examId}_${data.subjectId}_${data.classId}`);
+  }
+
+  async getCachedMarkEntries(examId: string, subjectId: string): Promise<OfflineMarkEntry[]> {
+    return db.markEntries
+      .where({ examId, subjectId })
+      .toArray();
+  }
+
+  // ============================================
+  // GRADING DATA CACHE
+  // ============================================
+
+  async cacheTeacherAssignments(assignments: Array<{
+    id: string;
+    academicYearId: string;
+    subjectId: string;
+    subjectName: string;
+    classId: string;
+    className: string;
+    sectionId: string;
+    sectionName: string;
+    type?: string;
+    isHomeroom?: boolean;
+  }>, userId: string): Promise<void> {
+    const now = Date.now();
+    await db.gradeAssignments.bulkPut(
+      assignments.map((a) => ({
+        id: a.id,
+        academicYearId: a.academicYearId,
+        subjectId: a.subjectId,
+        subjectName: a.subjectName,
+        classId: a.classId,
+        className: a.className,
+        sectionId: a.sectionId,
+        sectionName: a.sectionName,
+        type: a.type,
+        isHomeroom: a.isHomeroom,
+        userId,
+        cachedAt: now,
+      }))
+    );
+  }
+
+  async getCachedTeacherAssignments(academicYearId: string, userId: string): Promise<CachedGradeAssignment[]> {
+    return db.gradeAssignments
+      .where({ academicYearId, userId })
+      .toArray();
+  }
+
+  async clearCachedTeacherAssignments(academicYearId: string, userId: string): Promise<void> {
+    await db.gradeAssignments
+      .where({ academicYearId, userId })
+      .delete();
+  }
+
+  async cacheGradingComponents(components: Array<{
+    code: string;
+    name: string;
+    percentage: number;
+  }>, academicYearId?: string): Promise<void> {
+    const now = Date.now();
+    await db.gradeComponents.bulkPut(
+      components.map((c) => ({
+        id: `${c.code}_${academicYearId || 'default'}`,
+        code: c.code,
+        name: c.name,
+        percentage: c.percentage,
+        academicYearId,
+        cachedAt: now,
+      }))
+    );
+  }
+
+  async getCachedGradingComponents(academicYearId?: string): Promise<CachedGradingComponent[]> {
+    if (academicYearId) {
+      return db.gradeComponents
+        .where('academicYearId')
+        .equals(academicYearId)
+        .toArray();
+    }
+    return db.gradeComponents.toArray();
+  }
+
+  async cacheGradeEntryData(data: {
+    academicYearId: string;
+    termId: string;
+    classId: string;
+    sectionId: string;
+    subjectId: string;
+    students: Record<string, unknown>[];
+    componentAvailability: Record<string, unknown>;
+    gradingComponents: { code: string; name: string; percentage: number }[];
+    isTermLocked: boolean;
+    userId: string;
+  }): Promise<void> {
+    const id = `${data.classId}:${data.sectionId}:${data.subjectId}:${data.termId}`;
+    const now = Date.now();
+    await db.gradeEntryData.put({
+      id,
+      academicYearId: data.academicYearId,
+      termId: data.termId,
+      classId: data.classId,
+      sectionId: data.sectionId,
+      subjectId: data.subjectId,
+      students: data.students,
+      componentAvailability: data.componentAvailability,
+      gradingComponents: data.gradingComponents,
+      isTermLocked: data.isTermLocked,
+      userId: data.userId,
+      cachedAt: now,
+      updatedAt: now,
+    }, id);
+  }
+
+  async getCachedGradeEntryData(classId: string, sectionId: string, subjectId: string, termId: string): Promise<CachedGradeEntryData | undefined> {
+    const id = `${classId}:${sectionId}:${subjectId}:${termId}`;
+    return db.gradeEntryData.get(id);
+  }
+
+  async cacheComponentAvailability(availability: Record<string, unknown>, key: {
+    academicYearId: string;
+    termId: string;
+    classId: string;
+    sectionId: string;
+    subjectId: string;
+  }): Promise<void> {
+    const id = `${key.classId}:${key.sectionId}:${key.subjectId}:${key.termId}`;
+    await db.gradeAvailability.put({
+      id,
+      academicYearId: key.academicYearId,
+      termId: key.termId,
+      classId: key.classId,
+      sectionId: key.sectionId,
+      subjectId: key.subjectId,
+      availability,
+      cachedAt: Date.now(),
+    }, id);
+  }
+
+  async getCachedComponentAvailability(classId: string, sectionId: string, subjectId: string, termId: string): Promise<Record<string, unknown> | undefined> {
+    const id = `${classId}:${sectionId}:${subjectId}:${termId}`;
+    const cached = await db.gradeAvailability.get(id);
+    return cached?.availability;
+  }
+
+  // ============================================
+  // SETTINGS OFFLINE
+  // ============================================
+
+  async cacheSetting(key: string, value: unknown, scope: 'school' | 'user' | 'global', scopeId: string): Promise<void> {
+    await db.settings.put({
+      id: `${scope}:${scopeId}:${key}`,
+      key,
+      value,
+      scope,
+      scopeId,
+      cachedAt: Date.now(),
+    }, `${scope}:${scopeId}:${key}`);
+  }
+
+  async getCachedSetting(key: string, scope: 'school' | 'user' | 'global', scopeId: string): Promise<unknown | null> {
+    const setting = await db.settings.get(`${scope}:${scopeId}:${key}`);
+    return setting?.value ?? null;
+  }
+
+  async saveSettingChangeOffline(key: string, value: unknown, scope: 'school' | 'user' | 'global', scopeId: string, changedBy: string): Promise<void> {
+    await this.cacheSetting(key, value, scope, scopeId);
+    await this.addToQueue('update', 'setting', `${scope}:${scopeId}:${key}`, { key, value, scope, scopeId, changedBy }, 8);
+  }
+
+  async getCachedSettingsByScope(scope: 'school' | 'user' | 'global', scopeId: string): Promise<Record<string, unknown>> {
+    const all = await db.settings
+      .where({ scope, scopeId })
+      .toArray();
+    return all.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
+  }
+
   /**
    * Get attendance records pending sync
    */
@@ -515,7 +759,7 @@ class SyncService {
     if (resolution === 'local_wins' || resolution === 'merged') {
       await this.addToQueue(
         'update',
-        conflict.entity as 'attendance' | 'student' | 'grade' | 'enrollment',
+        conflict.entity as 'attendance' | 'student' | 'grade' | 'enrollment' | 'mark_entry' | 'setting' | 'grade_assignment' | 'grade_component' | 'grade_entry',
         conflict.entityId,
         resolvedData,
         10 // High priority for resolved conflicts
@@ -669,6 +913,27 @@ class SyncService {
     if (item.entity === 'announcement') {
       const { localId, userId, ...data } = item.payload;
       await api.post('/announcements', data, {
+        headers,
+        skipAuthErrorRedirect: true,
+      } as any);
+      return;
+    }
+
+    if (item.entity === 'mark_entry') {
+      await api.post('/exams/marks/bulk', { marks: [item.payload] }, {
+        headers,
+        skipAuthErrorRedirect: true,
+      } as any);
+
+      await db.markEntries
+        .where('localId')
+        .equals(item.entityId)
+        .modify({ isSynced: true, syncedAt: new Date().toISOString() });
+      return;
+    }
+
+    if (item.entity === 'setting') {
+      await api.post('/settings', item.payload, {
         headers,
         skipAuthErrorRedirect: true,
       } as any);

@@ -13,6 +13,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Calendar,
   Check,
   X,
   ChevronDown,
@@ -24,6 +25,7 @@ import {
   AlertCircle,
   RefreshCw,
   Save,
+  MoreVertical,
 } from 'lucide-react';
 import {
   Card,
@@ -80,7 +82,7 @@ const SubscriptionPlansPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { plans, loading, error, createPlan, updatePlan, deletePlan, fetchPlans } = usePlans();
-  const [schools, setSchools] = useState<{ id: string; name: string; email: string; plan: { id: string; name: string; tier: string } | null; _count?: { users?: number } }[]>([]);
+  const [schools, setSchools] = useState<{ id: string; name: string; email: string; plan: { id: string; name: string; tier: string } | null; subscription?: { id: string; status: string; endDate: string | null } | null; _count?: { users?: number } }[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(false);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -117,7 +119,8 @@ const SubscriptionPlansPage = () => {
     try {
       setLoadingSchools(true);
       const response = await subscriptionAPI.getSchools();
-      setSchools(response.data);
+      const result = Array.isArray(response.data) ? response.data : response.data?.data;
+      setSchools(Array.isArray(result) ? result : []);
       setDraftChanges({});
     } catch (error) {
       console.error('Failed to fetch schools:', error);
@@ -127,6 +130,20 @@ const SubscriptionPlansPage = () => {
       setSchoolsLoaded(true);
     }
   }, []);
+
+  const [debugInfo, setDebugInfo] = useState<string>('');
+
+  useEffect(() => {
+    if (schools.length > 0) {
+      const info = schools.map((s: any) => {
+        const sub = s.subscription;
+        return `${s.name}: sub=${sub ? `id=${sub.id} status=${sub.status} endDate=${sub.endDate}` : 'NULL'}`;
+      }).join(' | ');
+      setDebugInfo(info);
+    }
+  }, [schools]);
+
+  // TEMP DEBUG: remove this block after confirming subscription data
 
   useEffect(() => {
     if (activeTab === 'schools' && !schoolsLoaded && !loadingSchools) {
@@ -160,7 +177,7 @@ const SubscriptionPlansPage = () => {
   };
 
   const getSchoolsCountForPlan = (planId: string) => {
-    const plan = plans.find((item) => item.id === planId);
+    const plan = (plans || []).find((item) => item.id === planId);
     if (!schoolsLoaded) {
       return plan?.assignedSchoolsCount || 0;
     }
@@ -428,7 +445,7 @@ const SubscriptionPlansPage = () => {
 
           <TabsContent value="plans" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {plans.length === 0 ? (
+              {(!plans || plans.length === 0) ? (
                 <Card className="col-span-full dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                   <CardContent className="py-12 text-center">
                     <Shield className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
@@ -561,6 +578,11 @@ const SubscriptionPlansPage = () => {
           </TabsContent>
 
           <TabsContent value="schools" className="mt-0">
+            {debugInfo && (
+              <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                {debugInfo}
+              </div>
+            )}
             <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -621,6 +643,12 @@ const SubscriptionPlansPage = () => {
                       const originalId = schoolPlan?.id || 'none';
                       const draftId = draftChanges[school.id] ?? originalId;
                       const isDirty = draftId !== originalId;
+                      const isExpired = school.subscription?.endDate
+                        ? new Date(school.subscription.endDate) < new Date()
+                        : false;
+                      const isExpiringSoon = school.subscription?.endDate
+                        ? !isExpired && new Date(school.subscription.endDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                        : false;
                       return (
                         <div
                           key={school.id}
@@ -628,16 +656,51 @@ const SubscriptionPlansPage = () => {
                             isDirty ? 'dark:bg-yellow-900/10 bg-yellow-50/50' : 'dark:bg-[#2A2A2A]/50'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                               <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <div>
-                              <p className="font-medium dark:text-white">{school.name}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{school.email}</p>
+                            <div className="min-w-0">
+                              <p className="font-medium dark:text-white truncate">{school.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{school.email}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 shrink-0">
+                            {school.subscription && (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  school.subscription.status === 'ACTIVE'
+                                    ? 'bg-green-100 text-green-800 border-green-200'
+                                    : school.subscription.status === 'EXPIRED'
+                                    ? 'bg-red-100 text-red-800 border-red-200'
+                                    : school.subscription.status === 'CANCELLED'
+                                    ? 'bg-gray-100 text-gray-800 border-gray-200'
+                                    : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                }
+                              >
+                                {school.subscription.status}
+                              </Badge>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={`gap-1 whitespace-nowrap ${
+                                !school.subscription?.endDate
+                                  ? 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-500 dark:border-gray-700'
+                                  : isExpired
+                                  ? 'bg-red-100 text-red-800 border-red-200'
+                                  : isExpiringSoon
+                                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400 dark:border-gray-700'
+                              }`}
+                            >
+                              <Calendar className="w-3 h-3" />
+                              {school.subscription?.endDate
+                                ? new Date(school.subscription.endDate).toLocaleDateString()
+                                : 'No expiry'}
+                              {isExpired && ' (Expired)'}
+                              {isExpiringSoon && ' (Soon)'}
+                            </Badge>
                             {schoolPlan ? (
                               <Badge
                                 variant="outline"
@@ -677,7 +740,7 @@ const SubscriptionPlansPage = () => {
                                 });
                               }}
                             >
-                              <SelectTrigger className={`w-40 ${isDirty ? 'border-yellow-400 dark:border-yellow-600' : ''}`}>
+                              <SelectTrigger className={`w-36 ${isDirty ? 'border-yellow-400 dark:border-yellow-600' : ''}`}>
                                 <SelectValue placeholder="Assign Plan" />
                               </SelectTrigger>
                               <SelectContent>
@@ -689,6 +752,32 @@ const SubscriptionPlansPage = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {school.subscription && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
+                                  <DropdownMenuItem
+                                    onClick={async () => {
+                                      try {
+                                        await subscriptionAPI.renewSubscription(school.subscription!.id);
+                                        toast.success('Subscription renewed for another year');
+                                        await fetchSchools();
+                                      } catch (error: any) {
+                                        toast.error(error.response?.data?.message || 'Failed to renew');
+                                      }
+                                    }}
+                                    className="gap-2 dark:text-gray-200"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Renew (1 year)
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         </div>
                       );

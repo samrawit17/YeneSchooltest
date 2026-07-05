@@ -6,7 +6,7 @@ export type AppLanguage = 'am' | 'ar' | 'en' | 'om' | 'so';
 interface LanguageState {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
-  initializeLanguage: () => void;
+  initializeLanguage: (serverLanguage?: AppLanguage) => void;
 }
 
 const isClient = typeof window !== 'undefined';
@@ -86,9 +86,12 @@ export const useLanguageStore = create<LanguageState>()(
         applyDocumentLanguage(language);
       },
 
-      initializeLanguage: () => {
-        const language = readStoredLanguage();
+      initializeLanguage: (serverLanguage?: AppLanguage) => {
+        const language = serverLanguage ?? readStoredLanguage();
         set({ language });
+        if (isClient) {
+          localStorage.setItem(getScopedLanguageKey(), JSON.stringify({ language }));
+        }
         applyDocumentLanguage(language);
       },
     }),

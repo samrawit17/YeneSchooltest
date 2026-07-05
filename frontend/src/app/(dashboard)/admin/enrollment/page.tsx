@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -246,42 +247,48 @@ export default function AdminEnrollmentPage() {
 
   const formatEnrollmentDate = (dateString: string) => formatSchoolDate(dateString);
 
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] p-6">
-      <div className="w-full space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Enrollment Management</h1>
-            <p className="text-gray-500">Manage student enrollment requests</p>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111] transition-colors">
+      <div className="p-4 md:p-6">
+        <div className="w-full space-y-6">
+          {/* Top Section - Title and Buttons */}
+          <div className="flex flex-row flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">Enrollment Management</h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Manage student enrollment requests
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]"
+                onClick={() => void loadData()}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
-          <Button onClick={() => void loadData()} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
 
-
-
-        {/* Requests Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <CardTitle>
-                <span>Enrollment Requests</span>
-              </CardTitle>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
+          {/* Filters Section */}
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-row flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[160px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                    className="pl-9 h-8 w-[350px]"
+                    className="pl-9 h-10 w-full bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A]"
                   />
                 </div>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="h-8 w-[150px]">
+                  <SelectTrigger className="h-10 w-[180px] bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A]">
                     <SelectValue placeholder="Academic Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -293,7 +300,7 @@ export default function AdminEnrollmentPage() {
                   </SelectContent>
                 </Select>
                 <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="h-8 w-[130px]">
+                  <SelectTrigger className="h-10 w-[140px] bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -305,7 +312,7 @@ export default function AdminEnrollmentPage() {
                   </SelectContent>
                 </Select>
                 <Select value={selectedGrade} onValueChange={(v) => { setSelectedGrade(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="h-8 w-[130px]">
+                  <SelectTrigger className="h-10 w-[140px] bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A]">
                     <SelectValue placeholder="Grade" />
                   </SelectTrigger>
                   <SelectContent>
@@ -316,108 +323,142 @@ export default function AdminEnrollmentPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
+            </CardContent>
+          </Card>
+
+          {/* Main Data Table */}
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
-              </div>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-5 flex-1" />
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
             ) : requests.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No enrollment requests found
-              </div>
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    No enrollment requests found
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {searchTerm ? `No results matching "${searchTerm}"` : 'There are no enrollment requests to display.'}
+                  </p>
+                </div>
+              </CardContent>
             ) : (
               <>
-                <Table className="w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead>Parent</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {request.firstName} {request.middleName} {request.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {request.email || request.phone}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Grade {request.requestedGrade}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {request.parentFirstName} {request.parentLastName}
-                            </p>
-                            <p className="text-sm text-gray-500">{request.parentPhone}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusConfig[request.status]?.color}>
-                            {statusConfig[request.status]?.icon}
-                            <span className="ml-1">{statusConfig[request.status]?.label}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {formatEnrollmentDate(request.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreVertical className="w-4 h-4 text-gray-900 dark:text-white" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewDetails(request)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              {canApproveOrReject(request.status) && (
-                                <>
-                                  <DropdownMenuItem onClick={() => openApproveDialog(request)}>
-                                    <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openRejectDialog(request)}>
-                                    <XCircle className="w-4 h-4 mr-2 text-red-500" />
-                                    Reject
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader className="bg-gray-50 dark:bg-[#111111]/50 sticky top-0">
+                      <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student</TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Grade</TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent</TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Date</TableHead>
+                        <TableHead className="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {totalItems > pageSize && (
-                  <div className="mt-4">
-                    <Pagination
-                      page={currentPage}
-                      setPage={setCurrentPage}
-                      totalPages={totalPages}
-                    />
-                  </div>
-                )}
+                    </TableHeader>
+                    <TableBody>
+                      {requests.map((request) => (
+                        <TableRow
+                          key={request.id}
+                          className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/30 transition-colors"
+                        >
+                          <TableCell className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {request.firstName} {request.middleName} {request.lastName}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {request.email || request.phone}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            Grade {request.requestedGrade}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {request.parentFirstName} {request.parentLastName}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{request.parentPhone}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[request.status]?.color}`}>
+                              {statusConfig[request.status]?.icon}
+                              {statusConfig[request.status]?.label}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {formatEnrollmentDate(request.createdAt)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreVertical className="w-4 h-4 text-gray-900 dark:text-white" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewDetails(request)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                {canApproveOrReject(request.status) && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => openApproveDialog(request)}>
+                                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openRejectDialog(request)}>
+                                      <XCircle className="w-4 h-4 mr-2 text-red-500" />
+                                      Reject
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </Card>
+
+          {/* Bottom - Pagination */}
+          {requests.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {searchTerm
+                  ? `Showing ${startItem}-${Math.min(endItem, totalItems)} of ${totalItems} results for "${searchTerm}"`
+                  : `Showing ${startItem}-${endItem} of ${totalItems}`}
+              </p>
+              <Pagination
+                page={currentPage}
+                setPage={setCurrentPage}
+                totalPages={totalPages}
+                className="flex-wrap"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* View Details Dialog */}

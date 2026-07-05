@@ -1,4 +1,13 @@
+export type SubscriptionStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+
 export type PlanTier = 'CORE' | 'STANDARD' | 'ULTIMATE';
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  skip: number;
+  take: number;
+}
 
 export interface Plan {
   id: string;

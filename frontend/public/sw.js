@@ -2,7 +2,6 @@ const CACHE_NAME = 'sms-cache-v1';
 const STATIC_ASSETS = [
   '/',
   '/sign-in',
-  '/offline',
   '/manifest.json',
 ];
 
@@ -57,7 +56,7 @@ self.addEventListener('fetch', function (event) {
         return fetchResponse;
       }).catch(function () {
         if (event.request.mode === 'navigate') {
-          return caches.match('/offline');
+          return caches.match('/');
         }
         return new Response('Offline', { status: 503 });
       });

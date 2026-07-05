@@ -229,7 +229,6 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "superadmin-admins": { label: "School Admins", href: "/superadmin/admins", parent: "superadmin" },
   "superadmin-subscription": { label: "Subscriptions", href: "/superadmin/subscription", parent: "superadmin" },
   "superadmin-subscription-plans": { label: "Plans", href: "/superadmin/subscription/plans", parent: "superadmin-subscription" },
-  "superadmin-subscription-schools": { label: "Schools", href: "/superadmin/subscription/schools", parent: "superadmin-subscription" },
 };
 
 // ============================================

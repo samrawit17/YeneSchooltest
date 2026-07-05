@@ -52,6 +52,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
   const [scheduleDateValue, setScheduleDateValue] = useState<Date | undefined>(new Date());
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [endDateValue, setEndDateValue] = useState<Date | undefined>(undefined);
+  const [isPinned, setIsPinned] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateAnnouncementDto) => announcementsAPI.create(data),
@@ -103,6 +104,10 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
       location: formData.location || undefined,
       academicYearId: formData.academicYearId || undefined,
     };
+
+    if (isPinned) {
+      submitData.isPinned = true;
+    }
     
     // Only include endDate if it has a value
     if (endDateValue) {
@@ -221,6 +226,16 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
             <Switch
               checked={!!formData.isPublic}
               onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-gray-50 p-3 dark:bg-gray-800 dark:border-gray-600">
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">Pin announcement</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Show this announcement at top of the list.</p>
+            </div>
+            <Switch
+              checked={isPinned}
+              onCheckedChange={setIsPinned}
             />
           </div>
         </div>

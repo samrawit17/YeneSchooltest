@@ -42,6 +42,61 @@ export interface CachedTimetable {
   cachedAt: number;
 }
 
+/** Cached teacher assignment for offline grading */
+export interface CachedGradeAssignment {
+  id: string;
+  academicYearId: string;
+  subjectId: string;
+  subjectName: string;
+  classId: string;
+  className: string;
+  sectionId: string;
+  sectionName: string;
+  type?: string;
+  isHomeroom?: boolean;
+  userId: string;
+  cachedAt: number;
+}
+
+/** Cached grading component for offline access */
+export interface CachedGradingComponent {
+  id: string;
+  code: string;
+  name: string;
+  percentage: number;
+  academicYearId?: string;
+  cachedAt: number;
+}
+
+/** Cached grade entry data (students with scores per class-subject-section) */
+export interface CachedGradeEntryData {
+  id: string;
+  academicYearId: string;
+  termId: string;
+  classId: string;
+  sectionId: string;
+  subjectId: string;
+  students: Record<string, unknown>[];
+  componentAvailability: Record<string, unknown>;
+  gradingComponents: { code: string; name: string; percentage: number }[];
+  isTermLocked: boolean;
+  userId: string;
+  cachedAt: number;
+  updatedAt: number;
+}
+
+/** Cached component availability window */
+export interface CachedComponentAvailability {
+  id: string;
+  academicYearId: string;
+  termId: string;
+  classId: string;
+  sectionId: string;
+  subjectId: string;
+  availability: Record<string, unknown>;
+  cachedAt: number;
+}
+
 /** Offline attendance record */
 export interface OfflineAttendance {
   id?: number;
@@ -95,11 +150,59 @@ export interface FormDraft {
   lastSection?: string;
 }
 
+/** Offline mark entry (assessment grade) */
+export interface OfflineMarkEntry {
+  id?: number;
+  localId: string;
+  studentId: string;
+  examId: string;
+  subjectId: string;
+  academicYearId: string;
+  termId?: string;
+  score: number;
+  totalScore?: number;
+  grade?: string;
+  remarks?: string;
+  recordedBy: string;
+  recordedAt: string;
+  isSynced: boolean;
+  syncedAt?: string;
+  lastModified: string;
+  deviceId?: string;
+}
+
+/** Offline mark entry session */
+export interface OfflineMarkSession {
+  id: string;
+  examId: string;
+  examName: string;
+  subjectId: string;
+  subjectName: string;
+  classId: string;
+  academicYearId: string;
+  termId?: string;
+  totalStudents: number;
+  enteredCount: number;
+  recordedBy: string;
+  isSynced: boolean;
+  cachedAt: number;
+}
+
+/** Cached school/user setting */
+export interface CachedSetting {
+  id: string;
+  key: string;
+  value: unknown;
+  scope: 'school' | 'user' | 'global';
+  scopeId: string;
+  cachedAt: number;
+}
+
 /** Sync queue item */
 export interface SyncQueueItem {
   id?: number;
   operation: 'create' | 'update' | 'delete';
-  entity: 'attendance' | 'student' | 'grade' | 'enrollment' | 'message' | 'conversation' | 'announcement';
+  entity: 'attendance' | 'student' | 'grade' | 'mark_entry' | 'enrollment' | 'message' | 'conversation' | 'announcement' | 'setting' | 'grade_assignment' | 'grade_component' | 'grade_entry';
   entityId: string;
   payload: Record<string, unknown>;
   priority: number;
@@ -159,6 +262,13 @@ export class SMSDatabase extends Dexie {
   syncQueue!: Table<SyncQueueItem, number>;
   syncMetadata!: Table<SyncMetadata, number>;
   conflicts!: Table<ConflictRecord, number>;
+  markEntries!: Table<OfflineMarkEntry, number>;
+  markSessions!: Table<OfflineMarkSession, string>;
+  settings!: Table<CachedSetting, string>;
+  gradeAssignments!: Table<CachedGradeAssignment, string>;
+  gradeComponents!: Table<CachedGradingComponent, string>;
+  gradeEntryData!: Table<CachedGradeEntryData, string>;
+  gradeAvailability!: Table<CachedComponentAvailability, string>;
 
   constructor() {
     super('SMSDatabase');
@@ -175,11 +285,20 @@ export class SMSDatabase extends Dexie {
 
     this.version(2).stores({
       timetables: 'id, ownerType, ownerId, cachedAt',
-    }).upgrade(async () => {
-      // v2 adds timetables table — existing v1 tables are unchanged,
-      // so no data migration is needed. The upgrade handler prevents
-      // Dexie from silently clearing the database on schema version bump.
-    });
+    }).upgrade(async () => { });
+
+    this.version(3).stores({
+      markEntries: '++id, localId, studentId, examId, subjectId, isSynced, lastModified',
+      markSessions: 'id, examId, classId, isSynced, cachedAt',
+      settings: 'id, key, scope, scopeId, cachedAt',
+    }).upgrade(async () => { });
+
+    this.version(4).stores({
+      gradeAssignments: 'id, academicYearId, userId, classId, subjectId, cachedAt',
+      gradeComponents: 'id, code, academicYearId, cachedAt',
+      gradeEntryData: 'id, academicYearId, termId, classId, sectionId, subjectId, userId, cachedAt',
+      gradeAvailability: 'id, academicYearId, termId, classId, subjectId, cachedAt',
+    }).upgrade(async () => { });
   }
 }
 
@@ -206,6 +325,13 @@ export async function clearDatabase(): Promise<void> {
     db.syncQueue.clear(),
     db.syncMetadata.clear(),
     db.conflicts.clear(),
+    db.markEntries.clear(),
+    db.markSessions.clear(),
+    db.settings.clear(),
+    db.gradeAssignments.clear(),
+    db.gradeComponents.clear(),
+    db.gradeEntryData.clear(),
+    db.gradeAvailability.clear(),
   ]);
 }
 
@@ -227,18 +353,25 @@ export async function getDatabaseSize(): Promise<{ usage: number; quota: number 
  * Export database for backup
  */
 export async function exportDatabase(): Promise<Record<string, unknown>> {
-  const [students, timetables, attendance, sessions, drafts, syncQueue, conflicts] = await Promise.all([
+  const [students, timetables, attendance, sessions, drafts, syncQueue, conflicts, markEntries, markSessions, settings, gradeAssignments, gradeComponents, gradeEntryData, gradeAvailability] = await Promise.all([
     db.students.toArray(),
     db.timetables.toArray(),
     db.attendance.toArray(),
     db.attendanceSessions.toArray(),
     db.formDrafts.toArray(),
     db.syncQueue.toArray(),
-    db.conflicts.toArray()
+    db.conflicts.toArray(),
+    db.markEntries.toArray(),
+    db.markSessions.toArray(),
+    db.settings.toArray(),
+    db.gradeAssignments.toArray(),
+    db.gradeComponents.toArray(),
+    db.gradeEntryData.toArray(),
+    db.gradeAvailability.toArray(),
   ]);
 
   return {
-    version: 1,
+    version: 4,
     exportedAt: new Date().toISOString(),
     data: {
       students,
@@ -247,7 +380,14 @@ export async function exportDatabase(): Promise<Record<string, unknown>> {
       attendanceSessions: sessions,
       formDrafts: drafts,
       syncQueue,
-      conflicts
+      conflicts,
+      markEntries,
+      markSessions,
+      settings,
+      gradeAssignments,
+      gradeComponents,
+      gradeEntryData,
+      gradeAvailability,
     }
   };
 }
@@ -263,7 +403,7 @@ export async function importDatabase(backup: Record<string, unknown>): Promise<v
   const data = backup.data as Record<string, unknown[]>;
   
   // Validate table names
-  const validTables = ['students', 'timetables', 'attendance', 'attendanceSessions', 'formDrafts', 'syncQueue', 'conflicts'];
+  const validTables = ['students', 'timetables', 'attendance', 'attendanceSessions', 'formDrafts', 'syncQueue', 'conflicts', 'markEntries', 'markSessions', 'settings', 'gradeAssignments', 'gradeComponents', 'gradeEntryData', 'gradeAvailability'];
   for (const key of Object.keys(data)) {
     if (!validTables.includes(key)) {
       throw new Error(`Unknown table in backup: "${key}"`);
@@ -288,6 +428,13 @@ export async function importDatabase(backup: Record<string, unknown>): Promise<v
   if (data.formDrafts) imports.push(db.formDrafts.bulkAdd(data.formDrafts as FormDraft[]));
   if (data.syncQueue) imports.push(db.syncQueue.bulkAdd(data.syncQueue as SyncQueueItem[]));
   if (data.conflicts) imports.push(db.conflicts.bulkAdd(data.conflicts as ConflictRecord[]));
+  if (data.markEntries) imports.push(db.markEntries.bulkAdd(data.markEntries as OfflineMarkEntry[]));
+  if (data.markSessions) imports.push(db.markSessions.bulkAdd(data.markSessions as OfflineMarkSession[]));
+  if (data.settings) imports.push(db.settings.bulkAdd(data.settings as CachedSetting[]));
+  if (data.gradeAssignments) imports.push(db.gradeAssignments.bulkAdd(data.gradeAssignments as CachedGradeAssignment[]));
+  if (data.gradeComponents) imports.push(db.gradeComponents.bulkAdd(data.gradeComponents as CachedGradingComponent[]));
+  if (data.gradeEntryData) imports.push(db.gradeEntryData.bulkAdd(data.gradeEntryData as CachedGradeEntryData[]));
+  if (data.gradeAvailability) imports.push(db.gradeAvailability.bulkAdd(data.gradeAvailability as CachedComponentAvailability[]));
   await Promise.all(imports);
 }
 

@@ -9,6 +9,7 @@ import {
   UpdatePlanInput,
   AssignPlanInput,
   PlanTier,
+  PaginatedResponse,
 } from '@/types/subscription';
 
 const isCanceledRequest = (err: any) =>
@@ -26,7 +27,8 @@ export const usePlans = () => {
       setLoading(true);
       setError(null);
       const response = await subscriptionAPI.getAllPlans({ signal: options?.signal });
-      setPlans(response.data);
+      const result = Array.isArray(response.data) ? response.data : response.data?.data;
+      setPlans(Array.isArray(result) ? result : []);
     } catch (err: any) {
       if (isCanceledRequest(err)) return;
       const message = err.response?.data?.message || 'Failed to fetch plans';
@@ -110,7 +112,8 @@ export const useSchoolPlans = () => {
       setLoading(true);
       setError(null);
       const response = await subscriptionAPI.getSchools(planId, { signal: options?.signal });
-      setSchools(response.data);
+      const result = Array.isArray(response.data) ? response.data : response.data?.data;
+      setSchools(Array.isArray(result) ? result : []);
     } catch (err: any) {
       if (isCanceledRequest(err)) return;
       const message = err.response?.data?.message || 'Failed to fetch schools';
@@ -195,9 +198,26 @@ export const useSubscription = () => {
     }
   };
 
+  const renewSubscription = async (subscriptionId: string): Promise<Subscription | null> => {
+    try {
+      setLoading(true);
+      const response = await subscriptionAPI.renewSubscription(subscriptionId);
+      setSubscription(response.data);
+      toast.success('Subscription renewed for another year');
+      return response.data;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Failed to renew subscription';
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     subscription,
     loading,
     getSubscription,
+    renewSubscription,
   };
 };

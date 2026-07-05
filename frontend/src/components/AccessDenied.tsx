@@ -41,8 +41,8 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       redirectTo = `/sign-in?schoolId=${encodeURIComponent(currentUser.schoolId)}`;
     }
     sessionStorage.setItem('postLogoutRedirect', redirectTo);
-    logout();
-    router.push(redirectTo);
+    await logout();
+    window.location.href = redirectTo + (redirectTo.includes('?') ? '&' : '?') + 't=' + Date.now();
   };
   const [mounted, setMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);

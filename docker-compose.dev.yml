@@ -96,7 +96,7 @@ services:
       start_period: 180s
     user: root
     entrypoint: /app/docker-entrypoint.sh
-    command: npm run start:prod
+    command: npm run start:dev
     networks:
       - sms_network
 
@@ -114,10 +114,10 @@ services:
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_API_URL: http://localhost:8001
+      BACKEND_URL: http://backend:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
-      - /app/node_modules
       - /app/.next
     ports:
       - "8000:8000"
@@ -130,11 +130,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-    command:
-      - sh
-      - -lc
-      - npm run dev -- --hostname 0.0.0.0
-      - npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && npm install --no-save @next/swc-linux-arm64-gnu@14.2.5 --no-audit --loglevel=error && npm run dev -- --hostname 0.0.0.0
+    command: sh -c "npm run dev -- --hostname 0.0.0.0"
     networks:
       - sms_network
 
@@ -164,6 +160,7 @@ networks:
 # Docker Volumes
 volumes:
   postgres_data_dev:
-    driver: local
+    external: true
+    name: sms_postgres_data
   redis_data_dev:
     driver: local

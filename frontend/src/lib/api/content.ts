@@ -1,6 +1,13 @@
 import api from "./core";
 import type { AxiosRequestConfig } from "axios";
 
+export interface AnnouncementAttachment {
+  name: string;
+  url: string;
+  mimeType: string;
+  size: number;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -10,6 +17,10 @@ export interface Announcement {
   startDate: string;
   endDate: string | null;
   priority: "HIGH" | "MEDIUM" | "LOW";
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  attachments?: string | null; // JSON string from server
+  location?: string | null;
   createdById: string;
   createdBy?: { id: string; name: string; email: string };
   school?: { id: string; name: string };
@@ -29,6 +40,7 @@ export interface CreateAnnouncementDto {
   priority?: "HIGH" | "MEDIUM" | "LOW";
   location?: string;
   academicYearId?: string;
+  isPinned?: boolean;
 }
 
 export interface UpdateAnnouncementDto {
@@ -41,6 +53,7 @@ export interface UpdateAnnouncementDto {
   priority?: "HIGH" | "MEDIUM" | "LOW";
   location?: string;
   academicYearId?: string;
+  isPinned?: boolean;
 }
 
 export const announcementsAPI = {
@@ -69,6 +82,17 @@ export const announcementsAPI = {
   update: (id: string, data: UpdateAnnouncementDto) =>
     api.put<Announcement>(`/announcements/${id}`, data),
   delete: (id: string) => api.delete(`/announcements/${id}`),
+  togglePin: (id: string, pinned: boolean) =>
+    api.put<Announcement>(`/announcements/${id}`, { isPinned: pinned }),
+  attachFile: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<Announcement>(`/announcements/${id}/attach`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  removeAttachment: (id: string, attachmentIndex: number) =>
+    api.delete(`/announcements/${id}/attach/${attachmentIndex}`),
 };
 
 export interface Event {

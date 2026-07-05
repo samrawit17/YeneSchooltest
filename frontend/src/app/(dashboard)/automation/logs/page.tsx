@@ -21,13 +21,13 @@ const EVENT_LABELS: Record<string, string> = {
 
 export default function AutomationLogsPage() {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ["automation-logs", statusFilter, page],
     queryFn: async () =>
-      (await automationAPI.getLogs({ status: statusFilter || undefined, page, limit: 30 })).data,
+      (await automationAPI.getLogs({ status: statusFilter === "all" ? undefined : statusFilter, page, limit: 30 })).data,
   });
 
   const logs = data?.data || [];
@@ -50,7 +50,7 @@ export default function AutomationLogsPage() {
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All statuses</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="success">Success</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
