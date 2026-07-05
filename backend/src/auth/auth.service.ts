@@ -1,5 +1,6 @@
 import { HttpStatus,
   Injectable,
+  Logger,
   BadRequestException,
   ForbiddenException,
   NotFoundException,
@@ -24,6 +25,7 @@ import {
   IT_MANAGER_FORBIDDEN_PERMISSIONS,
 } from './constants/default-permissions.constant';
 import { StorageService } from '../storage/storage.service';
+import { v4 as uuidv4 } from 'uuid';
 
 // Cookie name constant
 export const JWT_COOKIE_NAME = 'Authentication';
@@ -47,6 +49,8 @@ const shouldUseSecureCookies = () => {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prismaService: PrismaService,
     private jwtService: JwtService,
@@ -325,21 +329,28 @@ export class AuthService {
   }
 
   async login(user: any, @Res({ passthrough: true }) res?: Response) {
-    // Fetch current tokenVersion for access token
     const dbUser = await this.prismaService.user.findUnique({
       where: { id: user.id },
       select: { tokenVersion: true },
     });
-    const tokenVersion = dbUser?.tokenVersion ?? (user.tokenVersion ?? 1);
+    const globalTokenVersion = dbUser?.tokenVersion ?? (user.tokenVersion ?? 1);
 
-    const payload = { email: user.email, sub: user.id, role: user.role, tokenVersion };
-    const token = this.jwtService.sign(payload, { expiresIn: '15m' }); // Short-lived access token
+    const sessionId = uuidv4();
 
-    // Create refresh token with tokenVersion
-    const refreshPayload = { sub: user.id, tokenVersion };
+    const dbSession = await this.prismaService.userSession.create({
+      data: {
+        userId: user.id,
+        sessionId,
+        tokenVersion: 1,
+      },
+    });
+
+    const payload = { email: user.email, sub: user.id, role: user.role, tokenVersion: globalTokenVersion, type: 'access' };
+    const token = this.jwtService.sign(payload, { expiresIn: '15m' });
+
+    const refreshPayload = { sub: user.id, sessionId, tokenVersion: dbSession.tokenVersion, type: 'refresh' };
     const refreshToken = this.jwtService.sign(refreshPayload, { expiresIn: '7d' });
 
-    // Set JWTs as HTTP-only cookies
     if (res) {
       const cookieOptions = {
         httpOnly: true,
@@ -349,11 +360,12 @@ export class AuthService {
       };
       res.cookie(JWT_COOKIE_NAME, token, {
         ...cookieOptions,
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: 15 * 60 * 1000,
       });
       res.cookie('Refresh-Token', refreshToken, {
         ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/auth/refresh',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
     }
 
@@ -372,42 +384,160 @@ export class AuthService {
         mustChangePassword: user.mustChangePassword,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        permissions: user.permissions,
+        permissions: await this.buildPermissionsResponse(user),
       },
     };
+  }
+
+  private validatePasswordOrThrow(password: string): void {
+    const validation = this.credentialService.validatePasswordStrength(password);
+    if (!validation.isValid) {
+      throw new BadRequestException(`Password does not meet requirements: ${validation.errors.join(', ')}`);
+    }
+  }
+
+  private async buildPermissionsResponse(user: any): Promise<string[]> {
+    const rolePermissions = await this.prismaService.rolePermission.findMany({
+      where: { role: user.role },
+      include: { permission: true },
+    });
+
+    const defaultRolePerms = DEFAULT_ROLE_PERMISSIONS[user.role as Role] || [];
+
+    const allPermissions = new Set([
+      ...defaultRolePerms,
+      ...(user.userPermissions || []).map((up: any) =>
+        typeof up === 'object' && 'permission' in up ? up.permission.name : up
+      ),
+      ...rolePermissions.map((rp) => rp.permission.name),
+    ]);
+
+    if (user.role === Role.IT_MANAGER) {
+      for (const forbiddenPermission of IT_MANAGER_FORBIDDEN_PERMISSIONS) {
+        allPermissions.delete(forbiddenPermission);
+      }
+    }
+
+    return Array.from(allPermissions);
   }
 
   async refreshTokens(refreshTokenString: string, @Res({ passthrough: true }) res?: Response) {
     try {
       const payload = this.jwtService.verify(refreshTokenString);
-      const user = await this.prismaService.user.findUnique({
-        where: { id: payload.sub },
-        include: { school: { select: { schoolSettings: true } }, userPermissions: { include: { permission: true } } }
-      });
+      if (!payload || !payload.sub) throw new UnauthorizedException('Invalid refresh token');
 
-      if (!user || !user.isActive || user.tokenVersion !== payload.tokenVersion) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+      if (payload.type != null && payload.type !== 'refresh') {
+        throw new UnauthorizedException('Invalid token type');
       }
 
-      // Rotate refresh token: increment tokenVersion so old refresh tokens are invalidated
-      await this.prismaService.user.update({
-        where: { id: user.id },
-        data: { tokenVersion: { increment: 1 } },
+      const user = await this.prismaService.user.findUnique({
+        where: { id: payload.sub },
+        include: {
+          school: { select: { schoolSettings: true } },
+          userPermissions: { include: { permission: true } },
+        },
       });
 
-      user.tokenVersion += 1;
-      return this.login(user, res);
+      if (!user || !user.isActive) throw new UnauthorizedException('User not found or inactive');
+
+      let sessionTokenVersion: number;
+      let sessionId: string;
+
+      if (payload.sessionId) {
+        // New-style refresh token with session tracking
+        const session = await this.prismaService.userSession.findUnique({
+          where: { userId_sessionId: { userId: payload.sub, sessionId: payload.sessionId } },
+        });
+
+        if (!session) throw new UnauthorizedException('Session not found');
+
+        // Reuse detection: old session tokenVersion means token was already rotated
+        if (session.tokenVersion !== payload.tokenVersion) {
+          this.logger.warn(`Refresh token reuse detected for user ${payload.sub}, session ${payload.sessionId}. Invalidating session.`);
+          await this.prismaService.userSession.delete({ where: { id: session.id } });
+          throw new UnauthorizedException('Refresh token has been reused');
+        }
+
+        const updatedSession = await this.prismaService.userSession.update({
+          where: { id: session.id },
+          data: { tokenVersion: { increment: 1 }, lastUsedAt: new Date() },
+        });
+
+        sessionTokenVersion = updatedSession.tokenVersion;
+        sessionId = payload.sessionId;
+      } else {
+        // Old-style refresh token (no sessionId) — use global tokenVersion
+        if (payload.tokenVersion != null && user.tokenVersion !== payload.tokenVersion) {
+          throw new UnauthorizedException('Invalid or expired refresh token');
+        }
+
+        // Upgrade to session-based: create a session for backwards compat
+        sessionId = uuidv4();
+        const newSession = await this.prismaService.userSession.create({
+          data: { userId: user.id, sessionId, tokenVersion: 1 },
+        });
+
+        // Also bump global tokenVersion to invalidate other old refresh tokens
+        await this.prismaService.user.update({
+          where: { id: user.id },
+          data: { tokenVersion: { increment: 1 } },
+        });
+        user.tokenVersion += 1;
+
+        sessionTokenVersion = newSession.tokenVersion;
+      }
+
+      const accessPayload = { email: user.email, sub: user.id, role: user.role, tokenVersion: user.tokenVersion, type: 'access' };
+      const token = this.jwtService.sign(accessPayload, { expiresIn: '15m' });
+
+      const refreshPayload = { sub: user.id, sessionId, tokenVersion: sessionTokenVersion, type: 'refresh' };
+      const refreshToken = this.jwtService.sign(refreshPayload, { expiresIn: '7d' });
+
+      if (res) {
+        const cookieOptions = {
+          httpOnly: true,
+          secure: shouldUseSecureCookies(),
+          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' as any,
+          path: '/',
+        };
+        res.cookie(JWT_COOKIE_NAME, token, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+        res.cookie('Refresh-Token', refreshToken, { ...cookieOptions, path: '/auth/refresh', maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          schoolId: user.schoolId,
+          calendarType: (user as any).calendarType || 'ETHIOPIAN',
+          theme: (user as any).theme || 'LIGHT',
+          phone: user.phone || null,
+          avatarUrl: user.avatarUrl || null,
+          mustChangePassword: user.mustChangePassword,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          permissions: await this.buildPermissionsResponse(user),
+        },
+      };
     } catch (e) {
+      if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async logout(user: { id: string }, @Res({ passthrough: true }) res?: Response) {
+  async logout(user: { id: string; sessionId?: string }, @Res({ passthrough: true }) res?: Response) {
     if (user?.id) {
-      await this.prismaService.user.update({
-        where: { id: user.id },
-        data: { tokenVersion: { increment: 1 } },
-      }).catch(() => {});
+      const sessionFilter = user.sessionId
+        ? { userId: user.id, sessionId: user.sessionId }
+        : { userId: user.id };
+      await this.prismaService.userSession.deleteMany({
+        where: sessionFilter,
+      }).catch((err: Error) => {
+        this.logger.error(`Failed to invalidate sessions on logout for user ${user.id}: ${err.message}`);
+      });
     }
     if (res) {
       const cookieOptions = {
@@ -417,23 +547,16 @@ export class AuthService {
         path: '/',
       };
       res.clearCookie(JWT_COOKIE_NAME, cookieOptions);
-      res.clearCookie('Refresh-Token', cookieOptions);
+      res.clearCookie('Refresh-Token', { ...cookieOptions, path: '/auth/refresh' });
     }
     return { message: 'Logged out successfully' };
   }
 
   async invalidateSessions(userId: string) {
-    await this.prismaService.user.update({
-      where: { id: userId },
-      data: { tokenVersion: { increment: 1 } },
+    await this.prismaService.userSession.deleteMany({
+      where: { userId },
     });
     return { message: 'All sessions invalidated' };
-  }
-
-  private parseJwtCookieMaxAge() {
-    const rawHours = Number(process.env.JWT_COOKIE_MAX_AGE_HOURS || 8);
-    const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : 8;
-    return hours * 60 * 60 * 1000;
   }
 
   // SUPER_ADMIN creates ADMIN (requires schoolId)
@@ -443,6 +566,7 @@ export class AuthService {
     name: string,
     schoolId: string,
   ) {
+    this.validatePasswordOrThrow(password);
     const hashedPassword = await bcrypt.hash(password, 10);
 
     if (!schoolId) {
@@ -465,6 +589,7 @@ export class AuthService {
         name,
         role: Role.ADMIN,
         schoolId,
+        mustChangePassword: true,
       },
     });
 
@@ -485,6 +610,7 @@ export class AuthService {
     name: string,
     schoolId: string,
   ) {
+    this.validatePasswordOrThrow(password);
     const hashedPassword = await bcrypt.hash(password, 10);
 
     if (!schoolId) {
@@ -507,6 +633,7 @@ export class AuthService {
         name,
         role: Role.IT_MANAGER,
         schoolId,
+        mustChangePassword: true,
       },
     });
 
@@ -567,6 +694,11 @@ export class AuthService {
     name: string,
     schoolId: string,
   ) {
+    this.validatePasswordOrThrow(password);
+    const existing = email ? await this.prismaService.user.findUnique({ where: { email }, select: { id: true } }) : null;
+    if (existing) {
+      return { success: false, message: 'An account with this email already exists' };
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const studentCode =
       await this.credentialService.generateStudentAdmissionNumber(
@@ -594,6 +726,11 @@ export class AuthService {
     name: string,
     schoolId: string,
   ) {
+    this.validatePasswordOrThrow(password);
+    const existing = email ? await this.prismaService.user.findUnique({ where: { email }, select: { id: true } }) : null;
+    if (existing) {
+      return { success: false, message: 'An account with this email already exists' };
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const parentUsername = await this.credentialService.generateStaffId(
       schoolId,
@@ -620,6 +757,11 @@ export class AuthService {
     name: string,
     schoolId: string,
   ) {
+    this.validatePasswordOrThrow(password);
+    const existing = email ? await this.prismaService.user.findUnique({ where: { email }, select: { id: true } }) : null;
+    if (existing) {
+      return { success: false, message: 'An account with this email already exists' };
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return this.prismaService.user.create({
@@ -629,6 +771,7 @@ export class AuthService {
         name,
         role: Role.REGISTRAR,
         schoolId,
+        mustChangePassword: true,
       },
     });
   }
@@ -1130,11 +1273,17 @@ export class AuthService {
       data: {
         password: hashedPassword,
         mustChangePassword: false,
+        tokenVersion: { increment: 1 },
       },
+    });
+
+    await this.prismaService.userSession.deleteMany({
+      where: { userId },
     });
 
     return {
       mustChangePassword: false,
+      tokenVersionBumped: true,
     };
   }
 
@@ -1216,13 +1365,18 @@ export class AuthService {
     const hashedPassword =
       await this.credentialService.hashPassword(newPassword);
 
-    // Update user password
+    // Update user password and bump tokenVersion
     await this.prismaService.user.update({
       where: { id: userId },
       data: {
         password: hashedPassword,
         mustChangePassword: false,
+        tokenVersion: { increment: 1 },
       },
+    });
+
+    await this.prismaService.userSession.deleteMany({
+      where: { userId },
     });
 
     // Mark token as used
@@ -1256,6 +1410,10 @@ export class AuthService {
 
     if (targetUser.role === Role.SUPER_ADMIN) throw new LocalizedException('auth.cannot_reset_a_super_admin_password_here_7580eeb2', undefined, HttpStatus.FORBIDDEN, 'Cannot reset a super admin password here');
 
+    if (adminRole === Role.IT_MANAGER && targetUser.role === Role.ADMIN) {
+      throw new ForbiddenException('IT Manager cannot reset an Admin password');
+    }
+
     if (targetUser.schoolId !== adminSchoolId) {
       throw new ForbiddenException(
         'Cannot reset a password outside your school',
@@ -1276,17 +1434,19 @@ export class AuthService {
     const hashedPassword =
       await this.credentialService.hashPassword(temporaryPassword);
 
-    // Update user with new password and force change on next login
+    // Update user with new password, bump tokenVersion, force change on next login
     await this.prismaService.user.update({
       where: { id: targetUserId },
       data: {
         password: hashedPassword,
         mustChangePassword: true,
+        tokenVersion: { increment: 1 },
       },
     });
 
-    // Log this action
-    // Logging removed for production
+    await this.prismaService.userSession.deleteMany({
+      where: { userId: targetUserId },
+    });
 
     return {
       userId: targetUserId,

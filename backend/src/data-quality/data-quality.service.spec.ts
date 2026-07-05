@@ -9,9 +9,14 @@ describe('DataQualityService', () => {
       $queryRaw: jest.fn(),
     };
 
+    const schoolSettings = {
+      getSetting: jest.fn().mockResolvedValue(false),
+    };
+
     return {
       prisma,
-      service: new DataQualityService(prisma as any),
+      schoolSettings,
+      service: new DataQualityService(prisma as any, schoolSettings as any),
     };
   };
 

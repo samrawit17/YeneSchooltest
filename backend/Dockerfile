@@ -24,8 +24,8 @@ RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error --ign
 # Copy source code
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client (handled by entrypoint)
+# RUN npx prisma generate
 
 # Build the application
 RUN npm run build
@@ -120,7 +120,7 @@ RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
 
 COPY . .
 
-RUN npx prisma generate
+# RUN npx prisma generate
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh

@@ -446,6 +446,7 @@ model User {
   templatesCreated         Template[]
   createdPracticeExams     PracticeExam[]        @relation("PracticeExamCreatedBy")
   practiceExamAttempts     PracticeExamAttempt[] @relation("PracticeExamStudent")
+  sessions                 UserSession[]
 
   @@index([email])
   @@index([username])
@@ -2785,4 +2786,21 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionId   String
+  tokenVersion Int     @default(1)
+  deviceInfo  String?
+  ipAddress   String?
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sessionId])
+  @@index([userId])
+  @@index([sessionId])
 }

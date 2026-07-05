@@ -41,8 +41,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Logging removed for production
-    // Logging removed for production
+    if (!payload) return null;
+    if (payload.type != null && payload.type !== 'access') return null;
 
     const user = await this.prismaService.user.findUnique({
       where: { id: payload.sub },
@@ -53,27 +53,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       },
     });
 
-    // Logging removed for production
-
     if (!user) {
       return null;
     }
 
-    // If the access token includes a tokenVersion, verify it matches DB
     if (payload.tokenVersion != null && user.tokenVersion !== payload.tokenVersion) {
       return null;
     }
 
-    // Get role permissions
     const rolePermissions = await this.prismaService.rolePermission.findMany({
       where: { role: user.role },
       include: { permission: true },
     });
 
-    // Retrieve system defaults for this user's role
     const defaultRolePerms = DEFAULT_ROLE_PERMISSIONS[user.role as Role] || [];
 
-    // Combine default limits, user overrides, and role-override permissions, removing duplicates
     const allPermissions = new Set([
       ...defaultRolePerms,
       ...user.userPermissions.map((up) => up.permission.name),
@@ -95,6 +89,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       permissions: Array.from(allPermissions),
+      sessionId: payload.sessionId,
     };
   }
 }
