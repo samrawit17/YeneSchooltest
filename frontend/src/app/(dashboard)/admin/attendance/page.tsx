@@ -1012,114 +1012,116 @@ export default function AttendanceManagementPage() {
           </Card>
 
           {/* KPI Row */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {/* Attendance Rate */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.attendanceRate}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {attendanceRate}%
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.today}</p>
+          <div className="w-full">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 w-full">
+              {/* Attendance Rate */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.attendanceRate}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {attendanceRate}%
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.today}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <ClipboardCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <ClipboardCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Present Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.present}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {stats.present.toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{presentPercentage}% {t.ofTotal}</p>
+              {/* Present Today */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.present}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {stats.present.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">{presentPercentage}% {t.ofTotal}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <UserCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <UserCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Absent Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.absent}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {stats.absent.toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{absentPercentage}% {t.ofTotal}</p>
+              {/* Absent Today */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.absent}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {stats.absent.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">{absentPercentage}% {t.ofTotal}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <UserX className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <UserX className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Late Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.late}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {stats.late.toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{latePercentage}% {t.ofTotal}</p>
+              {/* Late Today */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.late}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {stats.late.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">{latePercentage}% {t.ofTotal}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <Clock className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <Clock className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Submitted Sessions */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.sessions}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {stats.submittedSessions}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">/{stats.submittedSessions + stats.notSubmittedSessions} {t.submittedShort}</p>
+              {/* Submitted Sessions */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.sessions}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {stats.submittedSessions}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">/{stats.submittedSessions + stats.notSubmittedSessions} {t.submittedShort}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <LayoutGrid className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <LayoutGrid className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Total Students */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
-              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.totalMarked}</p>
-                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                      {stats.total.toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.studentsToday}</p>
+              {/* Total Students */}
+              <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] min-h-[110px]">
+                <CardContent className="p-2.5 sm:p-3 lg:p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t.totalMarked}</p>
+                      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                        {stats.total.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.studentsToday}</p>
+                    </div>
+                    <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                      <Users className="w-4 h-4 text-gray-900 dark:text-gray-100" />
+                    </div>
                   </div>
-                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
-                    <Users className="w-4 h-4 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+          </div>
           </div>
 
           {/* Charts Section */}

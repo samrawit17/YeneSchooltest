@@ -15,6 +15,7 @@ export interface SuperAdminStatsResponse {
 export interface SchoolBackupTypeOption {
   value: string;
   label: string;
+  description?: string;
 }
 
 export const superadminAPI = {

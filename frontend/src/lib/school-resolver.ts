@@ -6,6 +6,8 @@ export interface PublicSchoolSummary {
   logoUrl?: string | null;
   accentColor?: string | null;
   loginImageUrl?: string | null;
+  isMaintenance?: boolean;
+  cachedAt?: number;
 }
 
 const SCHOOL_LOGIN_CONTEXT_STORAGE_KEY = "sms-school-login-context";
@@ -44,16 +46,17 @@ export function readCachedSchoolLoginContext(params?: {
   const requestedSlug = normalizeSchoolUrlSlug(params?.slug);
 
   if (requestedSchoolId) {
-    const byId = schools.find((school) => school.id === requestedSchoolId);
+    const byId = schools.find((school) => school.id === requestedSchoolId && !isCachedSchoolContextExpired(school));
     if (byId) return byId;
   }
 
   if (requestedSlug) {
     const bySlug = findSchoolByUrlSlug(schools, requestedSlug);
-    if (bySlug) return bySlug;
+    if (bySlug && !isCachedSchoolContextExpired(bySlug)) return bySlug;
   }
 
-  return params?.fallbackToLast ? schools[0] : undefined;
+  const firstValid = schools.find((school) => !isCachedSchoolContextExpired(school));
+  return params?.fallbackToLast && firstValid ? firstValid : undefined;
 }
 
 export function writeCachedSchoolLoginContext(school?: PublicSchoolSummary | null) {
@@ -71,12 +74,18 @@ export function writeCachedSchoolLoginContext(school?: PublicSchoolSummary | nul
       loginImageUrl: school.loginImageUrl ?? existing?.loginImageUrl ?? null,
       publicUrlSlug: school.publicUrlSlug ?? existing?.publicUrlSlug ?? null,
       code: school.code ?? existing?.code ?? null,
+      isMaintenance: school.isMaintenance ?? existing?.isMaintenance ?? false,
+      cachedAt: Date.now(),
     };
     const nextSchools = [merged, ...schools.filter((item) => item.id !== school.id)].slice(0, 8);
     window.localStorage.setItem(SCHOOL_LOGIN_CONTEXT_STORAGE_KEY, JSON.stringify(nextSchools));
   } catch {
     // Ignore storage failures; fresh school data will still be fetched on sign-in.
   }
+}
+
+export function isCachedSchoolContextExpired(school: PublicSchoolSummary, maxAgeMs: number = 5 * 60 * 1000): boolean {
+  return !school.cachedAt || Date.now() - school.cachedAt > maxAgeMs;
 }
 
 export function getHostSchoolSlug() {

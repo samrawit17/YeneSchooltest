@@ -2,9 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI, userAPI } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/lib/themeStore';
-import { useLanguageStore } from '@/lib/languageStore';
+import { AppLanguage, useLanguageStore } from '@/lib/languageStore';
+import { clearDatabase } from '@/lib/db';
+import { useUIStore } from '@/lib/uiStore';
 import { getModuleMessages } from '@/messages/registry';
 
 // User role types based on backend
@@ -20,6 +23,7 @@ export interface User {
   isActive?: boolean;
   phone?: string;
   avatarUrl?: string;
+  language?: string;
   theme?: 'LIGHT' | 'DARK' | 'SYSTEM';
   calendarType?: 'GREGORIAN' | 'ETHIOPIAN';
   permissions?: string[];
@@ -32,8 +36,9 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isLoggingOut: boolean;
   login: (loginIdentifier: string, password: string, rememberMe?: boolean, schoolId?: string | null) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
 }
 
@@ -50,25 +55,34 @@ function getSessionUser(user: Pick<User, 'id' | 'role' | 'schoolId'>) {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const queryClient = useQueryClient();
 
    // Check for existing auth on mount
    useEffect(() => {
      setMounted(true);
 
-     if (typeof window !== 'undefined' && window.location.pathname === '/enroll') {
-       setUser(null);
-       sessionStorage.removeItem('user');
-       localStorage.removeItem('user');
-       setIsLoading(false);
-       useThemeStore.getState().initializeTheme();
-       return;
-     }
-     
-      const checkAuth = async () => {
-        try {
-          localStorage.removeItem('user');
-          const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
+      if (typeof window !== 'undefined' && window.location.pathname === '/enroll') {
+        setUser(null);
+        sessionStorage.removeItem('user');
+        localStorage.removeItem('user');
+        setIsLoading(false);
+        useThemeStore.getState().initializeTheme();
+        return;
+      }
+
+      if (typeof window !== 'undefined' && sessionStorage.getItem('loggedOut') === 'true') {
+        sessionStorage.removeItem('loggedOut');
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
+       const checkAuth = async () => {
+         try {
+           localStorage.removeItem('user');
+           const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
           const profile = response.data;
            if (profile) {
              setUser(profile);
@@ -131,10 +145,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('user');
         sessionStorage.setItem('user', getSessionUser(userData));
 
-        // Apply the authenticated user's own preference, not the guest key.
-       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
-       useThemeStore.getState().setTheme(userTheme, userData.id);
-       useLanguageStore.getState().initializeLanguage();
+    // Apply the authenticated user's own preferences
+    const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+    useThemeStore.getState().setTheme(userTheme, userData.id);
+    useLanguageStore.getState().initializeLanguage(userData.language as AppLanguage);
 
        return userData;
      } catch (error: any) {
@@ -144,18 +158,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      }
    };
 
-   const logout = () => {
-     authAPI.logout().catch(() => undefined);
-     // Reset theme to system default via Zustand store
-     useThemeStore.getState().setTheme('light');
-       useLanguageStore.getState().initializeLanguage();
-       setUser(null);
+   const logout = async () => {
+     setIsLoggingOut(true);
+     if (typeof window !== 'undefined') {
+       sessionStorage.setItem('loggedOut', 'true');
        sessionStorage.removeItem('user');
        localStorage.removeItem('user');
-       const language = useLanguageStore.getState().language;
-     const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
-     toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
-   };
+       ['ui-storage', 'sms-brand-settings'].forEach((key) => localStorage.removeItem(key));
+     }
+      // Clear local state immediately to prevent race conditions
+      queryClient.clear();
+      setUser(null);
+
+      try {
+        await Promise.allSettled([
+          authAPI.logout(),
+          clearDatabase(),
+        ]);
+      } catch {
+        // Handled
+      }
+
+      useUIStore.setState({ isSidebarCollapsed: false, compactMode: false });
+      useThemeStore.getState().setTheme('light');
+      useLanguageStore.getState().initializeLanguage();
+
+      const language = useLanguageStore.getState().language;
+      const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
+      toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
+    };
 
   const updateUser = (updatedUser: Partial<User>) => {
     setUser((currentUser) => {
@@ -175,6 +206,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         isLoading,
+        isLoggingOut,
         isAuthenticated: !!user,
         login,
         logout,

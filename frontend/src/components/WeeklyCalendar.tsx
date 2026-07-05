@@ -27,33 +27,55 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
   const calendarText = navigationText.calendar ?? {};
   const todayLabel = navigationText.labels?.Today ?? 'Today';
 
-  // Get the start of the week (Sunday)
-  const getStartOfWeek = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    d.setHours(0, 0, 0, 0);
-    return d;
+  // Get the first day of the month
+  const getStartOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
   };
 
-  // Get days of the week
-  const getDaysOfWeek = (startOfWeek: Date) => {
+  // Get the last day of the month
+  const getEndOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  };
+
+  // Get all days of the month (including empty slots before the 1st)
+  const getDaysOfMonth = (date: Date) => {
+    const start = getStartOfMonth(date);
+    const end = getEndOfMonth(date);
     const days = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
+    
+    // Add empty slots for days before the 1st (start day of week)
+    const startDayOfWeek = start.getDay();
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days of the month
+    for (let i = 1; i <= end.getDate(); i++) {
+      const day = new Date(date.getFullYear(), date.getMonth(), i);
       days.push(day);
     }
+    
     return days;
   };
 
-  const startOfWeek = getStartOfWeek(currentDate);
-  const weekDays = [];
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startOfWeek);
-    day.setDate(startOfWeek.getDate() + i);
-    weekDays.push(day);
-  }
+  const monthDays = getDaysOfMonth(currentDate);
+  const monthLabel = calendarType === 'ETHIOPIAN' 
+    ? formatEthiopianMonthYear(currentDate, language)
+    : currentDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+
+  // Navigate to previous month
+  const goToPreviousMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() - 1);
+    setCurrentDate(newDate);
+  };
+
+  // Navigate to next month
+  const goToNextMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + 1);
+    setCurrentDate(newDate);
+  };
 
   // Navigate to previous week
   const goToPreviousWeek = () => {
@@ -134,23 +156,23 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]">
-          {formatMonthYear(currentDate)}
+          {monthLabel}
         </h3>
         <div className="flex items-center gap-1">
           <button
-            onClick={goToPreviousWeek}
+            onClick={goToPreviousMonth}
             className="p-1 hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={goToToday}
+            onClick={() => setCurrentDate(new Date())}
             className="px-2 py-1 text-xs hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             {todayLabel}
           </button>
           <button
-            onClick={goToNextWeek}
+            onClick={goToNextMonth}
             className="p-1 hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
@@ -172,7 +194,13 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1">
-        {weekDays.map((day, index) => {
+        {monthDays.map((day, index) => {
+          if (!day) {
+            return (
+              <div key={index} className="min-h-[60px] min-w-0 p-1 rounded border border-transparent" />
+            );
+          }
+          
           const dayEvents = getEventsForDate(day);
           const today = isToday(day);
           
@@ -192,7 +220,7 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
                 text-xs font-medium mb-1
                 ${today ? 'text-[var(--brand-color,#e35336)] font-bold' : 'text-gray-700 dark:text-gray-300'}
               `}>
-                {formatDayNumber(day)}
+                {day.getDate()}
               </div>
               {/* Event markers */}
               <div className="min-w-0 space-y-0.5">

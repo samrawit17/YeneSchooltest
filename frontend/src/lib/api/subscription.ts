@@ -1,6 +1,6 @@
 import api from "./core";
 import type { AxiosRequestConfig } from "axios";
-import type { PlanTier } from "@/types/subscription";
+import type { PlanTier, PaginatedResponse } from "@/types/subscription";
 
 export interface SubscriptionPlan {
   id: string;
@@ -41,7 +41,7 @@ export interface SchoolSubscription {
 
 export const subscriptionAPI = {
   getAllPlans: (config?: AxiosRequestConfig) =>
-    api.get<SubscriptionPlan[]>("/subscription/plans", {
+    api.get<PaginatedResponse<SubscriptionPlan>>("/subscription/plans", {
       timeout: 15000,
       ...config,
     }),
@@ -59,10 +59,12 @@ export const subscriptionAPI = {
   getSchoolSubscription: (schoolId: string) =>
     api.get<SchoolSubscription>(`/subscription/school/${schoolId}/subscription`),
   getSchools: (planId?: string, config?: AxiosRequestConfig) =>
-    api.get<SubscriptionSchool[]>(planId ? `/subscription/schools?planId=${planId}` : "/subscription/schools", {
+    api.get<PaginatedResponse<SubscriptionSchool>>(planId ? `/subscription/schools?planId=${planId}` : "/subscription/schools", {
       timeout: 15000,
       ...config,
     }),
   checkFeature: (schoolId: string, feature: string) =>
     api.get("/subscription/check-feature", { params: { schoolId, feature } }),
+  renewSubscription: (id: string) =>
+    api.post<SchoolSubscription>(`/subscription/subscription/${id}/renew`),
 };

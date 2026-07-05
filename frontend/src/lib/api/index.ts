@@ -28,6 +28,7 @@ export { parentDashboardAPI } from './parent';
 export { parentsAPI, disciplineAPI } from './people';
 export { practiceExamsAPI, type PracticeExam, type PracticeExamQuestion, type PracticeExamOption, type PracticeExamStatus, type PracticeExamSubmission } from './practice-exams';
 export { reportCardsAPI } from './reporting';
+export { reportsAPI, analyticsAPI } from './reports-analytics';
 export { sirenControlAPI } from './siren-control';
 export { sirenEventAPI } from './siren-events';
 export { sirenHardwareAPI } from './siren-hardware';

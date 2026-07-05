@@ -301,7 +301,7 @@ const ProfilePage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const redirectTo =
       normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
         ? `/schools/${encodeURIComponent(school.publicUrlSlug)}/login`
@@ -324,8 +324,8 @@ const ProfilePage = () => {
       });
     }
     sessionStorage.setItem("postLogoutRedirect", redirectTo);
-    logout();
-    router.push(redirectTo);
+    await logout();
+    window.location.href = redirectTo + (redirectTo.includes('?') ? '&' : '?') + 't=' + Date.now();
   };
 
   const persistThemePreference = (nextTheme: "LIGHT" | "DARK" | "SYSTEM", clientTheme: "light" | "dark" | "system") => {
@@ -1450,7 +1450,7 @@ const ProfilePage = () => {
                     <Label className="text-sm md:text-base">{t.preferences.language}</Label>
                     <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{t.preferences.languageDesc}</p>
                   </div>
-                  <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
+                  <Select value={language} onValueChange={(value) => { setLanguage(value as AppLanguage); userAPI.updateLanguage(value).catch(console.error); }}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder={t.preferences.language} />
                     </SelectTrigger>

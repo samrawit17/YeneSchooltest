@@ -94,6 +94,8 @@ export const userAPI = {
 
   updateTheme: (theme: string) => api.patch('/auth/users/me/theme', { theme }),
 
+  updateLanguage: (language: string) => api.patch('/auth/users/me/language', { language }),
+
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
 

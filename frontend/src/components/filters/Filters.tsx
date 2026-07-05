@@ -233,6 +233,7 @@ export function Filters({
   const handleYearChange = (year: string) => {
     if (year && year !== selectedYear) {
       onYearChange(year);
+      if (onTermChange) onTermChange("");
       if (onGradeChange) onGradeChange("");
       if (onSectionChange) onSectionChange("");
     }
@@ -257,24 +258,26 @@ export function Filters({
   const statusOptions = options?.statusOptions || defaultStatusOptions;
   const curriculumOptions = options?.curriculumOptions || curriculums;
 
+  const filterClass = `flex flex-row flex-nowrap items-center gap-2 w-full ${className}`;
+
   if (initialLoading) {
     return (
-      <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
-        {config.search && <Skeleton className="h-9 w-full" />}
-        {config.academicYear && <Skeleton className="h-9 w-full" />}
-        {config.term && <Skeleton className="h-9 w-full" />}
-        {config.curriculum && <Skeleton className="h-9 w-full" />}
-        {config.grade && <Skeleton className="h-9 w-full" />}
-        {config.section && <Skeleton className="h-9 w-full" />}
-        {config.status && <Skeleton className="h-9 w-full" />}
+      <div className={filterClass}>
+        {config.search && <Skeleton className="h-9 flex-1" />}
+        {config.academicYear && <Skeleton className="h-9 flex-1" />}
+        {config.term && <Skeleton className="h-9 flex-1" />}
+        {config.curriculum && <Skeleton className="h-9 flex-1" />}
+        {config.grade && <Skeleton className="h-9 flex-1" />}
+        {config.section && <Skeleton className="h-9 flex-1" />}
+        {config.status && <Skeleton className="h-9 flex-1" />}
       </div>
     );
   }
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
+    <div className={filterClass}>
       {config.search && onSearchChange && (
-        <div className="relative">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder={searchPlaceholder === "Search..." ? t.placeholders.search : searchPlaceholder}
@@ -287,163 +290,175 @@ export function Filters({
       )}
 
       {config.academicYear && (
-        <Select
-          value={selectedYear || ""}
-          onValueChange={handleYearChange}
-          disabled={disabled}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder={t.placeholders.academicYear} />
-          </SelectTrigger>
-          <SelectContent>
-            {academicYears.length === 0 ? (
-              <SelectItem value="no-data" disabled>
-                {t.empty.academicYears}
-              </SelectItem>
-            ) : (
-              academicYears.map((year) => (
-                <SelectItem key={year.id} value={year.id}>
-                  {year.name} {year.isActive && `(${t.labels.active})`}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedYear || ""}
+            onValueChange={handleYearChange}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+              <SelectValue placeholder={t.placeholders.academicYear} />
+            </SelectTrigger>
+            <SelectContent>
+              {academicYears.length === 0 ? (
+                <SelectItem value="no-data" disabled>
+                  {t.empty.academicYears}
                 </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+              ) : (
+                academicYears.map((year) => (
+                  <SelectItem key={year.id} value={year.id}>
+                    {year.name} {year.isActive && `(${t.labels.active})`}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {config.term && (
-        <Select
-          value={selectedTerm || ""}
-          onValueChange={(val) => onTermChange?.(val)}
-          disabled={disabled}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder={t.placeholders.term} />
-          </SelectTrigger>
-          <SelectContent>
-            {!termOptions || termOptions.length === 0 ? (
-              <SelectItem value="no-data" disabled>
-                {t.empty.terms}
-              </SelectItem>
-            ) : (
-              termOptions.map((term) => (
-                <SelectItem key={term.id} value={term.id}>
-                  {term.name}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedTerm || ""}
+            onValueChange={(val) => onTermChange?.(val)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+              <SelectValue placeholder={t.placeholders.term} />
+            </SelectTrigger>
+            <SelectContent>
+              {!termOptions || termOptions.length === 0 ? (
+                <SelectItem value="no-data" disabled>
+                  {t.empty.terms}
                 </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+              ) : (
+                termOptions.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    {term.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {config.curriculum && (
-        <Select
-          value={selectedCurriculum || ""}
-          onValueChange={(val) => onCurriculumChange?.(val)}
-          disabled={disabled}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder={t.placeholders.curriculum} />
-          </SelectTrigger>
-          <SelectContent>
-            {curriculumOptions.length === 0 ? (
-              <SelectItem value="no-data" disabled>
-                {t.empty.curriculum}
-              </SelectItem>
-            ) : (
-              curriculumOptions.map((curr) => (
-                <SelectItem key={curr.value} value={curr.value}>
-                  {curr.label}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedCurriculum || ""}
+            onValueChange={(val) => onCurriculumChange?.(val)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+              <SelectValue placeholder={t.placeholders.curriculum} />
+            </SelectTrigger>
+            <SelectContent>
+              {curriculumOptions.length === 0 ? (
+                <SelectItem value="no-data" disabled>
+                  {t.empty.curriculum}
                 </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+              ) : (
+                curriculumOptions.map((curr) => (
+                  <SelectItem key={curr.value} value={curr.value}>
+                    {curr.label}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {config.grade && (
-        <Select
-          value={selectedGrade || ""}
-          onValueChange={handleGradeChange}
-          disabled={disabled || !selectedYear || loading}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <SelectValue placeholder={t.placeholders.grade} />
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            {grades.length === 0 ? (
-              <SelectItem value="no-data" disabled>
-                {t.empty.grades}
-              </SelectItem>
-            ) : (
-              grades.map((grade) => (
-                <SelectItem key={grade.id} value={String(grade.grade)}>
-                  {formatMessage(t.labels.grade, { grade: grade.grade })}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedGrade || ""}
+            onValueChange={handleGradeChange}
+            disabled={disabled || !selectedYear || loading}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <SelectValue placeholder={t.placeholders.grade} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {grades.length === 0 ? (
+                <SelectItem value="no-data" disabled>
+                  {t.empty.grades}
                 </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+              ) : (
+                grades.map((grade) => (
+                  <SelectItem key={grade.id} value={String(grade.grade)}>
+                    {formatMessage(t.labels.grade, { grade: grade.grade })}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {config.section && onSectionChange && (
-        <Select
-          value={selectedSection || ""}
-          onValueChange={(val) => onSectionChange(val)}
-          disabled={disabled || !selectedYear || !selectedGrade || loading}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled || !selectedYear || !selectedGrade || loading}>
-            <SelectValue placeholder={t.placeholders.section} />
-          </SelectTrigger>
-          <SelectContent>
-            {!selectedGrade ? (
-              <SelectItem value="select-grade-first" disabled>
-                Select a grade first
-              </SelectItem>
-            ) : sections.length === 0 ? (
-              <SelectItem value="no-data" disabled>
-                {t.empty.sections}
-              </SelectItem>
-            ) : (
-              <>
-                <SelectItem value="all">
-                  {t.labels.allSections}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedSection || ""}
+            onValueChange={(val) => onSectionChange(val)}
+            disabled={disabled || !selectedYear || !selectedGrade || loading}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled || !selectedYear || !selectedGrade || loading}>
+              <SelectValue placeholder={t.placeholders.section} />
+            </SelectTrigger>
+            <SelectContent>
+              {!selectedGrade ? (
+                <SelectItem value="select-grade-first" disabled>
+                  Select a grade first
                 </SelectItem>
-                {sections.map((section) => (
-                  <SelectItem 
-                    key={section.id} 
-                    value={sectionMode === "name" ? section.name : section.id}
-                  >
-                    {section.name}
+              ) : sections.length === 0 ? (
+                <SelectItem value="no-data" disabled>
+                  {t.empty.sections}
+                </SelectItem>
+              ) : (
+                <>
+                  <SelectItem value="all">
+                    {t.labels.allSections}
                   </SelectItem>
-                ))}
-              </>
-            )}
-          </SelectContent>
-        </Select>
+                  {sections.map((section) => (
+                    <SelectItem 
+                      key={section.id} 
+                      value={sectionMode === "name" ? section.name : section.id}
+                    >
+                      {section.name}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {config.status && (
-        <Select
-          value={selectedStatus || ""}
-          onValueChange={(val) => onStatusChange?.(val)}
-          disabled={disabled}
-        >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder={t.placeholders.status} />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((status) => (
-              <SelectItem key={status.value} value={status.value}>
-                {status.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex-1 min-w-0">
+          <Select
+            value={selectedStatus || ""}
+            onValueChange={(val) => onStatusChange?.(val)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+              <SelectValue placeholder={t.placeholders.status} />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
     </div>
   );

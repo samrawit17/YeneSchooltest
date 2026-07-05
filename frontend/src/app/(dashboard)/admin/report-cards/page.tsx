@@ -500,7 +500,7 @@ export default function ReportCardsPage() {
         <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
           <div className="p-4 border-b border-gray-200 dark:border-[#2A2A2A]">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex flex-1 gap-3">
+              <div className="flex flex-1 flex-nowrap gap-3">
                 <select
                   value={selectedAcademicYear}
                   onChange={(e) => {
@@ -509,7 +509,7 @@ export default function ReportCardsPage() {
                     setSelectedTerm("");
                     setSelectedCards(new Set());
                   }}
-                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   {academicYears.length === 0 ? (
                     <option value="">Academic Year</option>
@@ -524,7 +524,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Classes</option>
                   {classes.map((cls) => (
@@ -536,7 +536,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedTerm}
                   onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Terms</option>
                   {terms.map((term) => (
@@ -548,7 +548,7 @@ export default function ReportCardsPage() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="all">All Status</option>
                   <option value="DRAFT">Draft</option>

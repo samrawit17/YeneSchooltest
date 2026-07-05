@@ -735,7 +735,7 @@ const Navbar = ({
     });
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const redirectTo =
       normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
         ? `/schools/${encodeURIComponent(school.publicUrlSlug)}/login`
@@ -758,8 +758,10 @@ const Navbar = ({
       });
     }
     sessionStorage.setItem("postLogoutRedirect", redirectTo);
-    logout();
-    router.push(redirectTo);
+    await logout();
+    
+    // Fallback redirect if not already handled by layout (though layout is now suppressed)
+    window.location.href = redirectTo + (redirectTo.includes('?') ? '&' : '?') + 't=' + Date.now();
   };
   const dashboardPath = getDashboardPath(user?.role);
 
@@ -842,59 +844,94 @@ const Navbar = ({
               </SheetContent>
             </Sheet>
 
-            <Popover open={mobileCalendarOpen} onOpenChange={setMobileCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`sm:hidden relative h-8 w-8 text-slate-900 hover:text-slate-900 dark:text-white dark:hover:bg-[#222222] dark:hover:text-white ${
-                    useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-slate-100"
-                  }`}
-                  aria-label="Weekly calendar"
-                >
-                  <Calendar className="h-5 w-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-[#1A1A1A] ml-4" align="start">
-                <WeeklyCalendar events={events} onEventClick={() => { setMobileCalendarOpen(false); router.push('/list/calendar'); }} />
-              </PopoverContent>
-            </Popover>
-
-          </div>
-
-          {/* Center: Real-time Clock Display - Hidden on small mobile, visible on sm+ */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm flex-shrink-0">
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
-                <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 sm:gap-2">
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <button className={`flex items-center gap-1 dark:hover:bg-[#222222] p-1 rounded cursor-pointer ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-gray-100"}`}>
-                      <Calendar className="sm:hidden h-5 w-5 text-slate-500 dark:text-gray-400" />
-                      <Calendar className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
-                      <div className="flex flex-col text-left hidden lg:flex">
-                        <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">{navLabel("Today")}: {currentDate || '--'}</span>
-                        <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
-                          {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
-                        </span>
-                      </div>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-[#1A1A1A] ml-4" align="center">
-                    <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
-                  </PopoverContent>
-                </Popover>
-                <div className="hidden md:flex items-center gap-1">
-                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
-                  <span className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--'}</span>
-                </div>
+            {(user?.role !== 'SUPER_ADMIN') && (
+              <Popover open={mobileCalendarOpen} onOpenChange={setMobileCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`sm:hidden relative h-8 w-8 text-slate-900 hover:text-slate-900 dark:text-white dark:hover:bg-[#222222] dark:hover:text-white ${
+                      useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-slate-100"
+                    }`}
+                    aria-label="Weekly calendar"
+                  >
+                    <Calendar className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-[#1A1A1A] ml-4" align="start">
+                  <WeeklyCalendar events={events} onEventClick={() => { setMobileCalendarOpen(false); router.push('/list/calendar'); }} />
+                </PopoverContent>
+              </Popover>
+            )}
+            {(user?.role === 'SUPER_ADMIN') && (
+              <div className="sm:hidden relative h-8 w-8 text-slate-400" title="Calendar disabled for Super Admin">
+                <Calendar className="h-5 w-5" />
               </div>
             )}
+
           </div>
+
+          {(user?.role !== 'SUPER_ADMIN') && (
+            <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm flex-shrink-0">
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
+                  <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <button className={`flex items-center gap-1 dark:hover:bg-[#222222] p-1 rounded cursor-pointer ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-gray-100"}`}>
+                        <Calendar className="sm:hidden h-5 w-5 text-slate-500 dark:text-gray-400" />
+                        <Calendar className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
+                        <div className="flex flex-col text-left hidden lg:flex">
+                          <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">{navLabel("Today")}: {currentDate || '--'}</span>
+                          <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
+                            {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
+                          </span>
+                        </div>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-[#1A1A1A] ml-4" align="center">
+                      <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="hidden md:flex items-center gap-1">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
+                    <span className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {(user?.role === 'SUPER_ADMIN') && (
+            <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm flex-shrink-0">
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
+                  <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex items-center gap-1 dark:hover:bg-[#222222] p-1 rounded cursor-pointer">
+                    <Calendar className="sm:hidden h-5 w-5 text-slate-400" />
+                    <Calendar className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
+                    <div className="flex flex-col text-left hidden lg:flex">
+                      <span className="text-slate-400 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
+                      <span className="text-slate-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
+                        {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden md:flex items-center gap-1">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
+                    <span className="font-bold text-slate-400 text-xs sm:text-sm">{currentTime || '--:--'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Right Section: Search and User Menu */}
           <div className="relative z-10 ml-2 flex min-w-0 flex-1 items-center justify-end gap-1 sm:ml-3 sm:gap-1.5 md:ml-4 md:gap-2 lg:gap-3">

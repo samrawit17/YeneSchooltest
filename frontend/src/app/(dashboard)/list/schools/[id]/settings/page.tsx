@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api/core';
 import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Copy,
   ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -468,6 +469,104 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'notifications',
     systemDefault: false,
   },
+
+  // Data Quality Settings
+  {
+    key: 'DATA_QUALITY_REQUIRE_STUDENT_CODE',
+    label: 'Require Student Code',
+    description: 'Flag students without a student code as a high-severity issue',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_FAYDA',
+    label: 'Require Fayda Number',
+    description: 'Flag students without a Fayda number as a high-severity issue',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: false,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_MOTHER_NAME',
+    label: 'Require Mother Name',
+    description: 'Flag students without a mother name on file',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: false,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_PARENT',
+    label: 'Require Parent Link',
+    description: 'Flag students with no linked parent or guardian',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_STUDENT_PHONE',
+    label: 'Require Student Phone',
+    description: 'Flag students without a contact phone number',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: false,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_STAFF_EMAIL',
+    label: 'Require Staff Email',
+    description: 'Flag staff without an email address',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: false,
+  },
+  {
+    key: 'DATA_QUALITY_REQUIRE_STAFF_PHONE',
+    label: 'Require Staff Phone',
+    description: 'Flag staff without a phone number',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: false,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_DUPLICATE_CODE',
+    label: 'Check Duplicate Codes',
+    description: 'Detect students who share the same student code',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_CLASS_MISMATCH',
+    label: 'Warn on Class Mismatch',
+    description: 'Warn when a student\'s profile class differs from their placement class',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_SECTION_MISMATCH',
+    label: 'Warn on Section Mismatch',
+    description: 'Warn when a student\'s profile section differs from their placement section',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_CLASS_HOMEROOM',
+    label: 'Class Without Homeroom',
+    description: 'Detect classes that have no homeroom teacher assigned',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_TIMETABLE_CONFLICT',
+    label: 'Timetable Conflicts',
+    description: 'Detect teachers scheduled in overlapping time slots',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
 ];
 
 const CATEGORY_CONFIG = {
@@ -543,6 +642,12 @@ const CATEGORY_CONFIG = {
     color: 'text-purple-600',
     bgColor: 'bg-purple-100',
   },
+  dataQuality: {
+    label: 'Data Quality',
+    icon: ShieldCheck,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-100',
+  },
 };
 
 const TIER_LEVELS: Record<PlanTier, number> = {
@@ -571,6 +676,7 @@ export default function SchoolSettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [activeTab, setActiveTab] = useState('academic');
+  const warnedUnsaved = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // School info state
@@ -1273,14 +1379,19 @@ export default function SchoolSettingsPage() {
     (isEditingPublicUrlSlug && publicUrlSlug !== (schoolInfo?.publicUrlSlug || ''));
 
   useEffect(() => {
-    if (!hasPendingPageChanges) return;
-
+    if (!hasPendingPageChanges) {
+      warnedUnsaved.current = false;
+      return;
+    }
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
+    if (!warnedUnsaved.current) {
+      warnedUnsaved.current = true;
+      toast.warning('Unsaved changes — make sure to save before leaving.');
+    }
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasPendingPageChanges]);
 
@@ -1330,6 +1441,13 @@ export default function SchoolSettingsPage() {
         await schoolSettingsAPI.batchUpdate(schoolId, updatePayload);
         setSettings((prev) => ({ ...prev, ...updatePayload }));
         setDraftSettings((prev) => ({ ...prev, ...updatePayload }));
+        setNumberDrafts((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(updatePayload)) {
+            delete next[key];
+          }
+          return next;
+        });
         syncSchoolSettingsCaches(updatePayload, Object.keys(updatePayload));
 
         if (Object.prototype.hasOwnProperty.call(updatePayload, 'theme_color')) {
@@ -1353,12 +1471,24 @@ export default function SchoolSettingsPage() {
           delete next[setting.key];
           return next;
         });
+        setNumberDrafts((prev) => {
+          const next = { ...prev };
+          delete next[setting.key];
+          return next;
+        });
         syncSchoolSettingsCaches({}, [setting.key], { remove: true });
 
         if (setting.key === 'theme_color') {
           syncCachedLoginContext({ accentColor: null });
         }
       }
+
+      setSelectedLogoFile(null);
+      setSelectedLoginImageFile(null);
+      setIsEditingCode(false);
+      setIsEditingPublicUrlSlug(false);
+
+      warnedUnsaved.current = false;
 
       toast.success(messageText('settingsSaveSuccess', 'School settings saved successfully'));
     } catch (err: any) {

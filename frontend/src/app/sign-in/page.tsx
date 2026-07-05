@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useThemeStore } from "@/lib/themeStore";
 import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
 import { useTranslations } from "@/hooks/useTranslations";
-import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User, Megaphone } from "lucide-react";
+import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User, Megaphone, Wrench } from "lucide-react";
 
 import { announcementsAPI, type Announcement } from "@/lib/api/content";
 import { enrollmentAPI } from "@/lib/api/enrollment";
@@ -21,6 +21,7 @@ import {
   getHostSchoolSlug,
   readCachedSchoolLoginContext,
   writeCachedSchoolLoginContext,
+  isCachedSchoolContextExpired,
   type PublicSchoolSummary,
 } from "@/lib/school-resolver";
 
@@ -93,6 +94,7 @@ const LoginPage = () => {
     schoolId: requestedSchoolId,
     slug: requestedSchoolSlug,
   });
+  const isCacheExpired = cachedLoginSchool ? isCachedSchoolContextExpired(cachedLoginSchool) : true;
   const [resolvedLoginSchoolId, setResolvedLoginSchoolId] = useState<string | null>(cachedLoginSchool?.id || null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -101,6 +103,7 @@ const LoginPage = () => {
   const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(cachedLoginSchool?.logoUrl || null);
   const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(cachedLoginSchool?.loginImageUrl || null);
   const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(cachedLoginSchool?.accentColor || null);
+  const [schoolMaintenanceMode, setSchoolMaintenanceMode] = useState<boolean>(isCacheExpired ? false : (cachedLoginSchool?.isMaintenance ?? false));
   const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(cachedLoginSchool?.publicUrlSlug || null);
   const initialDocumentTitleRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
@@ -199,6 +202,7 @@ const LoginPage = () => {
           setSchoolLogoUrl(selectedSchool.logoUrl || null);
           setSchoolLoginImageUrl(selectedSchool.loginImageUrl || null);
           setSchoolAccentColor(selectedSchool.accentColor || null);
+          setSchoolMaintenanceMode(selectedSchool.isMaintenance ?? false);
         } else {
           setResolvedLoginSchoolId(null);
           setResolvedLoginSchoolSlug(null);
@@ -206,11 +210,13 @@ const LoginPage = () => {
           setSchoolLogoUrl(null);
           setSchoolLoginImageUrl(null);
           setSchoolAccentColor(null);
+          setSchoolMaintenanceMode(false);
         }
         const data = Array.isArray(announcementResponse.data) ? announcementResponse.data : [];
         setAnnouncements(data);
       } catch {
         setAnnouncements([]);
+        setSchoolMaintenanceMode(false);
       } finally {
         setAnnouncementsLoading(false);
       }
@@ -460,6 +466,26 @@ const LoginPage = () => {
             </span>
           </div>
 
+          {schoolMaintenanceMode ? (
+            <div className="flex flex-col items-center text-center space-y-6 py-8">
+              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/30">
+                <Wrench className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                School Under Maintenance
+              </h2>
+              <p className="text-base leading-relaxed text-gray-600 dark:text-gray-300">
+                {schoolName ? `${schoolName} is` : 'The school portal is'} temporarily unavailable while maintenance is in progress. Please check back later.
+              </p>
+              <Link
+                href="/"
+                className="text-sm font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
+              >
+                &larr; Back to Home
+              </Link>
+            </div>
+          ) : (
+            <>
           {/* Header */}
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
@@ -607,6 +633,8 @@ const LoginPage = () => {
               &larr; Back to Home
             </Link>
           </p>
+          </>
+          )}
 
         </div>
 

@@ -37,6 +37,10 @@ export default function RootLayout({
       suppressHydrationWarning
       style={fontVariables}
     >
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="application-name" content="SMS" />
+      </head>
       <body>
         <script dangerouslySetInnerHTML={{
           __html: `

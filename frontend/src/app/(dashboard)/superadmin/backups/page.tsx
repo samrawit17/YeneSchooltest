@@ -2,12 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Download, FileArchive, Loader2, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  Database,
+  Download,
+  FileArchive,
+  Loader2,
+  RefreshCw,
+  Shield,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { superadminAPI, type SchoolBackupTypeOption } from "@/lib/api/superadmin";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface SchoolOption {
   id: string;
@@ -29,6 +37,23 @@ function extractSchoolOptions(payload: unknown): SchoolOption[] {
   return [];
 }
 
+function triggerBlobDownload(blob: Blob, fileName: string) {
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+function extractFileName(response: { headers: Record<string, string> }, fallback: string) {
+  const disposition = response.headers["content-disposition"] || "";
+  const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
+  return fileNameMatch?.[1] || fallback;
+}
+
 export default function SuperAdminBackupsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -38,7 +63,8 @@ export default function SuperAdminBackupsPage() {
   const [backupType, setBackupType] = useState("FULL_SCHOOL");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingPlatform, setDownloadingPlatform] = useState(false);
+  const [downloadingSchool, setDownloadingSchool] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -59,6 +85,11 @@ export default function SuperAdminBackupsPage() {
   const selectedSchool = useMemo(
     () => schools.find((school) => school.id === schoolId),
     [schoolId, schools],
+  );
+
+  const selectedType = useMemo(
+    () => types.find((type) => type.value === backupType),
+    [backupType, types],
   );
 
   async function loadOptions() {
@@ -88,61 +119,112 @@ export default function SuperAdminBackupsPage() {
     }
   }
 
-  async function downloadSelectedBackup() {
+  async function downloadPlatformBackup() {
+    try {
+      setDownloadingPlatform(true);
+      const response = await superadminAPI.downloadBackup();
+      const fileName = extractFileName(response, `sms-platform-backup-${Date.now()}.zip`);
+      triggerBlobDownload(response.data, fileName);
+      toast.success("Platform backup download started");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Platform backup download failed");
+    } finally {
+      setDownloadingPlatform(false);
+    }
+  }
+
+  async function downloadSchoolBackup() {
     if (!schoolId) {
       toast.error("Choose a school first");
       return;
     }
 
     try {
-      setDownloading(true);
+      setDownloadingSchool(true);
       const response = await superadminAPI.downloadSchoolBackup(schoolId, backupType);
-      const disposition = response.headers["content-disposition"] || "";
-      const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
       const fallbackName = `sms-${selectedSchool?.code || selectedSchool?.name || "school"}-${backupType.toLowerCase()}.zip`;
-      const fileName = fileNameMatch?.[1] || fallbackName;
-      const blobUrl = window.URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(blobUrl);
-      toast.success("Backup download started");
+      const fileName = extractFileName(response, fallbackName);
+      triggerBlobDownload(response.data, fileName);
+      toast.success("School backup download started");
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Backup download failed");
+      toast.error(error?.response?.data?.message || "School backup download failed");
     } finally {
-      setDownloading(false);
+      setDownloadingSchool(false);
     }
   }
+
+  const isBusy = loading || downloadingPlatform || downloadingSchool;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#1A1A1A] md:p-6">
       <div className="w-full space-y-6">
         <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">School Backups</h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Download useful school records for migration, support, or audit.
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Backups</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Download full platform disaster-recovery backups or school-scoped exports for migration and support.
           </p>
         </div>
 
         <Card className="dark:border-[#2A2A2A] dark:bg-[#2A2A2A]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <FileArchive className="h-5 w-5 text-purple-600" />
-              Create Backup
+              <Database className="h-5 w-5 text-purple-600" />
+              Platform Backup
             </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Full PostgreSQL dump plus all uploaded files. Use this for disaster recovery and scheduled off-site storage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-[#1A1A1A] dark:text-amber-200">
+              <div className="flex items-start gap-2">
+                <Shield className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-medium">Disaster recovery backup</p>
+                  <p>
+                    Includes the complete database and uploads directory. Environment secrets are not included.
+                    Large databases may take several minutes to download.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="secondary"
+                onClick={downloadPlatformBackup}
+                disabled={isBusy}
+              >
+                {downloadingPlatform ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download Platform Backup
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#2A2A2A]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <FileArchive className="h-5 w-5 text-purple-600" />
+              School Backup
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Application-level JSON export for one school. Password hashes and temporary credentials are excluded.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">School</span>
                 <select
-                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"
+                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-white"
                   value={schoolId}
                   onChange={(event) => setSchoolId(event.target.value)}
-                  disabled={loading || downloading}
+                  disabled={isBusy}
                 >
                   {loading ? (
                     <option value="">Loading schools...</option>
@@ -151,7 +233,8 @@ export default function SuperAdminBackupsPage() {
                   ) : (
                     schools.map((school) => (
                       <option key={school.id} value={school.id}>
-                        {school.name}{school.code ? ` (${school.code})` : ""}
+                        {school.name}
+                        {school.code ? ` (${school.code})` : ""}
                       </option>
                     ))
                   )}
@@ -161,10 +244,10 @@ export default function SuperAdminBackupsPage() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Backup Type</span>
                 <select
-                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"
+                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-white"
                   value={backupType}
                   onChange={(event) => setBackupType(event.target.value)}
-                  disabled={loading || downloading}
+                  disabled={isBusy}
                 >
                   {loading ? (
                     <option value="">Loading backup types...</option>
@@ -181,8 +264,14 @@ export default function SuperAdminBackupsPage() {
               </label>
             </div>
 
+            {selectedType?.description ? (
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-300">
+                {selectedType.description}
+              </div>
+            ) : null}
+
             {loadError ? (
-              <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-[#2A2A2A] dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-[#1A1A1A] dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
                   {loadError}
@@ -194,10 +283,14 @@ export default function SuperAdminBackupsPage() {
               </div>
             ) : null}
 
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-gray-300">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-300">
               {selectedSchool ? (
                 <span>
-                  Selected: <strong>{selectedSchool.name}</strong>. The download will be a zip containing JSON files for the selected backup type.
+                  Selected: <strong>{selectedSchool.name}</strong>. The download will be a zip with JSON files
+                  {backupType === "FULL_SCHOOL" || backupType === "DOCUMENTS"
+                    ? " and matching uploaded files"
+                    : ""}{" "}
+                  for the selected backup type.
                 </span>
               ) : (
                 <span>No school selected.</span>
@@ -206,16 +299,16 @@ export default function SuperAdminBackupsPage() {
 
             <div className="flex justify-end">
               <Button
-                className="bg-purple-600 text-white hover:bg-purple-700"
-                onClick={downloadSelectedBackup}
-                disabled={loading || downloading || !schoolId}
+                variant="secondary"
+                onClick={downloadSchoolBackup}
+                disabled={isBusy || !schoolId}
               >
-                {downloading ? (
+                {downloadingSchool ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Download className="mr-2 h-4 w-4" />
                 )}
-                Download Backup
+                Download School Backup
               </Button>
             </div>
           </CardContent>

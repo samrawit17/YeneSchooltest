@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
@@ -8,6 +8,8 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "sonner";
 import { gradingAPI } from "@/lib/api";
 import { syncService } from "@/lib/db/sync-service";
+import { useOfflineGrading } from "@/hooks/useOfflineGrading";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   BookOpen,
   Users,
@@ -19,6 +21,9 @@ import {
   Loader2,
   ChevronDown,
   Calculator,
+  Wifi,
+  WifiOff,
+  Database,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -214,7 +219,6 @@ export default function TeacherGradingPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedClassSectionId, setSelectedClassSectionId] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   const normalizedRole = (user?.role || "").toUpperCase();
@@ -300,6 +304,15 @@ export default function TeacherGradingPage() {
   const [saving, setSaving] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  const { isOnline: networkOnline } = useNetworkStatus();
+  const offlineGrading = useOfflineGrading({
+    userId: user?.id,
+    academicYearId: selectedYear,
+    autoSync: true,
+  });
+  const [isDataCached, setIsDataCached] = useState(false);
+  const isOfflineModeRef = useRef(false);
+
   const queryAssignment = useMemo(() => ({
     classId: searchParams.get("classId") || "",
     sectionId: searchParams.get("sectionId") || "",
@@ -318,101 +331,105 @@ export default function TeacherGradingPage() {
   }, [setItems]);
 
   const fetchInitialData = useCallback(async () => {
+    const isOnline = navigator.onLine;
+    isOfflineModeRef.current = !isOnline;
+
     try {
-      // Use centralized context to get academic years
-      let years = (await getAllAcademicYears()) as AcademicYear[];
+      if (isOnline) {
+        let years = (await getAllAcademicYears()) as AcademicYear[];
+        years = years.sort((a: AcademicYear, b: AcademicYear) => {
+          const aNum = parseInt(a.name, 10);
+          const bNum = parseInt(b.name, 10);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return bNum - aNum;
+          }
+          return b.name.localeCompare(a.name);
+        });
+        setAcademicYears(years);
 
-      // Keep original name from DB (already unique per school)
-      years = years.sort((a: AcademicYear, b: AcademicYear) => {
-        // Sort by year descending if both are numbers
-        const aNum = parseInt(a.name, 10);
-        const bNum = parseInt(b.name, 10);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return bNum - aNum;
-        }
-        return b.name.localeCompare(a.name);
-      });
-
-      setAcademicYears(years);
-
-      // Fetch teacher-visible assessment types without hitting admin-only endpoints
-      try {
-        const weightsRes = await gradingAPI.getTeacherAssessmentTypes();
-        const weightsData = Array.isArray(weightsRes.data)
-          ? weightsRes.data
-          : weightsRes.data?.data ?? [];
-        if (weightsRes.status === 200 && weightsData.length > 0) {
-          setGradingComponents(
-            weightsData.map((item: { code?: string; type?: string; name?: string; percentage: number }) => {
+        try {
+          const weightsRes = await gradingAPI.getTeacherAssessmentTypes();
+          const weightsData = Array.isArray(weightsRes.data)
+            ? weightsRes.data
+            : weightsRes.data?.data ?? [];
+          if (weightsRes.status === 200 && weightsData.length > 0) {
+            const parsedWeights = weightsData.map((item: { code?: string; type?: string; name?: string; percentage: number }) => {
               const code = item.code ?? item.type ?? "";
               return {
                 code,
                 name: item.name || formatAssessmentLabel(code),
                 percentage: item.percentage,
               };
-            }),
-          );
+            });
+            setGradingComponents(parsedWeights);
+            await offlineGrading.cacheComponents(undefined);
+          }
+        } catch {
+          // silent - use defaults
         }
-      } catch (err: any) {
-        // Silent fail - use defaults
-      }
 
-      // Set the first year as default or find active year from context
-      const activeYear =
-        years.find((y: AcademicYear) => y.id === queryAssignment.academicYear) ||
-        (currentAcademicYear ? years.find((y: AcademicYear) => y.id === currentAcademicYear.id) : null) ||
-        years.find((y: AcademicYear) => y.isActive) ||
-        years[0];
-      if (activeYear) {
-        setSelectedYear(activeYear.id);
+        const activeYear =
+          years.find((y: AcademicYear) => y.id === queryAssignment.academicYear) ||
+          (currentAcademicYear ? years.find((y: AcademicYear) => y.id === currentAcademicYear.id) : null) ||
+          years.find((y: AcademicYear) => y.isActive) ||
+          years[0];
+        if (activeYear) {
+          setSelectedYear(activeYear.id);
 
-        // Fetch terms for selected year using centralized context
-        const termsData = await getTermsForYear(activeYear.id);
-        setTerms(termsData);
-        // Prefer URL param term if valid, otherwise pick the term that contains today's date, else default to the first term
-        const now = new Date();
-        const urlTermValid = queryAssignment.termId && termsData.find((term: Term) => term.id === queryAssignment.termId);
-        const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
-        const preferredTerm = urlTermValid
-          ? queryAssignment.termId
-          : currentPeriod?.id || termsData[0]?.id || "";
-        setSelectedTerm(preferredTerm);
+          const termsData = await getTermsForYear(activeYear.id);
+          setTerms(termsData);
+          const now = new Date();
+          const urlTermValid = queryAssignment.termId && termsData.find((term: Term) => term.id === queryAssignment.termId);
+          const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
+          const preferredTerm = urlTermValid
+            ? queryAssignment.termId
+            : currentPeriod?.id || termsData[0]?.id || "";
+          setSelectedTerm(preferredTerm);
 
-        // Fetch teacher's subject assignments using the selected academic year
-        const assignmentRes = await gradingAPI.getTeacherAssignments({ academicYear: activeYear.id });
-        const parsedAssignments = normalizeAssignments(assignmentRes.data);
-        setAssignments(parsedAssignments);
-        
-        // Find preferred from URL params
-        const preferredFromUrl = parsedAssignments.find((assignment) => {
-          return (
-            assignment.class?.id === queryAssignment.classId &&
-            assignment.subject?.id === queryAssignment.subjectId &&
-            (!queryAssignment.sectionId || assignment.section?.id === queryAssignment.sectionId)
-          );
-        });
-        
-        // Find preferred assignment (filter out homeroom)
-        const nonHomeroomAssignments = parsedAssignments.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
-        let preferredAssignment: TeacherAssignment | undefined;
-        if (preferredFromUrl) {
-          preferredAssignment = preferredFromUrl;
-        } else if (nonHomeroomAssignments.length > 0) {
-          preferredAssignment = nonHomeroomAssignments[0];
+          const assignmentRes = await gradingAPI.getTeacherAssignments({ academicYear: activeYear.id });
+          const parsedAssignments = normalizeAssignments(assignmentRes.data);
+          setAssignments(parsedAssignments);
+
+          await offlineGrading.cacheAssignments(activeYear.id);
+
+          const preferredFromUrl = parsedAssignments.find((assignment) => {
+            return (
+              assignment.class?.id === queryAssignment.classId &&
+              assignment.subject?.id === queryAssignment.subjectId &&
+              (!queryAssignment.sectionId || assignment.section?.id === queryAssignment.sectionId)
+            );
+          });
+          const nonHomeroomAssignments = parsedAssignments.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
+          let preferredAssignment: TeacherAssignment | undefined;
+          if (preferredFromUrl) {
+            preferredAssignment = preferredFromUrl;
+          } else if (nonHomeroomAssignments.length > 0) {
+            preferredAssignment = nonHomeroomAssignments[0];
+          }
+
+          if (preferredAssignment) {
+            setSelectedSubjectId(preferredAssignment.subject?.id);
+            setSelectedClassSectionId(preferredAssignment.id);
+          }
         }
-        
-        if (preferredAssignment) {
-          setSelectedSubjectId(preferredAssignment.subject?.id);
-          setSelectedClassSectionId(preferredAssignment.id);
+        setIsDataCached(true);
+      } else if (offlineGrading.cachedAssignments) {
+        const cachedYears = offlineGrading.cachedAssignments;
+        if (cachedYears.length > 0) {
+          setIsDataCached(true);
         }
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
-      toast.error("Failed to load initial data");
+      if (!navigator.onLine) {
+        isOfflineModeRef.current = true;
+      } else {
+        toast.error("Failed to load initial data");
+      }
     } finally {
       setInitialLoad(false);
     }
-  }, [queryAssignment]);
+  }, [queryAssignment, offlineGrading]);
 
   // Fetch academic years, terms, and assignments on mount
   useEffect(() => {
@@ -452,16 +469,16 @@ export default function TeacherGradingPage() {
   // Fetch terms when academic year changes
   const fetchTermsForYear = useCallback(async (yearId: string) => {
     try {
-      // Use centralized context to get terms
-      const termsData = await getTermsForYear(yearId);
-      setTerms(termsData);
-      if (termsData.length > 0) {
-        // Default to the term that contains today's date when available
-        const now = new Date();
-        const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
-        setSelectedTerm(currentPeriod?.id || termsData[0].id);
-      } else {
-        setSelectedTerm("");
+      if (navigator.onLine) {
+        const termsData = await getTermsForYear(yearId);
+        setTerms(termsData);
+        if (termsData.length > 0) {
+          const now = new Date();
+          const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
+          setSelectedTerm(currentPeriod?.id || termsData[0].id);
+        } else {
+          setSelectedTerm("");
+        }
       }
     } catch (error) {
       console.error("Error fetching terms:", error);
@@ -478,27 +495,68 @@ export default function TeacherGradingPage() {
   // Initial assignments are fetched in `fetchInitialData()`.
   const fetchAssignmentsForYear = useCallback(async (academicYearId: string) => {
     try {
-      const assignmentRes = await gradingAPI.getTeacherAssignments({ academicYear: academicYearId });
-      const parsedAssignments = normalizeAssignments(assignmentRes.data);
-      setAssignments(parsedAssignments);
-      const preferredAssignment = parsedAssignments.find((assignment) => {
-        return (
-          assignment.class?.id === queryAssignment.classId &&
-          assignment.subject?.id === queryAssignment.subjectId &&
-          (!queryAssignment.sectionId || assignment.section?.id === queryAssignment.sectionId)
-        );
-      });
-      const nonHomeroomAssignments = parsedAssignments.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
-      const nextAssignment = preferredAssignment || nonHomeroomAssignments[0] || parsedAssignments[0];
-      setSelectedSubjectId(nextAssignment?.subject?.id || "");
-      setSelectedClassSectionId(nextAssignment?.id || "");
+      if (navigator.onLine) {
+        const assignmentRes = await gradingAPI.getTeacherAssignments({ academicYear: academicYearId });
+        const parsedAssignments = normalizeAssignments(assignmentRes.data);
+        setAssignments(parsedAssignments);
+        await offlineGrading.cacheAssignments(academicYearId);
+        const preferredAssignment = parsedAssignments.find((assignment) => {
+          return (
+            assignment.class?.id === queryAssignment.classId &&
+            assignment.subject?.id === queryAssignment.subjectId &&
+            (!queryAssignment.sectionId || assignment.section?.id === queryAssignment.sectionId)
+          );
+        });
+        const nonHomeroomAssignments = parsedAssignments.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
+        const nextAssignment = preferredAssignment || nonHomeroomAssignments[0] || parsedAssignments[0];
+        setSelectedSubjectId(nextAssignment?.subject?.id || "");
+        setSelectedClassSectionId(nextAssignment?.id || "");
+      } else {
+        const cached = await offlineGrading.cachedAssignments;
+        if (cached && cached.length > 0) {
+          const mapped: TeacherAssignment[] = cached.map((a) => ({
+            id: a.id,
+            subject: { id: a.subjectId, name: a.subjectName },
+            class: { id: a.classId, name: a.className },
+            section: { id: a.sectionId, name: a.sectionName },
+            type: a.type,
+            isHomeroom: a.isHomeroom,
+          }));
+          setAssignments(mapped);
+          const nonHomeroom = mapped.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
+          if (nonHomeroom.length > 0) {
+            setSelectedSubjectId(nonHomeroom[0].subject.id);
+            setSelectedClassSectionId(nonHomeroom[0].id);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error fetching assignments:", error);
-      setAssignments([]);
-      setSelectedSubjectId("");
-      setSelectedClassSectionId("");
+      if (!navigator.onLine) {
+        const cached = await offlineGrading.cachedAssignments;
+        if (cached && cached.length > 0) {
+          const mapped: TeacherAssignment[] = cached.map((a) => ({
+            id: a.id,
+            subject: { id: a.subjectId, name: a.subjectName },
+            class: { id: a.classId, name: a.className },
+            section: { id: a.sectionId, name: a.sectionName },
+            type: a.type,
+            isHomeroom: a.isHomeroom,
+          }));
+          setAssignments(mapped);
+          const nonHomeroom = mapped.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
+          if (nonHomeroom.length > 0) {
+            setSelectedSubjectId(nonHomeroom[0].subject.id);
+            setSelectedClassSectionId(nonHomeroom[0].id);
+          }
+        }
+      } else {
+        setAssignments([]);
+        setSelectedSubjectId("");
+        setSelectedClassSectionId("");
+      }
     }
-  }, [queryAssignment]);
+  }, [queryAssignment, offlineGrading]);
 
   useEffect(() => {
     if (!initialLoad && selectedYear) {
@@ -515,53 +573,64 @@ export default function TeacherGradingPage() {
     }
 
     setLoading(true);
+    const isOnline = navigator.onLine;
     try {
-      const res = await gradingAPI.getTeacherStudents({
-        academicYear: selectedYear,
-        termId: selectedTerm,
-        classId: assignment.class.id,
-        sectionId: assignment.section.id,
-        subjectId: assignment.subject.id,
-      });
-      const data = res.data;
-      const currentColumns =
-        gradingComponents.length === 0
-          ? [
-              { code: 'CA', label: 'Quiz', maxScore: 15 },
-              { code: 'MID', label: 'Mid Exam', maxScore: 20 },
-              { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
-            ]
-          : gradingComponents.map((c) => ({
-              code: c.code,
-              label: c.name,
-              maxScore: c.percentage,
-            }));
-      
-      // Handle both {students, isTermLocked} format and direct array response
-      const studentData = data?.students || (Array.isArray(data) ? data : (data.data || []));
-      const availabilityData = Array.isArray(data?.componentAvailability)
-        ? data.componentAvailability
-        : [];
-      const locked = data?.isTermLocked || false;
-      
-      setComponentAvailability(
-        Object.fromEntries(
-          availabilityData.map((item: ComponentAvailability) => [
-            String(item.code).toUpperCase(),
-            item,
-          ]),
-        ),
-      );
-      setStudents(
-        (studentData as any[])
-          .map((student) => {
-            const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
-            const normalizedComponentScores = Object.fromEntries(
-              persistedComponentScores.map((item) => [
-                String(item.code).toUpperCase(),
-                item.score ?? null,
-              ]),
-            );
+      if (isOnline) {
+        const res = await gradingAPI.getTeacherStudents({
+          academicYear: selectedYear,
+          termId: selectedTerm,
+          classId: assignment.class.id,
+          sectionId: assignment.section.id,
+          subjectId: assignment.subject.id,
+        });
+        const data = res.data;
+        const currentColumns =
+          gradingComponents.length === 0
+            ? [
+                { code: 'CA', label: 'Quiz', maxScore: 15 },
+                { code: 'MID', label: 'Mid Exam', maxScore: 20 },
+                { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
+              ]
+            : gradingComponents.map((c) => ({
+                code: c.code,
+                label: c.name,
+                maxScore: c.percentage,
+              }));
+
+        const studentData = data?.students || (Array.isArray(data) ? data : (data.data || []));
+        const availabilityData = Array.isArray(data?.componentAvailability)
+          ? data.componentAvailability
+          : [];
+        const locked = data?.isTermLocked || false;
+
+        setComponentAvailability(
+          Object.fromEntries(
+            availabilityData.map((item: ComponentAvailability) => [
+              String(item.code).toUpperCase(),
+              item,
+            ]),
+          ),
+        );
+
+        await offlineGrading.cacheGradeEntryData({
+          academicYear: selectedYear,
+          termId: selectedTerm,
+          classId: assignment.class.id,
+          sectionId: assignment.section.id,
+          subjectId: assignment.subject.id,
+        });
+        setIsDataCached(true);
+
+        setStudents(
+          (studentData as any[])
+            .map((student) => {
+              const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
+              const normalizedComponentScores = Object.fromEntries(
+                persistedComponentScores.map((item) => [
+                  String(item.code).toUpperCase(),
+                  item.score ?? null,
+                ]),
+              );
 
             const hasGranularCaScores = persistedComponentScores.some((item) => {
               const code = String(item.code).toUpperCase();
@@ -616,14 +685,122 @@ export default function TeacherGradingPage() {
       );
       setHasUnsavedChanges(false);
       setIsTermLocked(locked);
+    } else {
+      const cached = await offlineGrading.getCachedGradeData(
+        assignment.class.id,
+        assignment.section.id,
+        assignment.subject.id,
+        selectedTerm,
+      );
+      if (cached) {
+        const currentColumns = cached.gradingComponents.length > 0
+          ? cached.gradingComponents.map((c: any) => ({ code: c.code, label: c.name, maxScore: c.percentage }))
+          : [
+              { code: 'CA', label: 'Quiz', maxScore: 15 },
+              { code: 'MID', label: 'Mid Exam', maxScore: 20 },
+              { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
+            ];
+
+        setComponentAvailability(cached.componentAvailability as Record<string, ComponentAvailability>);
+        setGradingComponents(cached.gradingComponents);
+
+        setStudents(
+          (cached.students as any[])
+            .map((student: any) => {
+              const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
+              const normalizedComponentScores = Object.fromEntries(
+                persistedComponentScores.map((item: any) => [
+                  String(item.code).toUpperCase(),
+                  item.score ?? null,
+                ]),
+              );
+
+              return {
+                ...student,
+                componentScores: normalizedComponentScores,
+                totalScore: null,
+                gradeLetter: null,
+              };
+            })
+            .sort((a: any, b: any) => {
+              const aRoll = Number(a.rollNumber);
+              const bRoll = Number(b.rollNumber);
+              const aHasNumericRoll = Number.isFinite(aRoll) && String(a.rollNumber ?? "").trim() !== "";
+              const bHasNumericRoll = Number.isFinite(bRoll) && String(b.rollNumber ?? "").trim() !== "";
+              if (aHasNumericRoll && bHasNumericRoll) return aRoll - bRoll;
+              if (aHasNumericRoll) return -1;
+              if (bHasNumericRoll) return 1;
+              return String(a.studentName || "").localeCompare(String(b.studentName || ""));
+            }) as StudentGrade[],
+        );
+        setIsTermLocked(cached.isTermLocked);
+        isOfflineModeRef.current = true;
+      }
+      setHasUnsavedChanges(false);
+    }
     } catch (error: any) {
       console.error("Error fetching students:", error);
+      const isNetworkError = !navigator.onLine || !error?.response;
+      if (isNetworkError) {
+        try {
+          const cached = await offlineGrading.getCachedGradeData(
+            assignment.class.id,
+            assignment.section.id,
+            assignment.subject.id,
+            selectedTerm,
+          );
+          if (cached) {
+            setComponentAvailability(cached.componentAvailability as Record<string, ComponentAvailability>);
+            setGradingComponents(cached.gradingComponents);
+            const currentColumns = cached.gradingComponents.length > 0
+              ? cached.gradingComponents.map((c: any) => ({ code: c.code, label: c.name, maxScore: c.percentage }))
+              : [
+                  { code: 'CA', label: 'Quiz', maxScore: 15 },
+                  { code: 'MID', label: 'Mid Exam', maxScore: 20 },
+                  { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
+                ];
+            setStudents(
+              (cached.students as any[])
+                .map((student: any) => {
+                  const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
+                  const normalizedComponentScores = Object.fromEntries(
+                    persistedComponentScores.map((item: any) => [
+                      String(item.code).toUpperCase(),
+                      item.score ?? null,
+                    ]),
+                  );
+                  return {
+                    ...student,
+                    componentScores: normalizedComponentScores,
+                    totalScore: null,
+                    gradeLetter: null,
+                  };
+                })
+                .sort((a: any, b: any) => {
+                  const aRoll = Number(a.rollNumber);
+                  const bRoll = Number(b.rollNumber);
+                  const aHasNumericRoll = Number.isFinite(aRoll) && String(a.rollNumber ?? "").trim() !== "";
+                  const bHasNumericRoll = Number.isFinite(bRoll) && String(b.rollNumber ?? "").trim() !== "";
+                  if (aHasNumericRoll && bHasNumericRoll) return aRoll - bRoll;
+                  if (aHasNumericRoll) return -1;
+                  if (bHasNumericRoll) return 1;
+                  return String(a.studentName || "").localeCompare(String(b.studentName || ""));
+                }) as StudentGrade[],
+            );
+            setIsTermLocked(cached.isTermLocked);
+            isOfflineModeRef.current = true;
+            return;
+          }
+        } catch {
+          // silent
+        }
+      }
       const message = error?.response?.data?.message || "Failed to load students";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [assignments, selectedClassSectionId, selectedYear, selectedTerm, gradingComponents]);
+  }, [assignments, selectedClassSectionId, selectedYear, selectedTerm, gradingComponents, offlineGrading]);
 
   useEffect(() => {
     if (selectedYear && selectedTerm && selectedClassSectionId) {
@@ -633,7 +810,6 @@ export default function TeacherGradingPage() {
 
   useEffect(() => {
     if (!isTeacherUser) return;
-
     syncService.startAutoSync();
     return () => syncService.stopAutoSync();
   }, [isTeacherUser]);
@@ -642,9 +818,7 @@ export default function TeacherGradingPage() {
     const refreshSyncStatus = async () => {
       const status = await syncService.getSyncStatus();
       setPendingSyncCount(status.pendingCount + status.failedCount);
-      setIsOnline(status.isOnline);
     };
-
     refreshSyncStatus();
     const interval = window.setInterval(refreshSyncStatus, 5000);
     return () => window.clearInterval(interval);
@@ -1110,11 +1284,14 @@ export default function TeacherGradingPage() {
       const isNetworkError = !navigator.onLine || !error?.response;
       if (isNetworkError) {
         try {
-          const submitPayload = buildSubmissionPayload(assignment);
-          await syncService.queueGradeSubmissionOffline(submitPayload);
-          toast.success("Submission queued offline. It will submit when online.");
-          setHasUnsavedChanges(false);
-          return;
+          const catchAssignment = assignments.find((a) => a.id === selectedClassSectionId);
+          if (catchAssignment) {
+            const submitPayload = buildSubmissionPayload(catchAssignment);
+            await syncService.queueGradeSubmissionOffline(submitPayload);
+            toast.success("Submission queued offline. It will submit when online.");
+            setHasUnsavedChanges(false);
+            return;
+          }
         } catch (offlineError) {
           console.error("Failed to queue offline submission:", offlineError);
         }
@@ -1174,9 +1351,18 @@ export default function TeacherGradingPage() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <Badge variant={isOnline ? "outline" : "destructive"} className="h-7 px-2">
-          {isOnline ? "Online" : "Offline"}
+        <Badge variant={networkOnline ? "outline" : "destructive"} className="h-7 px-2">
+          {networkOnline ? (
+            <><Wifi className="mr-1 h-3 w-3" /> Online</>
+          ) : (
+            <><WifiOff className="mr-1 h-3 w-3" /> Offline</>
+          )}
         </Badge>
+        {!networkOnline && isDataCached && (
+          <Badge variant="outline" className="h-7 px-2 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
+            <Database className="mr-1 h-3 w-3" /> Cached data available
+          </Badge>
+        )}
         {pendingSyncCount > 0 && (
           <Badge variant="outline" className="h-7 px-2 border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
             {pendingSyncCount} pending sync

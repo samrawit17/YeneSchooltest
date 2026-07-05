@@ -849,37 +849,15 @@ export default function BulkUploadPage() {
               ) : null}
 
               {uploadResult.failedRecords?.length ? (
-                <div className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-800 dark:bg-[#1A1A1A]">
-                  <p className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">{t.failedRows.replace("{count}", String(uploadResult.failedRecords.length))}</p>
-                  <div className="space-y-2">
-                    {uploadResult.failedRecords.map((item: any, index: number) => (
-                      <div key={index} className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3 dark:border-red-900 dark:bg-red-950/20">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
-                        </p>
-                        <p className="text-sm text-red-600 dark:text-red-400">{item.error}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {uploadResult.failedRecords.length} record(s) failed. See the error message above for details.
+                </p>
               ) : null}
 
               {uploadResult.skippedRecords?.length ? (
-                <div className="rounded-xl border border-amber-200 bg-white p-5 dark:border-amber-800 dark:bg-[#1A1A1A]">
-                  <p className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-400">
-                    Skipped duplicate rows ({uploadResult.skippedRecords.length})
-                  </p>
-                  <div className="space-y-2">
-                    {uploadResult.skippedRecords.map((item: any, index: number) => (
-                      <div key={index} className="rounded-lg border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
-                        </p>
-                        <p className="text-sm text-amber-600 dark:text-amber-400">{item.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {uploadResult.skippedRecords.length} duplicate record(s) skipped.
+                </p>
               ) : null}
             </div>
           )}
