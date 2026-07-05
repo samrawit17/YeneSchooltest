@@ -799,7 +799,6 @@ export class AuthController {
         success: true,
         message:
           'If the username exists in our system, an admin will be notified',
-        ...result,
       };
     } catch (error) {
       return {

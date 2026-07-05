@@ -17,4 +17,28 @@ export class DataQualityController {
       req.user.schoolId,
     );
   }
+
+  @Get('staff-consistency')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  getStaffConsistencyReport(@Request() req: any) {
+    return this.dataQualityService.getStaffConsistencyReport(
+      req.user.schoolId,
+    );
+  }
+
+  @Get('class-structure')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  getClassStructureReport(@Request() req: any) {
+    return this.dataQualityService.getClassStructureReport(
+      req.user.schoolId,
+    );
+  }
+
+  @Get('timetable-conflicts')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  getTimetableConflictReport(@Request() req: any) {
+    return this.dataQualityService.getTimetableConflictReport(
+      req.user.schoolId,
+    );
+  }
 }

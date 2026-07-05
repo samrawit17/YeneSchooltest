@@ -9,19 +9,29 @@ export class AcademicReportService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getPerformanceReport(query: PerformanceReportQuery): Promise<PaginatedReportResponse<AcademicPerformanceRow>> {
-    const { schoolId, academicYearId, termId, classId, sectionId, subjectId, studentId, from, to } = query;
+    const { schoolId, academicYearId, termId, classId, sectionId, subjectId, studentId, status, from, to } = query;
     const page = query.page || 1;
     const limit = query.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where: any = { schoolId, status: 'APPROVED' };
+    const where: any = { schoolId };
 
-    if (academicYearId) where.academicYear = academicYearId;
+    if (academicYearId) {
+      const year = await this.prisma.academicYear.findUnique({
+        where: { id: academicYearId },
+        select: { name: true },
+      });
+      where.OR = [
+        { academicYear: academicYearId },
+        ...(year?.name ? [{ academicYear: year.name }] : []),
+      ];
+    }
     if (termId) where.termId = termId;
     if (classId) where.classId = classId;
     if (sectionId) where.sectionId = sectionId;
     if (subjectId) where.subjectId = subjectId;
     if (studentId) where.studentId = studentId;
+    if (status) where.status = status;
 
     const [rows, total] = await Promise.all([
       this.prisma.subjectGrade.findMany({

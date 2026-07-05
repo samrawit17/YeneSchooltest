@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationModule } from '../notification/notification.module';
 import { FeeStructureModule } from '../fee-structure/fee-structure.module';
@@ -12,4 +12,6 @@ import { PaymentsService } from './payments.service';
   providers: [PaymentsService],
   exports: [PaymentsService],
 })
-export class PaymentsModule {}
+export class PaymentsModule {
+  private readonly _used = [FeeStructureModule, SubscriptionModule];
+}
