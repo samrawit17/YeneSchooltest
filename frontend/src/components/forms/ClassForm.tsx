@@ -232,7 +232,7 @@ const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
         <button
           type="submit"
           disabled={loading || mutation.isPending || !formData.academicYearId}
-          className="px-6 py-2.5 text-white bg-[var(--brand-color,#e35336)] rounded-lg hover:opacity-90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} className="px-6 py-2.5 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading || mutation.isPending ? (
             <>

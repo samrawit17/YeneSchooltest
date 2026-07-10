@@ -415,14 +415,13 @@ const FormModal = ({
     }
   };
 
-  const bgColor =
-    type === "create"
-      ? "bg-[var(--brand-color,#e35336)] hover:bg-[var(--brand-color,#e35336)] hover:opacity-90"
-      : type === "update"
-      ? "bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700"
-      : "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700";
+  const isDestructive = type === "delete";
 
-  const iconColor = "text-white";
+  const bgColor = isDestructive
+    ? "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+    : "bg-white shadow-sm dark:bg-[#1A1A1A]";
+
+  const iconColor = isDestructive ? "text-white" : "text-[var(--brand-color,#e35336)]";
 
   const FormContent = () => {
     if (children) {
@@ -606,6 +605,7 @@ const FormModal = ({
     <>
       <button
         className={`${bgColor} ${iconColor} w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full transition-all duration-200 shadow-md hover:shadow-lg`}
+        style={!isDestructive ? { color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" } : undefined}
         onClick={() => setOpen(true)}
         title={type.charAt(0).toUpperCase() + type.slice(1) + " " + table}
         aria-label={`${type} ${table}`}
