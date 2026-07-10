@@ -52,10 +52,6 @@ function formatChange(value: number | null | undefined) {
   return `${value > 0 ? "+" : ""}${value}%`;
 }
 
-function formatNumber(value: number | null | undefined) {
-  return typeof value === "number" ? value.toLocaleString() : "-";
-}
-
 function classLabel(row: ParentPresentationReport["classSummaries"][number]) {
   return `${row.className}${row.sectionName ? ` ${row.sectionName}` : ""}`;
 }
@@ -255,7 +251,6 @@ export default function ParentPresentationReportPage() {
     }
   };
 
-  const selectedYearLabel = academicYears.find((year) => year.id === selectedYear)?.name || report?.academicYear.name || "-";
   const selectedClass = classes.find((item) => item.id === classId);
   const selectedClassLabel =
     classId === ALL_CLASSES
@@ -264,10 +259,6 @@ export default function ParentPresentationReportPage() {
         ? `${selectedClass.name}${selectedClass.section ? ` ${selectedClass.section}` : ""}`
         : "Selected class";
 
-  const reportHasPublishedData = Boolean(report && (report.summary.from.students > 0 || report.summary.to.students > 0));
-  const decliningClassCount = report?.classSummaries.filter((row) => typeof row.change === "number" && row.change < 0).length || 0;
-  const improvingClassCount = report?.classSummaries.filter((row) => typeof row.change === "number" && row.change > 0).length || 0;
-  const weakSubjectCount = report?.subjectSummaries.filter((row) => typeof row.toAverage === "number" && row.toAverage < 50).length || 0;
   const sortedClassSummaries = useMemo(
     () =>
       [...(report?.classSummaries || [])].sort((a, b) => {
@@ -378,26 +369,6 @@ export default function ParentPresentationReportPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-4">
-            <SummaryTile title="Academic Year" value={selectedYearLabel} detail={`${report.fromTerm.name} to ${report.toTerm.name}`} />
-            <SummaryTile title="Scope" value={selectedClassLabel} detail={`${formatNumber(report.summary.to.students)} current student reports`} />
-            <SummaryTile title="Classes Covered" value={formatNumber(report.classSummaries.length)} detail={`${improvingClassCount} improving, ${decliningClassCount} declining`} />
-            <SummaryTile title="Subjects Reviewed" value={formatNumber(report.subjectSummaries.length)} detail={`${weakSubjectCount} below 50%`} />
-          </div>
-
-          {!reportHasPublishedData && (
-            <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-              <CardContent className="flex gap-3 pt-6 text-sm text-amber-900 dark:text-amber-100">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-                <div>
-                  <p className="font-semibold">No published report cards found for this selection.</p>
-                  <p className="mt-1 text-amber-800 dark:text-amber-200">
-                    Publish report cards for the selected periods before using this brief for parent meetings.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           <div className="grid gap-4 md:grid-cols-3">
             <Metric title="Average Result" from={report.summary.from.average} to={report.summary.to.average} change={report.summary.averageChange} />
@@ -488,18 +459,6 @@ export default function ParentPresentationReportPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function SummaryTile({ title, value, detail }: { title: string; value: string; detail: string }) {
-  return (
-    <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
-      <CardContent className="pt-6">
-        <p className="text-xs font-semibold uppercase text-gray-500">{title}</p>
-        <p className="mt-2 truncate text-lg font-semibold text-gray-950 dark:text-white">{value}</p>
-        <p className="mt-1 text-xs text-gray-500">{detail}</p>
-      </CardContent>
-    </Card>
   );
 }
 

@@ -277,7 +277,7 @@ export function Filters({
   return (
     <div className={filterClass}>
       {config.search && onSearchChange && (
-        <div className="relative flex-1 min-w-0">
+        <div className="relative w-[600px] min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder={searchPlaceholder === "Search..." ? t.placeholders.search : searchPlaceholder}
@@ -296,10 +296,10 @@ export function Filters({
             onValueChange={handleYearChange}
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled}>
               <SelectValue placeholder={t.placeholders.academicYear} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {academicYears.length === 0 ? (
                 <SelectItem value="no-data" disabled>
                   {t.empty.academicYears}
@@ -323,10 +323,10 @@ export function Filters({
             onValueChange={(val) => onTermChange?.(val)}
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled}>
               <SelectValue placeholder={t.placeholders.term} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {!termOptions || termOptions.length === 0 ? (
                 <SelectItem value="no-data" disabled>
                   {t.empty.terms}
@@ -350,10 +350,10 @@ export function Filters({
             onValueChange={(val) => onCurriculumChange?.(val)}
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled}>
               <SelectValue placeholder={t.placeholders.curriculum} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {curriculumOptions.length === 0 ? (
                 <SelectItem value="no-data" disabled>
                   {t.empty.curriculum}
@@ -377,14 +377,14 @@ export function Filters({
             onValueChange={handleGradeChange}
             disabled={disabled || !selectedYear || loading}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled}>
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <SelectValue placeholder={t.placeholders.grade} />
               )}
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {grades.length === 0 ? (
                 <SelectItem value="no-data" disabled>
                   {t.empty.grades}
@@ -408,10 +408,10 @@ export function Filters({
             onValueChange={(val) => onSectionChange(val)}
             disabled={disabled || !selectedYear || !selectedGrade || loading}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled || !selectedYear || !selectedGrade || loading}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled || !selectedYear || !selectedGrade || loading}>
               <SelectValue placeholder={t.placeholders.section} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {!selectedGrade ? (
                 <SelectItem value="select-grade-first" disabled>
                   Select a grade first
@@ -447,10 +447,10 @@ export function Filters({
             onValueChange={(val) => onStatusChange?.(val)}
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectTrigger className="h-9 text-sm w-full bg-transparent dark:bg-transparent" disabled={disabled}>
               <SelectValue placeholder={t.placeholders.status} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-[#1A1A1A]">
               {statusOptions.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   {status.label}

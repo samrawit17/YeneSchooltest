@@ -189,29 +189,29 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-2xl font-bold">Reports</h1>
-        <Button variant="outline" size="icon" onClick={handleRefresh}>
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <p className="text-sm text-gray-500 mt-1">Overview of all report cards, attendance, and assessment data across your school.</p>
       </div>
 
-      <Filters
-        config={FILTER_CONFIG}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-        selectedTerm={selectedTerm}
-        onTermChange={setSelectedTerm}
-        termOptions={termOptions}
-        selectedGrade={selectedGrade}
-        onGradeChange={setSelectedGrade}
-        selectedSection={selectedSection}
-        onSectionChange={setSelectedSection}
-        selectedStatus={selectedStatus}
-        onStatusChange={setSelectedStatus}
-        selectedSearch={selectedSearch}
-        onSearchChange={setSelectedSearch}
-      />
+      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4 min-h-[60px] flex items-center">
+        <Filters
+          config={FILTER_CONFIG}
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+          selectedTerm={selectedTerm}
+          onTermChange={setSelectedTerm}
+          termOptions={termOptions}
+          selectedGrade={selectedGrade}
+          onGradeChange={setSelectedGrade}
+          selectedSection={selectedSection}
+          onSectionChange={setSelectedSection}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          selectedSearch={selectedSearch}
+          onSearchChange={setSelectedSearch}
+        />
+      </div>
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); }}>
         <div className="border-b border-gray-200 dark:border-gray-700">

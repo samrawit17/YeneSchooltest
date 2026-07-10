@@ -394,47 +394,17 @@ export default function EntryProgressPage() {
               Real-time monitoring of grading status across all departments. Track missing scores and manage submission deadlines.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="border-gray-200/70 bg-white/80 backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
-              <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
-                <SelectTrigger className="h-9 w-[180px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
-                  <SelectValue placeholder="Academic Year" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl ring-1 ring-black/5">
-                  {academicYears.map((year) => (
-                    <SelectItem key={year.id} value={year.id} className="text-xs font-normal">
-                      {year.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="h-4 w-px bg-gray-200 dark:bg-[#1A1A1A]" />
-              <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
-                <SelectTrigger className="h-9 w-[160px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
-                  <SelectValue placeholder="Term" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl ring-1 ring-black/5">
-                  {terms.map((term) => (
-                    <SelectItem key={term.id} value={term.id} className="text-xs font-normal">
-                      {term.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2 ml-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={remindAllPending}
-                disabled={reminding}
-                className="rounded-xl border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] font-medium text-xs"
-              >
-                {reminding ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#e35336]" /> : <Bell className="mr-2 h-4 w-4 text-[#e35336]" />}
-                {reminding ? "Sending..." : "Remind Pending"}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={remindAllPending}
+              disabled={reminding}
+              className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs"
+            >
+                {reminding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+              {reminding ? "Sending..." : "Remind Pending"}
+            </Button>
           </div>
         </div>
       </div>
@@ -480,27 +450,50 @@ export default function EntryProgressPage() {
       ) : (
         <>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-gray-200/70 bg-white/80 p-3 rounded-2xl shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
-            <div className="relative w-full md:w-[26rem] lg:w-[32rem]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#e35336] transition-colors" />
-              <Input
-                placeholder="Search subject, class, section..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-10 text-sm border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] focus-visible:ring-2 focus-visible:ring-[#e35336]/20 rounded-xl"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search subject, class, section..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 h-10 text-sm border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] focus-visible:ring-2 focus-visible:ring-[#e35336]/20 rounded-xl"
+                />
+              </div>
+              <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
+                <SelectTrigger className="w-[180px] bg-transparent dark:bg-transparent">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id}>
+                      {year.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
+                <SelectTrigger className="w-[160px] bg-transparent dark:bg-transparent">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-                <SelectTrigger className="h-10 text-xs w-full md:w-36 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] rounded-xl">
+                <SelectTrigger className="w-36 bg-transparent dark:bg-transparent">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
-                  <SelectItem value="COMPLETE" className="text-xs font-medium text-emerald-600">Complete</SelectItem>
-                  <SelectItem value="PARTIAL" className="text-xs font-medium text-amber-600">Partial</SelectItem>
-                  <SelectItem value="EMPTY" className="text-xs font-medium text-rose-600">Not started</SelectItem>
-                  <SelectItem value="NO_STUDENTS" className="text-xs">No students</SelectItem>
+                <SelectContent>
+                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="COMPLETE">Complete</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                  <SelectItem value="EMPTY">Not started</SelectItem>
+                  <SelectItem value="NO_STUDENTS">No students</SelectItem>
                 </SelectContent>
               </Select>
             </div>

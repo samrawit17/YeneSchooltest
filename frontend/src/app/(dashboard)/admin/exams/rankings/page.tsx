@@ -14,7 +14,6 @@ import {
   Award,
   Medal,
   Send,
-  Info
 } from "lucide-react";
 
 // Shadcn components
@@ -152,14 +151,7 @@ export default function StudentRankingsPage() {
         </Button>
       </div>
 
-      <Card className="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20">
-        <CardContent className="flex gap-3 pt-6 text-sm text-blue-900 dark:text-blue-100">
-          <Info className="mt-0.5 h-5 w-5 shrink-0" />
-          <p>
-            This page is for checking ranking order only. The final action that updates parent-visible report cards, publishes rankings, and notifies parents is on Publish Results.
-          </p>
-        </CardContent>
-      </Card>
+
 
       <Card className="border-gray-200 dark:border-[#2A2A2A]">
         <CardHeader>

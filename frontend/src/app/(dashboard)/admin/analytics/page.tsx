@@ -121,22 +121,25 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-2xl font-bold">Analytics</h1>
+        <p className="text-sm text-gray-500 mt-1">Track student performance, class rankings, and academic trends across your school.</p>
       </div>
 
-      <Filters
-        config={FILTER_CONFIG}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-        selectedTerm={selectedTerm}
-        onTermChange={setSelectedTerm}
-        termOptions={termOptions}
-        selectedGrade={selectedGrade}
-        onGradeChange={setSelectedGrade}
-        selectedSection={selectedSection}
-        onSectionChange={setSelectedSection}
-      />
+      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4 min-h-[60px] flex items-center">
+        <Filters
+          config={FILTER_CONFIG}
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+          selectedTerm={selectedTerm}
+          onTermChange={setSelectedTerm}
+          termOptions={termOptions}
+          selectedGrade={selectedGrade}
+          onGradeChange={setSelectedGrade}
+          selectedSection={selectedSection}
+          onSectionChange={setSelectedSection}
+        />
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="border-b border-gray-200 dark:border-gray-700">

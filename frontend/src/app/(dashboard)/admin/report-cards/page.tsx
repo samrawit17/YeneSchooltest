@@ -512,10 +512,10 @@ export default function ReportCardsPage() {
                   className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   {academicYears.length === 0 ? (
-                    <option value="">Academic Year</option>
+                    <option value="" className="bg-white dark:bg-[#1A1A1A]">Academic Year</option>
                   ) : (
                     academicYears.map((year) => (
-                      <option key={year.id} value={year.id}>
+                      <option key={year.id} value={year.id} className="bg-white dark:bg-[#1A1A1A]">
                         {year.name} {year.isActive ? "(Active)" : ""}
                       </option>
                     ))
@@ -526,9 +526,9 @@ export default function ReportCardsPage() {
                   onChange={(e) => setSelectedClass(e.target.value)}
                   className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
-                  <option value="">All Classes</option>
+                  <option value="" className="bg-white dark:bg-[#1A1A1A]">All Classes</option>
                   {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
+                    <option key={cls.id} value={cls.id} className="bg-white dark:bg-[#1A1A1A]">
                       {cls.name} {cls.section && `- Section ${cls.section}`}
                     </option>
                   ))}
@@ -538,9 +538,9 @@ export default function ReportCardsPage() {
                   onChange={(e) => setSelectedTerm(e.target.value)}
                   className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
-                  <option value="">All Terms</option>
+                  <option value="" className="bg-white dark:bg-[#1A1A1A]">All Terms</option>
                   {terms.map((term) => (
-                    <option key={term.id} value={term.id}>
+                    <option key={term.id} value={term.id} className="bg-white dark:bg-[#1A1A1A]">
                       {term.name}
                     </option>
                   ))}
@@ -550,16 +550,17 @@ export default function ReportCardsPage() {
                   onChange={(e) => setFilterStatus(e.target.value as any)}
                   className="flex-1 min-w-0 px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
-                  <option value="all">All Status</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="PUBLISHED">Published</option>
+                  <option value="all" className="bg-white dark:bg-[#1A1A1A]">All Status</option>
+                  <option value="DRAFT" className="bg-white dark:bg-[#1A1A1A]">Draft</option>
+                  <option value="PUBLISHED" className="bg-white dark:bg-[#1A1A1A]">Published</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
                 {canManageReportCards && filteredCards.length > 0 && (
                   <button
                     onClick={handleBulkDownloadReportCards}
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color)] text-white rounded-lg text-sm hover:opacity-90"
+                    className="flex items-center gap-2 px-3 py-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+                    style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                   >
                     <Download className="w-4 h-4" />
                     Download Report Cards ({selectedCards.size > 0 ? selectedCards.size : filteredCards.length})
@@ -569,7 +570,8 @@ export default function ReportCardsPage() {
                   <button
                     onClick={handleUnpublish}
                     disabled={actionLoading}
-                    className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
+                    className="flex items-center gap-2 px-3 py-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+                    style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                   >
                     <XCircle className="w-4 h-4" />
                     Unpublish ({selectedPublishedCardIds.length})
@@ -579,7 +581,8 @@ export default function ReportCardsPage() {
                   <button
                     onClick={handleBulkGenerate}
                     disabled={bulkGenerateLoading || !selectedClass}
-                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--brand-color,#e35336)] to-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/30 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-3 py-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+                    style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                   >
                     {bulkGenerateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Generate All
@@ -587,7 +590,8 @@ export default function ReportCardsPage() {
                 )}
                 <button
                   onClick={() => router.push("/admin/exams/publish")}
-                  className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:opacity-90"
+                  className="flex items-center gap-2 px-3 py-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+                  style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open Publish Page
