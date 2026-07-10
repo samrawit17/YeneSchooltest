@@ -72,13 +72,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      // Post-logout guard: skip auth check if 'loggedOut' is still in sessionStorage.
+      // IMPORTANT: do NOT remove it here — the sign-in page clears it once it renders.
+      // This lets React StrictMode's second effect invocation (which re-runs this
+      // effect after the first cleanup) also see the flag and skip the API call.
       if (typeof window !== 'undefined' && sessionStorage.getItem('loggedOut') === 'true') {
-        sessionStorage.removeItem('loggedOut');
+        sessionStorage.removeItem('user');
         setUser(null);
         setIsLoading(false);
         return;
       }
       
+       // Clear any stale loggedOut flag from sessionStorage before the API call,
+       // so future page loads (after re-login) perform a normal auth check.
+       sessionStorage.removeItem('loggedOut');
+
        const checkAuth = async () => {
          try {
            localStorage.removeItem('user');
@@ -186,6 +194,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const language = useLanguageStore.getState().language;
       const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
       toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
+
+      setIsLoggingOut(false);
     };
 
   const updateUser = (updatedUser: Partial<User>) => {

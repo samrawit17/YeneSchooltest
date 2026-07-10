@@ -1,0 +1,20 @@
+{
+  "marked": "تم تسجيل حضور {{className}} في {{date}}",
+  "bulk_marked": "تم تسجيل حضور جماعي لـ {{count}} طالب",
+  "session_opened": "تم فتح جلسة الحضور لـ {{className}} الساعة {{time}}",
+  "session_closed": "تم إغلاق جلسة الحضور لـ {{className}}",
+  "session_not_found": "لم يتم العثور على جلسة حضور نشطة",
+  "already_marked": "تم تسجيل حضور {{studentName}} اليوم مسبقاً",
+  "not_marked": "لم يتم تسجيل الحضور ليوم {{date}} بعد",
+  "override": "تم تعديل حضور {{studentName}} بواسطة {{actorName}}",
+  "report": {
+    "daily": "تقرير الحضور اليومي لـ {{date}}",
+    "monthly": "تقرير الحضور الشهري لـ {{month}}",
+    "summary": "ملخص الحضور: {{present}} حاضر، {{absent}} غائب، {{late}} متأخر",
+    "student_summary": "{{studentName}}: {{present}}/{{total}} يوم حضور ({{percentage}}%)"
+  },
+  "low_attendance": "تنبيه الحضور: حضور {{studentName}} هو {{percentage}}%",
+  "excused": "تم قبول عذر الغياب لـ {{studentName}}",
+  "unexcused": "تم تسجيل غياب غير معذور لـ {{studentName}}",
+  "late": "تأخر {{studentName}} بمقدار {{minutes}} دقيقة"
+}

@@ -1,0 +1,48 @@
+{
+  "user": {
+    "created": "Isticmaalaha {{userName}} waxaa abuuray {{actorName}}",
+    "updated": "Isticmaalaha {{userName}} waxaa cusbooneysiiyey {{actorName}}",
+    "deleted": "Isticmaalaha {{userName}} waxaa tirtiray {{actorName}}",
+    "login": "Isticmaalaha {{userName}} wuxuu ka soo galay {{ipAddress}}",
+    "logout": "Isticmaalaha {{userName}} wuu soo baxay",
+    "password_changed": "Isticmaalaha {{userName}} wuxuu beddelay furaha sirta ah",
+    "password_reset": "Furaha sirta ah ee isticmaalaha {{userName}} waxaa dib u dejiyey {{actorName}}",
+    "role_changed": "Doorka isticmaalaha {{userName}} waxaa loo beddelay {{newRole}} {{actorName}}",
+    "status_changed": "Xaaladda isticmaalaha {{userName}} waxaa loo beddelay {{status}} {{actorName}}"
+  },
+  "student": {
+    "enrolled": "Ardayga {{studentName}} waxaa ku diiwaan geliyey fasalka {{className}} {{actorName}}",
+    "transferred": "Ardayga {{studentName}} waxaa loo wareejiyey {{newClass}} {{actorName}}",
+    "promoted": "Ardayga {{studentName}} waxaa loo dallacsiiyey {{grade}} {{actorName}}",
+    "graduated": "Ardayga {{studentName}} waxaa qalin jebiyey {{actorName}}",
+    "suspended": "Ardayga {{studentName}} waxaa hakiyey {{actorName}}",
+    "expelled": "Ardayga {{studentName}} waxaa eriyey {{actorName}}"
+  },
+  "fee": {
+    "payment_received": "Lacag dhan {{amount}} oo {{studentName}} ah waxaa helay {{actorName}}",
+    "payment_waived": "Lacag dhan {{amount}} oo {{studentName}} ah waxaa dhaafay {{actorName}}",
+    "fee_structure_created": "Qaabka lacagta {{name}} waxaa abuuray {{actorName}}",
+    "fee_structure_updated": "Qaabka lacagta {{name}} waxaa cusbooneysiiyey {{actorName}}",
+    "discount_applied": "Dhimis dhan {{amount}} oo {{studentName}} ah waxaa dabaqay {{actorName}}"
+  },
+  "exam": {
+    "created": "Imtixaanka {{examName}} waxaa abuuray {{actorName}}",
+    "results_published": "Natiijooyinka {{examName}} waxaa daabacay {{actorName}}",
+    "results_updated": "Natiijooyinka {{examName}} waxaa cusbooneysiiyey {{actorName}}"
+  },
+  "settings": {
+    "school_updated": "Deegaannada dugsiga waxaa cusbooneysiiyey {{actorName}}",
+    "platform_updated": "Deegaannada platform-ka waxaa cusbooneysiiyey {{actorName}}"
+  },
+  "security": {
+    "failed_login": "Iskudaygii galitaanka ee {{email}} ee {{ipAddress}} wuu fashilmay",
+    "suspicious_activity": "Dhaqan shaki leh ayaa laga helay isticmaalaha {{userName}}: {{details}}",
+    "permission_changed": "Ogolaanshaha {{permission}} {{action}} doorka {{role}} {{actorName}}"
+  },
+  "backup": {
+    "created": "Kaydka nidaamka waxaa sameeyay {{actorName}}",
+    "restored": "Kaydka nidaamka waxaa soo celiyey {{actorName}}",
+    "deleted": "Kaydka {{backupName}} waxaa tirtiray {{actorName}}",
+    "downloaded": "Kaydka waxaa soo dejiyey {{actorName}}"
+  }
+}

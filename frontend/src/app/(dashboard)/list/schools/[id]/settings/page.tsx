@@ -567,6 +567,30 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'dataQuality',
     systemDefault: true,
   },
+  {
+    key: 'DATA_QUALITY_CHECK_ENROLLMENT',
+    label: 'Check Enrollment',
+    description: 'Flag missing or duplicate class placements for approved students',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_PARENT_MISMATCH',
+    label: 'Check Parent School Mismatch',
+    description: 'Flag parent links attached to a different school',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
+  {
+    key: 'DATA_QUALITY_CHECK_PROFILE_CLASS',
+    label: 'Check Profile Class Exists',
+    description: 'Flag profile classes that have no matching Class record',
+    type: 'boolean',
+    category: 'dataQuality',
+    systemDefault: true,
+  },
 ];
 
 const CATEGORY_CONFIG = {

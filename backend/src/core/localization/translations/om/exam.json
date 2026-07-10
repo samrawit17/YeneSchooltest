@@ -1,0 +1,28 @@
+{
+  "created": "Qormaanni '{{examName}}' milkaa'een uumameera",
+  "updated": "Qormaanni '{{examName}}' milkaa'een haaromfameera",
+  "deleted": "Qormaanni '{{examName}}' milkaa'een haqameera",
+  "not_found": "Qormaanni hin argamne",
+  "scheduled": "Qormaanni guyyaa {{date}} sa'aatii {{time}} qophaa'ee jira",
+  "rescheduled": "Qormaanni gara guyyaa {{date}} sa'aatii {{time}} jijjiirameera",
+  "cancelled": "Qormaanni haqameera",
+  "result": {
+    "entered": "Bu'aan {{examName}} galmeeffameera",
+    "published": "Bu'aan {{examName}} maxxanfameera",
+    "updated": "Bu'aan {{examName}} haaromfameera",
+    "not_found": "Qormaata kanaaf bu'a hin jiru",
+    "already_published": "Bu'aan duraanuu maxxanfameera",
+    "confirm_publish": "Bu'aa {{examName}} maxxansuu barbaaddaa?"
+  },
+  "seating": {
+    "generated": "Qophii taa'umsaa {{examName}} tiif qophaa'eera",
+    "printed": "Qophiin taa'umsaa maxxanfameera",
+    "not_found": "Qophiin taa'umsaa hin jiru",
+    "student_assigned": "{{studentName}} guyyaa {{room}}, taa'umsa {{seat}} ramadameera"
+  },
+  "grade_scale": {
+    "created": "Sadarkaan bu'aa uumameera",
+    "updated": "Sadarkaan bu'aa haaromfameera",
+    "not_found": "Sadarkaan bu'aa hin argamne"
+  }
+}

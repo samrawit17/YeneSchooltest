@@ -1,0 +1,34 @@
+{
+  "rule": {
+    "created": "Qaanuunka otomaatiga ah '{{ruleName}}' si guul leh ayaa loo abuuray",
+    "updated": "Qaanuunka otomaatiga ah '{{ruleName}}' si guul leh ayaa loo cusbooneysiiyey",
+    "deleted": "Qaanuunka otomaatiga ah '{{ruleName}}' si guul leh ayaa loo tirtiray",
+    "enabled": "Qaanuunka otomaatiga ah '{{ruleName}}' waa la hawlgeliyey",
+    "disabled": "Qaanuunka otomaatiga ah '{{ruleName}}' waa la joojiyey",
+    "not_found": "Qaanuunka otomaatiga ah lama helin"
+  },
+  "execution": {
+    "started": "Qaanuunka '{{ruleName}}' ayaa loo fulinayaa dhacdada {{eventType}}",
+    "completed": "Qaanuunka '{{ruleName}}' si guul leh ayaa loo fuliyey: {{actionCount}} ficil ayaa la qabtay",
+    "failed": "Fulinta qaanuunka '{{ruleName}}' way fashilantay: {{error}}",
+    "condition_met": "Shardigu wuu buuxsamiyey qaanuunka '{{ruleName}}'",
+    "condition_not_met": "Shardigu kama buuxsamin qaanuunka '{{ruleName}}'",
+    "action_executed": "Ficilka {{actionType}} waa la fuliyey: {{result}}",
+    "action_failed": "Ficilka {{actionType}} wuu fashilmay: {{error}}"
+  },
+  "action": {
+    "send_email": "Email-ka loo dirayo {{recipients}}",
+    "send_sms": "SMS-ka loo dirayo {{recipients}}",
+    "push_notification": "Ogeysiiska riixista ayaa la dirayaa",
+    "create_alert": "Digniin ayaa la abuurayaa: {{message}}",
+    "update_database": "Goobta kaydka {{field}} ayaa loo cusboonaysiinayaa {{value}}"
+  },
+  "trigger": {
+    "attendance_marked": "Xaadirka {{count}} arday ayaa la diiwaan geliyey",
+    "fee_overdue": "Lacag dhaaftay ayaa laga helay {{count}} arday",
+    "fee_paid": "Bixinta lacagta ayaa laga helay {{studentName}}",
+    "grade_published": "Buundooyinka {{subjectName}} waa la daabacay",
+    "student_created": "Ardayga cusub {{studentName}} waa la abuuray",
+    "exam_created": "Imtixaanka cusub {{examName}} waa la abuuray"
+  }
+}

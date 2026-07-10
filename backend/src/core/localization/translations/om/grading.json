@@ -1,0 +1,25 @@
+{
+  "grade": {
+    "entered": "Sadarkaan {{studentName}} fi {{subjectName}} galmeeffameera",
+    "updated": "Sadarkaan {{studentName}} fi {{subjectName}} haaromfameera",
+    "submitted": "Sadarkaawwan {{subjectName}} dhiyeefamanii jiru",
+    "approved": "Sadarkaawwan {{subjectName}} mirkanaa'anii jiru",
+    "published": "Sadarkaawwan {{subjectName}} maxxanfamanii jiru",
+    "rejected": "Dhiyeessi sadarkaa didameera: {{reason}}"
+  },
+  "report_card": {
+    "generated": "Kardii bu'aa {{studentName}} - {{termName}} qophaa'eera",
+    "not_found": "Kardii bu'aa hin argamne",
+    "published": "Kardiin bu'aa {{termName}} tiif maxxanfameera"
+  },
+  "assessment": {
+    "created": "Madaalliin '{{name}}' uumameera",
+    "scored": "Madaalliin {{studentName}} tiif qabxii kennameera",
+    "locked": "Bu'aan madaallaa cufameera"
+  },
+  "grading_component": {
+    "created": "Qaama sadarkaa '{{name}}' uumameera",
+    "updated": "Qaama sadarkaa '{{name}}' haaromfameera",
+    "not_found": "Qaama sadarkaa hin argamne"
+  }
+}

@@ -385,7 +385,7 @@ export default function EntryProgressPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-[#111111]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <div className="w-full px-6 pt-8 pb-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
@@ -395,7 +395,7 @@ export default function EntryProgressPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-[#2A2A2A] p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
+            <div className="border-gray-200/70 bg-white/80 backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
               <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
                 <SelectTrigger className="h-9 w-[180px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
                   <SelectValue placeholder="Academic Year" />
@@ -441,7 +441,7 @@ export default function EntryProgressPage() {
 
       <div className="w-full px-6 py-6 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
+        <Card className="border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
           <CardContent className="p-5">
             <p className="text-xs text-gray-400 mb-1">Total Progress</p>
             <p className="text-2xl font-semibold text-gray-900 dark:text-white">
@@ -450,21 +450,21 @@ export default function EntryProgressPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
+        <Card className="border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
           <CardContent className="p-5">
             <p className="text-xs text-gray-400 mb-1">Finalized</p>
             <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.complete}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
+        <Card className="border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
           <CardContent className="p-5">
             <p className="text-xs text-gray-400 mb-1">Action Required</p>
             <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.totalMissing}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
+        <Card className="border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
           <CardContent className="p-5">
             <p className="text-xs text-gray-400 mb-1">Attention</p>
             <p className="text-2xl font-semibold text-rose-600">{stats.empty}</p>
@@ -479,7 +479,7 @@ export default function EntryProgressPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-[#111111] p-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] shadow-sm">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-gray-200/70 bg-white/80 p-3 rounded-2xl shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
             <div className="relative w-full md:w-[26rem] lg:w-[32rem]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#e35336] transition-colors" />
               <Input
@@ -507,7 +507,7 @@ export default function EntryProgressPage() {
           </div>
 
           {rows.length === 0 ? (
-            <Card className="border-dashed border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
+            <Card className="border-dashed border-gray-200/70 bg-white/80 backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
               <CardContent className="py-16 text-center">
                 <CheckCircle2 className="w-10 h-10 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 dark:text-gray-500">
@@ -516,7 +516,7 @@ export default function EntryProgressPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="shadow-sm overflow-hidden bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] rounded-2xl">
+            <Card className="shadow-sm overflow-hidden border-gray-200/70 bg-white/80 backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60 rounded-2xl">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -639,7 +639,7 @@ export default function EntryProgressPage() {
                 </Table>
               </div>
 
-              <div className="px-4 py-2.5 border-t border-gray-100 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 flex items-center justify-between">
+              <div className="px-4 py-2.5 border-t border-gray-100/70 dark:border-[#2A2A2A]/50 bg-gray-50/80 dark:bg-[#1A1A1A]/40 backdrop-blur-sm flex items-center justify-between">
                 <p className="text-xs text-gray-400 dark:text-gray-500">
                   Showing {rows.length} of {stats.total} assignments
                   {stats.totalMissing > 0 && <span className="ml-2">· {stats.totalMissing} missing</span>}

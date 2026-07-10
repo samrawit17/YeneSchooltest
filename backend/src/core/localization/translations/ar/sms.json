@@ -1,16 +1,15 @@
 {
-  "common": {
-    "from": "نظام المدرسة"
-  },
-  "attendance": {
-    "absent": "غائب {{studentName}} في {{date}}",
-    "late": "تأخر {{studentName}} في {{time}}"
-  },
-  "fee": {
-    "due_reminder": "تذكير بالرسوم: {{amount}} مستحق في {{dueDate}}",
-    "received": "تم استلام {{amount}}. رقم الإيصال: {{receiptNumber}}"
-  },
-  "notification": {
-    "new_message": "رسالة جديدة من {{senderName}}"
-  }
+  "attendance_alert": "{{schoolName}}: {{studentName}} غائب اليوم. يرجى التواصل مع المدرسة.",
+  "attendance_low": "{{schoolName}}: نسبة حضور {{studentName}} هي {{percentage}}%. يرجى ضمان الحضور المنتظم.",
+  "fee_reminder": "{{schoolName}}: مبلغ {{amount}} مستحق الدفع بحلول {{dueDate}}. يرجى الدفع لتجنب الغرامات.",
+  "fee_overdue": "{{schoolName}}: مبلغ {{amount}} متأخر. الدفع الفوري مطلوب.",
+  "fee_received": "{{schoolName}}: تم استلام دفعة {{amount}}. الإيصال: {{receiptNo}}.",
+  "exam_reminder": "{{schoolName}}: امتحان {{examName}} محدد في {{date}} الساعة {{time}}. يرجى الاستعداد.",
+  "exam_result": "{{schoolName}}: تم نشر نتائج {{examName}}. تحقق من البوابة للتفاصيل.",
+  "homework_reminder": "{{schoolName}}: تذكير بواجب {{subjectName}}. الاستحقاق: {{dueDate}}.",
+  "meeting_reminder": "{{schoolName}}: اجتماع أولياء الأمور والمعلمين في {{date}} الساعة {{time}}. الحضور مهم.",
+  "emergency_alert": "{{schoolName}} تنبيه: {{message}}. يرجى اتخاذ الاحتياطات اللازمة.",
+  "general_notification": "{{schoolName}}: {{message}}",
+  "enrollment_approved": "{{schoolName}}: تمت الموافقة على تسجيل {{studentName}}. يرجى زيارة المدرسة لإكمال التسجيل.",
+  "school_event": "{{schoolName}}: {{eventName}} في {{date}}. {{description}}"
 }

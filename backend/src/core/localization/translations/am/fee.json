@@ -1,0 +1,36 @@
+{
+  "created": "የክፍያ መዋቅር '{{name}}' በተሳካ ሁኔታ ተፈጥሯል",
+  "updated": "የክፍያ መዋቅር '{{name}}' በተሳካ ሁኔታ ተሻሽሏል",
+  "deleted": "የክፍያ መዋቅር '{{name}}' በተሳካ ሁኔታ ተሰርዟል",
+  "not_found": "የክፍያ መዋቅር አልተገኘም",
+  "payment": {
+    "success": "የ{{amount}} ክፍያ በተሳካ ሁኔታ ተቀብሏል። ደረሰኝ፡ {{receiptNumber}}",
+    "failed": "ክፍያ አልተሳካም፡ {{reason}}",
+    "partial": "ከፊል ክፍያ የ{{amount}} ተቀብሏል። ቀሪ ሂሳብ፡ {{balance}}",
+    "refunded": "የ{{amount}} ክፍያ በተሳካ ሁኔታ ተመልሷል",
+    "cancelled": "ክፍያ ተሰርዟል"
+  },
+  "invoice": {
+    "generated": "ደረሰኝ ለ{{studentName}} ተዘጋጅቷል፡ {{amount}}",
+    "overdue": "የ{{studentName}} ደረሰኝ ዘግይቷል፡ {{amount}}",
+    "paid": "ደረሰኝ {{invoiceNumber}} እንደተከፈለ ምልክት ተደርጓል"
+  },
+  "discount": {
+    "applied": "የ{{amount}} ቅናሽ ለ{{studentName}} ተሰጥቷል",
+    "removed": "ቅናሽ ከ{{studentName}} ተወግዷል",
+    "invalid": "ልክ ያልሆነ የቅናሽ ኮድ ወይም መስፈርቱ አልተሟላም"
+  },
+  "waiver": {
+    "applied": "የክፍያ ነፃ መውጫ ለ{{studentName}} ለ{{description}} ተሰጥቷል",
+    "removed": "የክፍያ ነፃ መውጫ ከ{{studentName}} ተወግዷል"
+  },
+  "receipt": {
+    "generated": "ደረሰኝ ተዘጋጅቷል፡ {{receiptNumber}}",
+    "not_found": "ደረሰኝ አልተገኘም",
+    "duplicate": "የተደገመ ደረሰኝ ለ{{receiptNumber}} ተጠይቋል"
+  },
+  "due_date": "የክፍያ ቀነ ገደብ፡ {{date}}",
+  "overdue_reminder": "ማሳሰቢያ፡ {{amount}} ከ{{date}} ጀምሮ ዘግይቷል። የዘገየ ክፍያ ቅጣት ሊኖር ይችላል",
+  "balance": "የአሁን ሂሳብ፡ {{amount}}",
+  "total_due": "ጠቅላላ ዕዳ፡ {{amount}}"
+}

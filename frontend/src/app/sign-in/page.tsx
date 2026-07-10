@@ -81,7 +81,7 @@ const getTranslatedLoginError = (message: string | undefined, fallback: string) 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, user, isLoading: authLoading, isLoggingOut } = useAuth();
   const { resolvedTheme, setTheme } = useThemeStore();
   const language = useLanguageStore((state) => state.language);
   const setLanguage = useLanguageStore((state) => state.setLanguage);
@@ -138,6 +138,16 @@ const LoginPage = () => {
       : resolvedLoginSchoolId
         ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
       : "/enroll";
+
+
+  // Once the sign-in page is safely rendered, the post-logout guard has done
+  // its job. Clear it so that future page loads (after the user logs back in)
+  // run a normal auth check rather than being blocked by the stale flag.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('loggedOut');
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -247,7 +257,7 @@ const LoginPage = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
+    if (!authLoading && !isLoggingOut && isAuthenticated && user) {
       const redirectPath = (() => {
         switch (user.role) {
           case 'SUPER_ADMIN': return "/superadmin";
@@ -263,7 +273,7 @@ const LoginPage = () => {
       })();
       router.replace(redirectPath);
     }
-  }, [authLoading, isAuthenticated, user, router]);
+  }, [authLoading, isAuthenticated, isLoggingOut, user, router]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -497,12 +507,18 @@ const LoginPage = () => {
           </div>
 
            {/* Form - IMPORTANT: No action attribute, preventDefault in onSubmit */}
+           {/* Hidden trap fields to catch browser auto-fill before the real fields */}
+           <div aria-hidden="true" className="absolute -z-10 opacity-0 h-0 overflow-hidden">
+             <input tabIndex={-1} type="text" name="username" autoComplete="username" readOnly />
+             <input tabIndex={-1} type="password" name="password" autoComplete="current-password" readOnly />
+           </div>
            <Form {...form}>
-             <form 
-               onSubmit={form.handleSubmit(onSubmit)}
-               className="space-y-5"
-               noValidate
-             >
+           <form 
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-5"
+                noValidate
+                autoComplete="off"
+              >
               <FormField
                 control={form.control}
                 name="loginIdentifier"

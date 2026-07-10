@@ -6,6 +6,10 @@
   "fee_received": "{{schoolName}}: Kaffaltii {{amount}} fudhatame. Receipt: {{receiptNo}}.",
   "exam_reminder": "{{schoolName}}: Qormaanni {{examName}} guyyaa {{date}} sa'aatii {{time}} qophaa'ee jira. Mee qophaa'aa.",
   "exam_result": "{{schoolName}}: Bu'aan {{examName}} maxxanfameera. Ilaaluuf poortaala fayyadami.",
+  "homework_reminder": "{{schoolName}}: Yaadachiisa hojii mana {{subjectName}}. Guyyaa xumuraa: {{dueDate}}.",
+  "meeting_reminder": "{{schoolName}}: Walga'ii matii-barsitsaa guyyaa {{date}} sa'aatii {{time}}. Dhufachuun barbaachisaa.",
+  "emergency_alert": "{{schoolName}} AKEKKACHISA: {{message}}. Mee of eeggannoo godhaa.",
   "general_notification": "{{schoolName}}: {{message}}",
-  "emergency_alert": "{{schoolName}} AKEKKACHISA: {{message}}. Mee of eeggannoo godhaa."
+  "enrollment_approved": "{{schoolName}}: Galmee {{studentName}} mirkanaa'eera. Mee mana barumsaa dhaqaa galmee xumuri.",
+  "school_event": "{{schoolName}}: {{eventName}} guyyaa {{date}}. {{description}}"
 }

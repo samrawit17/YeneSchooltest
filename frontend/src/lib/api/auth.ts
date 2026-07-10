@@ -87,6 +87,7 @@ export const authAPI = {
 export const userAPI = {
   getProfile: (options?: { skipAuthErrorRedirect?: boolean }) =>
     api.get('/auth/users/me', {
+      params: { _: Date.now() },
       ...(options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {}),
     }),
 

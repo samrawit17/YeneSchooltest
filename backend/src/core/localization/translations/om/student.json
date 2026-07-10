@@ -1,0 +1,49 @@
+{
+  "created": {
+    "success": "Barataan {{name}} milkaa'een galmaa'eera",
+    "bulk": "Barattoonni {{count}} milkaa'een galmaa'anii jiru"
+  },
+  "updated": {
+    "success": "Odeeffannoo barataa {{name}} milkaa'een haaromfameera",
+    "profile": "Piroofayliin barataa haaromfameera",
+    "status": "Haalli barataa gara {{status}} jijjiirameera"
+  },
+  "deleted": {
+    "success": "Barataan {{name}} sirna irraa haqameera",
+    "confirm": "Dhugumaan barataa {{name}} haquu barbaaddaa? Gochi kun deebi'uu hin danda'u"
+  },
+  "not_found": "Barataan hin argamne",
+  "already_enrolled": "Barataan kutaa kana keessatti duraanuu galmaa'eera",
+  "not_enrolled": "Barataan kutaa kamuu keessatti hin galmoofne",
+  "transfer": {
+    "success": "Barataan {{name}} gara {{class}} milkaa'een dabarfameera",
+    "failed": "Barataa dabarsuu hin danda'amne. Cufaa kutaa bu'a mirkaneessaa"
+  },
+  "promotion": {
+    "success": "Barataan {{name}} gara {{grade}} ol qabameera",
+    "bulk_success": "Barattoonni {{count}} milkaa'een ol qabamanii jiru",
+    "failed": "Barataan sadarkaa ol qabamirratti ba qabu",
+    "no_candidates": "Barattoonni ol qabamaaf mijatan hin jiran"
+  },
+  "attendance": {
+    "summary": "Iddoo dhufaatii {{name}}: {{present}} argaman, {{absent}} hin argamne guyyoota {{total}} keessaa",
+    "low_attendance": "Dhufaatii barataa {{name}} dhibbeentaa {{percentage}}% gadi bu'eera",
+    "warning": "Akeekkachiisa dhufaatii: {{name}} guyyoota {{count}} walduraa duubaan hin argamne"
+  },
+  "id_card": {
+    "generated": "Kaardii eenyummaa {{name}} qophaa'eera",
+    "not_found": "Templeetii kaardii eenyummaa hin argamne"
+  },
+  "certificate": {
+    "generated": "Raagaa {{name}} qophaa'eera",
+    "template_not_found": "Templeetii ragaa hin argamne"
+  },
+  "parent": {
+    "linked": "Maatii {{parentName}} barataa {{studentName}} waliin hidhameera",
+    "unlinked": "Maatii akkaawuntii barataa irraa hirameera",
+    "already_linked": "Maatii duraanuu barataa kana waliin hidhameera"
+  },
+  "guardian": {
+    "updated": "Odeeffannoo waardiyyaa {{name}} haaromfameera"
+  }
+}

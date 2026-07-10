@@ -1,0 +1,20 @@
+{
+  "marked": "Xaadirka {{className}} ayaa la diiwaan geliyey taariikhda {{date}}",
+  "bulk_marked": "Xaadirka guud ee {{count}} arday ayaa la diiwaan geliyey",
+  "session_opened": "Kalfadhiga xaadirka ee {{className}} ayaa la furay waqtiga {{time}}",
+  "session_closed": "Kalfadhiga xaadirka ee {{className}} waa la xiray",
+  "session_not_found": "Ma jiro kalfadhi xaadir oo firfircoon oo la helay",
+  "already_marked": "Xaadirka {{studentName}} maanta horaa loo diiwaan geliyey",
+  "not_marked": "Xaadirka {{date}} wali lama diiwaan gelin",
+  "override": "Xaadirka {{studentName}} waxaa bedelay {{actorName}}",
+  "report": {
+    "daily": "Warbixinta xaadirka ee maalinlaha ah ee {{date}}",
+    "monthly": "Warbixinta xaadirka ee bisha {{month}}",
+    "summary": "Soo koobida xaadirka: {{present}} joogaan, {{absent}} ma joogaan, {{late}} daahsan",
+    "student_summary": "{{studentName}}: {{present}}/{{total}} maalmood wuu joogay ({{percentage}}%)"
+  },
+  "low_attendance": "Digniinta xaadirka: xaadirka {{studentName}} waa {{percentage}}%",
+  "excused": "Maqnaanshaha {{studentName}} waa la raali galiyey",
+  "unexcused": "Maqnaansho aan la raali galin ayaa loo diiwaan geliyey {{studentName}}",
+  "late": "{{studentName}} wuxuu daahay {{minutes}} daqiiqo"
+}

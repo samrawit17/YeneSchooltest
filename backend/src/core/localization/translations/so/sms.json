@@ -1,16 +1,15 @@
 {
-  "common": {
-    "from": "Nidaamka Dugsiga"
-  },
-  "attendance": {
-    "absent": "{{studentName}} waa maqan {{date}}",
-    "late": "{{studentName}} wuu daahay {{time}}"
-  },
-  "fee": {
-    "due_reminder": "Xusuusin Lacag: {{amount}} waa la gaaray {{dueDate}}",
-    "received": "{{amount}} waa la helay. Rasiidka: {{receiptNumber}}"
-  },
-  "notification": {
-    "new_message": "Fariin cusub oo ka timid {{senderName}}"
-  }
+  "attendance_alert": "{{schoolName}}: {{studentName}} maanta wuu maqnaa. Fadlan la xidhiidh dugsiga.",
+  "attendance_low": "{{schoolName}}: Xaadirka {{studentName}} waa {{percentage}}%. Fadlan hubi xaadirka joogtada ah.",
+  "fee_reminder": "{{schoolName}}: Lacag dhan {{amount}} ayaa kadata {{dueDate}}. Fadlan bixi si aad uga fogaato ganaaxa.",
+  "fee_overdue": "{{schoolName}}: Lacag dhan {{amount}} ayaa dhaaftay. Bixin degdeg ah ayaa loo baahan yahay.",
+  "fee_received": "{{schoolName}}: Lacag dhan {{amount}} waa la helay. Rasiidka: {{receiptNo}}.",
+  "exam_reminder": "{{schoolName}}: Imtixaanka {{examName}} waa loo qorsheeyey {{date}} {{time}}. Fadlan u diyaar garow.",
+  "exam_result": "{{schoolName}}: Natiijooyinka {{examName}} waa la daabacay. Fadlan hubi portal-ka.",
+  "homework_reminder": "{{schoolName}}: Xusuusin shaqo guri {{subjectName}}. Waa kadata {{dueDate}}.",
+  "meeting_reminder": "{{schoolName}}: Kulanka waalid-macallin {{date}} {{time}}. Xaadirku waa muhiim.",
+  "emergency_alert": "{{schoolName}} DIGAALAD: {{message}}. Fadlan qaado tallaabooyinka lagama maarmaanka ah.",
+  "general_notification": "{{schoolName}}: {{message}}",
+  "enrollment_approved": "{{schoolName}}: Diiwaangelinta {{studentName}} waa la ansixiyey. Fadlan booqo dugsiga si aad u dhamaystirto.",
+  "school_event": "{{schoolName}}: {{eventName}} {{date}}. {{description}}"
 }

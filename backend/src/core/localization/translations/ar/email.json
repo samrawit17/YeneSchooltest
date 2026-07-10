@@ -1,22 +1,42 @@
 {
-  "common": {
-    "greeting": "مرحباً {{name}}،",
-    "farewell": "مع التحية،",
-    "team_signature": "فريق نظام إدارة المدرسة",
-    "footer": "© {{year}} نظام إدارة المدرسة. جميع الحقوق محفوظة."
-  },
   "welcome": {
-    "subject": "مرحباً بك في نظام إدارة المدرسة",
-    "body": "نرحب بك في نظام إدارة المدرسة. تم إنشاء حسابك بنجاح."
+    "subject": "مرحباً بك في {{schoolName}}",
+    "body": "<h1>مرحباً بك في {{schoolName}}</h1><p>عزيزي {{name}}،</p><p>تم إنشاء حسابك بنجاح.</p><p>يرجى تسجيل الدخول وتغيير كلمة المرور عند أول تسجيل دخول.</p><p>مع أطيب التحيات،<br>فريق {{schoolName}}</p>"
   },
   "password_reset": {
-    "subject": "إعادة تعيين كلمة المرور",
-    "body": "لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك. يرجى النقر على الرابط أدناه لإعادة تعيينها."
+    "subject": "طلب إعادة تعيين كلمة المرور",
+    "body": "<h1>إعادة تعيين كلمة المرور</h1><p>عزيزي {{name}}،</p><p>لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك.</p><p>ينتهي صلاحية هذا الرابط خلال ساعة واحدة.</p><p>إذا لم تطلب ذلك، يرجى تجاهل هذا البريد الإلكتروني.</p><p>مع أطيب التحيات،<br>فريق {{schoolName}}</p>"
   },
-  "enrollment": {
-    "approved_subject": "تم قبول التسجيل",
-    "approved_body": "تم قبول تسجيل {{studentName}} في {{className}}.",
-    "rejected_subject": "تم رفض التسجيل",
-    "rejected_body": "نأسف، تم رفض تسجيل {{studentName}}."
+  "attendance_warning": {
+    "subject": "تحذير الحضور - {{studentName}}",
+    "body": "<h1>تحذير الحضور</h1><p>عزيزي {{parentName}}،</p><p>نحيطكم علماً بأن نسبة حضور {{studentName}} قد انخفضت إلى <strong>{{percentage}}%</strong>.</p><p>يرجى ضمان الحضور المنتظم لتجنب العواقب الأكاديمية.</p><p>مع أطيب التحيات،<br>إدارة {{schoolName}}</p>"
+  },
+  "exam_result": {
+    "subject": "تم نشر نتائج امتحان {{examName}}",
+    "body": "<h1>نتائج الامتحان</h1><p>عزيزي {{name}}،</p><p>تم نشر نتائج <strong>{{examName}}</strong>.</p><p>يمكنك الاطلاع على نتائجك عن طريق تسجيل الدخول إلى بوابة ولي الأمر / الطالب.</p><p>مع أطيب التحيات،<br>إدارة {{schoolName}}</p>"
+  },
+  "fee_reminder": {
+    "subject": "تذكير بدفع الرسوم",
+    "body": "<h1>تذكير بدفع الرسوم</h1><p>عزيزي {{parentName}}،</p><p>هذا تذكير بأن الرسوم التالية مستحقة الدفع:</p><p><strong>الرسوم:</strong> {{feeDescription}}<br><strong>المبلغ:</strong> {{amount}}<br><strong>تاريخ الاستحقاق:</strong> {{dueDate}}</p><p>يرجى الدفع قبل تاريخ الاستحقاق لتجنب الغرامات.</p><p>مع أطيب التحيات،<br>قسم المالية في {{schoolName}}</p>"
+  },
+  "admission_approved": {
+    "subject": "تمت الموافقة على قبول {{studentName}}",
+    "body": "<h1>تمت الموافقة على القبول</h1><p>عزيزي {{parentName}}،</p><p>يسرنا إبلاغكم أنه تمت الموافقة على قبول {{studentName}} في <strong>{{schoolName}}</strong>.</p><p>يرجى زيارة المدرسة لإكمال عملية التسجيل.</p><p>مع أطيب التحيات،<br>قبول {{schoolName}}</p>"
+  },
+  "admission_rejected": {
+    "subject": "حالة القبول - {{studentName}}",
+    "body": "<h1>تحديث القبول</h1><p>عزيزي {{parentName}}،</p><p>بعد المراجعة الدقيقة، يؤسفنا إبلاغكم بعدم الموافقة على قبول {{studentName}} في {{schoolName}}.</p><p>السبب: {{reason}}</p><p>مع أطيب التحيات،<br>قبول {{schoolName}}</p>"
+  },
+  "payment_receipt": {
+    "subject": "إيصال الدفع - {{receiptNumber}}",
+    "body": "<h1>إيصال الدفع</h1><p>عزيزي {{name}}،</p><p>تم استلام دفعتك بنجاح.</p><p><strong>رقم الإيصال:</strong> {{receiptNumber}}<br><strong>المبلغ:</strong> {{amount}}<br><strong>التاريخ:</strong> {{date}}<br><strong>الوصف:</strong> {{description}}</p><p>شكراً لدفعك.</p><p>مع أطيب التحيات،<br>قسم المالية في {{schoolName}}</p>"
+  },
+  "report_card": {
+    "subject": "كشف الدرجات متاح - {{termName}}",
+    "body": "<h1>كشف الدرجات متاح</h1><p>عزيزي {{parentName}}،</p><p>كشف درجات {{studentName}} للفصل <strong>{{termName}}</strong> متاح الآن.</p><p>يرجى تسجيل الدخول إلى بوابة ولي الأمر لعرض وتنزيل كشف الدرجات.</p><p>مع أطيب التحيات،<br>إدارة {{schoolName}}</p>"
+  },
+  "enrollment_request": {
+    "subject": "طلب تسجيل جديد - {{studentName}}",
+    "body": "<h1>طلب تسجيل جديد</h1><p>تم تقديم طلب تسجيل جديد.</p><p><strong>الطالب:</strong> {{studentName}}<br><strong>الصف:</strong> {{grade}}<br><strong>تاريخ التقديم:</strong> {{date}}</p><p>يرجى مراجعة الطلب ومعالجته.</p><p>مع أطيب التحيات،<br>نظام {{schoolName}}</p>"
   }
 }
