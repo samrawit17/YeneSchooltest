@@ -41,3 +41,5 @@ backend/prisma/*.db
 backend/prisma/*.db-journal
 *.tsbuildinfog
 .aider*
+backend/.npm
+backend/.cache
