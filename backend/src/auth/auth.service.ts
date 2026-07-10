@@ -47,6 +47,20 @@ const shouldUseSecureCookies = () => {
   return process.env.NODE_ENV === 'production';
 };
 
+function parseDurationMs(duration: string): number {
+  const match = duration.match(/^(\d+)\s*(s|m|h|d)$/);
+  if (!match) return 60 * 60 * 1000;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  switch (unit) {
+    case 's': return value * 1000;
+    case 'm': return value * 60 * 1000;
+    case 'h': return value * 60 * 60 * 1000;
+    case 'd': return value * 24 * 60 * 60 * 1000;
+    default: return 60 * 60 * 1000;
+  }
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -346,12 +360,15 @@ export class AuthService {
     });
 
     const payload = { email: user.email, sub: user.id, role: user.role, tokenVersion: globalTokenVersion, type: 'access' };
-    const token = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessTokenExpiry = process.env.JWT_EXPIRES_IN || '1h';
+    const token = this.jwtService.sign(payload, { expiresIn: accessTokenExpiry as any });
 
     const refreshPayload = { sub: user.id, sessionId, tokenVersion: dbSession.tokenVersion, type: 'refresh' };
     const refreshToken = this.jwtService.sign(refreshPayload, { expiresIn: '7d' });
 
     if (res) {
+      const accessTokenExpiry = process.env.JWT_EXPIRES_IN || '1h';
+      const maxAgeMs = parseDurationMs(accessTokenExpiry);
       const cookieOptions = {
         httpOnly: true,
         secure: shouldUseSecureCookies(),
@@ -360,7 +377,7 @@ export class AuthService {
       };
       res.cookie(JWT_COOKIE_NAME, token, {
         ...cookieOptions,
-        maxAge: 15 * 60 * 1000,
+        maxAge: maxAgeMs,
       });
       res.cookie('Refresh-Token', refreshToken, {
         ...cookieOptions,
@@ -487,8 +504,9 @@ export class AuthService {
         sessionTokenVersion = newSession.tokenVersion;
       }
 
+      const accessTokenExpiry = process.env.JWT_EXPIRES_IN || '1h';
       const accessPayload = { email: user.email, sub: user.id, role: user.role, tokenVersion: user.tokenVersion, type: 'access' };
-      const token = this.jwtService.sign(accessPayload, { expiresIn: '15m' });
+      const token = this.jwtService.sign(accessPayload, { expiresIn: accessTokenExpiry as any });
 
       const refreshPayload = { sub: user.id, sessionId, tokenVersion: sessionTokenVersion, type: 'refresh' };
       const refreshToken = this.jwtService.sign(refreshPayload, { expiresIn: '7d' });
@@ -500,7 +518,9 @@ export class AuthService {
           sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' as any,
           path: '/',
         };
-        res.cookie(JWT_COOKIE_NAME, token, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+        const accessTokenExpiry = process.env.JWT_EXPIRES_IN || '1h';
+        const maxAgeMs = parseDurationMs(accessTokenExpiry);
+        res.cookie(JWT_COOKIE_NAME, token, { ...cookieOptions, maxAge: maxAgeMs });
         res.cookie('Refresh-Token', refreshToken, { ...cookieOptions, path: '/auth/refresh', maxAge: 7 * 24 * 60 * 60 * 1000 });
       }
 
