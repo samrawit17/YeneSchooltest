@@ -1,0 +1,34 @@
+{
+  "rule": {
+    "created": "የአውቶሜሽን ህግ '{{ruleName}}' በተሳካ ሁኔታ ተፈጥሯል",
+    "updated": "የአውቶሜሽን ህግ '{{ruleName}}' በተሳካ ሁኔታ ተሻሽሏል",
+    "deleted": "የአውቶሜሽን ህግ '{{ruleName}}' በተሳካ ሁኔታ ተሰርዟል",
+    "enabled": "የአውቶሜሽን ህግ '{{ruleName}}' ነቅቷል",
+    "disabled": "የአውቶሜሽን ህግ '{{ruleName}}' ተሰናክሏል",
+    "not_found": "የአውቶሜሽን ህግ አልተገኘም"
+  },
+  "execution": {
+    "started": "ህግ '{{ruleName}}' ለክስተት {{eventType}} በመፈጸም ላይ",
+    "completed": "ህግ '{{ruleName}}' በተሳካ ሁኔታ ተፈጽሟል፡ {{actionCount}} ተግባር(ዎች) ተከናውነዋል",
+    "failed": "ህግ '{{ruleName}}' መፈጸም አልተሳካም፡ {{error}}",
+    "condition_met": "ለህግ '{{ruleName}}' ሁኔታው ተሟልቷል",
+    "condition_not_met": "ለህግ '{{ruleName}}' ሁኔታው አልተሟላም",
+    "action_executed": "ተግባር {{actionType}} ተፈጽሟል፡ {{result}}",
+    "action_failed": "ተግባር {{actionType}} አልተሳካም፡ {{error}}"
+  },
+  "action": {
+    "send_email": "ኢሜይል ወደ {{recipients}} በመላክ ላይ",
+    "send_sms": "ኤስኤምኤስ ወደ {{recipients}} በመላክ ላይ",
+    "push_notification": "የግፋ ማሳሰቢያ በመላክ ላይ",
+    "create_alert": "ማንቂያ በመፍጠር ላይ፡ {{message}}",
+    "update_database": "የመረጃ ቋት መስክ {{field}} ወደ {{value}} በማዘመን ላይ"
+  },
+  "trigger": {
+    "attendance_marked": "ለ{{count}} ተማሪዎች መገኘት ተመዝግቧል",
+    "fee_overdue": "ለ{{count}} ተማሪዎች ዘግይቶ ክፍያ ተገኝቷል",
+    "fee_paid": "ከ{{studentName}} የክፍያ ክፍያ ደርሷል",
+    "grade_published": "ለ{{subjectName}} ውጤቶች ታትመዋል",
+    "student_created": "አዲስ ተማሪ {{studentName}} ተፈጥሯል",
+    "exam_created": "አዲስ ፈተና {{examName}} ተፈጥሯል"
+  }
+}

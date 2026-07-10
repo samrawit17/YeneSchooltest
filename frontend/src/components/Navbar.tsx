@@ -759,9 +759,9 @@ const Navbar = ({
     }
     sessionStorage.setItem("postLogoutRedirect", redirectTo);
     await logout();
-    
-    // Fallback redirect if not already handled by layout (though layout is now suppressed)
-    window.location.href = redirectTo + (redirectTo.includes('?') ? '&' : '?') + 't=' + Date.now();
+    // Navigation is handled by DashboardLayout's useEffect which watches
+    // isAuthenticated. It reads postLogoutRedirect from sessionStorage above
+    // and does a single clean hard redirect. No second window.location.href here.
   };
   const dashboardPath = getDashboardPath(user?.role);
 

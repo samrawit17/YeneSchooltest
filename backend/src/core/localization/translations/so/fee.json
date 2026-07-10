@@ -1,0 +1,36 @@
+{
+  "created": "Qaabka lacagta '{{name}}' si guul leh ayaa loo abuuray",
+  "updated": "Qaabka lacagta '{{name}}' si guul leh ayaa loo cusbooneysiiyey",
+  "deleted": "Qaabka lacagta '{{name}}' si guul leh ayaa loo tirtiray",
+  "not_found": "Qaabka lacagta lama helin",
+  "payment": {
+    "success": "Lacag dhan {{amount}} ayaa si guul leh loo helay. Rasiidka: {{receiptNumber}}",
+    "failed": "Bixintu way fashilantay: {{reason}}",
+    "partial": "Lacag qayb ah {{amount}} ayaa la helay. Hadhaaga: {{balance}}",
+    "refunded": "Lacag dhan {{amount}} ayaa si guul leh dib loo celiyey",
+    "cancelled": "Bixintii waa la joojiyey"
+  },
+  "invoice": {
+    "generated": "Qaansheegta {{studentName}} ayaa la soo saaray: {{amount}}",
+    "overdue": "Qaansheegta {{studentName}} waa dhaaftay: {{amount}}",
+    "paid": "Qaansheegta {{invoiceNumber}} waxaa loo calaamadeeyay mid la bixiyey"
+  },
+  "discount": {
+    "applied": "Dhimis dhan {{amount}} ayaa lagu dabaqay {{studentName}}",
+    "removed": "Dhimista waxaa laga saaray {{studentName}}",
+    "invalid": "Koodhka dhimistu waa qalad ama shuruudaha kuma habboona"
+  },
+  "waiver": {
+    "applied": "Dhaafista lacagta waxaa lagu dabaqay {{studentName}} sababta {{description}}",
+    "removed": "Dhaafista lacagta waxaa laga saaray {{studentName}}"
+  },
+  "receipt": {
+    "generated": "Rasiidka waa la soo saaray: {{receiptNumber}}",
+    "not_found": "Rasiidka lama helin",
+    "duplicate": "Rasiidh nuqul ah ayaa loo codsaday {{receiptNumber}}"
+  },
+  "due_date": "Taariikhda bixinta: {{date}}",
+  "overdue_reminder": "Xusuusin: {{amount}} waa dhaaftay tan iyo {{date}}. Ganaaxa daahitaanka ayaa laga yaabaa inuu khuseeyo",
+  "balance": "Hadhaaga hadda: {{amount}}",
+  "total_due": "Wadarta lacagta: {{amount}}"
+}

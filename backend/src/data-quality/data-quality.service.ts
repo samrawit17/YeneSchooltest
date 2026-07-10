@@ -42,6 +42,9 @@ export class DataQualityService {
       'DATA_QUALITY_CHECK_SECTION_MISMATCH',
       'DATA_QUALITY_CHECK_CLASS_HOMEROOM',
       'DATA_QUALITY_CHECK_TIMETABLE_CONFLICT',
+      'DATA_QUALITY_CHECK_ENROLLMENT',
+      'DATA_QUALITY_CHECK_PARENT_MISMATCH',
+      'DATA_QUALITY_CHECK_PROFILE_CLASS',
     ];
     const entries = await Promise.all(
       keys.map(async (key) => {
@@ -228,7 +231,7 @@ export class DataQualityService {
         });
       }
 
-      if (student.parentSchoolMismatchCount > 0) {
+      if (config.DATA_QUALITY_CHECK_PARENT_MISMATCH && student.parentSchoolMismatchCount > 0) {
         issues.push({
           ...base,
           type: 'PARENT_LINK_SCHOOL_MISMATCH',
@@ -239,33 +242,35 @@ export class DataQualityService {
         });
       }
 
-      if (
-        activeAcademicYear &&
-        student.enrollmentStatus === 'APPROVED' &&
-        !student.classId &&
-        !student.profileClassName
-      ) {
-        issues.push({
-          ...base,
-          type: 'MISSING_CLASS_PLACEMENT',
-          severity: 'high',
-          detail: `Approved student has no class placement for ${activeAcademicYear.name}.`,
-          recommendation:
-            'Assign the student to a class and section for the active academic year.',
-        });
-      } else if (
-        activeAcademicYear &&
-        student.enrollmentStatus === 'APPROVED' &&
-        !student.classId
-      ) {
-        issues.push({
-          ...base,
-          type: 'MISSING_CANONICAL_STUDENT_CLASS',
-          severity: 'medium',
-          detail: `Profile shows ${student.profileClassName || 'class'} ${student.profileSection || ''}, but no StudentClass row exists for ${activeAcademicYear.name}.`,
-          recommendation:
-            'Create or repair the canonical StudentClass placement for this active year.',
-        });
+      if (config.DATA_QUALITY_CHECK_ENROLLMENT) {
+        if (
+          activeAcademicYear &&
+          student.enrollmentStatus === 'APPROVED' &&
+          !student.classId &&
+          !student.profileClassName
+        ) {
+          issues.push({
+            ...base,
+            type: 'MISSING_CLASS_PLACEMENT',
+            severity: 'high',
+            detail: `Approved student has no class placement for ${activeAcademicYear.name}.`,
+            recommendation:
+              'Assign the student to a class and section for the active academic year.',
+          });
+        } else if (
+          activeAcademicYear &&
+          student.enrollmentStatus === 'APPROVED' &&
+          !student.classId
+        ) {
+          issues.push({
+            ...base,
+            type: 'MISSING_CANONICAL_STUDENT_CLASS',
+            severity: 'medium',
+            detail: `Profile shows ${student.profileClassName || 'class'} ${student.profileSection || ''}, but no StudentClass row exists for ${activeAcademicYear.name}.`,
+            recommendation:
+              'Create or repair the canonical StudentClass placement for this active year.',
+          });
+        }
       }
 
       if (student.classId && config.DATA_QUALITY_CHECK_CLASS_MISMATCH) {
@@ -303,44 +308,47 @@ export class DataQualityService {
       }
     }
 
-    const classNameWithoutClass = await this.prisma.$queryRaw<
-      DataQualityIssue[]
-    >(Prisma.sql`
-      SELECT
-        'PROFILE_CLASS_NOT_FOUND' AS type,
-        'medium' AS severity,
-        sp.id AS "studentProfileId",
-        sp."userId" AS "studentUserId",
-        sp."studentCode" AS "studentCode",
-        u.name AS "studentName",
-        sp."className" AS "className",
-        sp.section AS section,
-        NULL AS "placementClassName",
-        NULL AS "placementSection",
-        NULL AS "placementAcademicYear",
-        'Create the missing class/section for the active year or update the profile to an existing class.' AS recommendation,
-        CONCAT('Profile references "', sp."className", ' ', COALESCE(sp.section, ''), '" but no matching Class exists for the active academic year.') AS detail
-      FROM "StudentProfile" sp
-      JOIN "User" u ON u.id = sp."userId"
-      LEFT JOIN "Class" c
-        ON c."schoolId" = sp."schoolId"
-        AND c.name = sp."className"
-        AND c.section = sp.section
-        ${
-          activeAcademicYear
-            ? Prisma.sql`AND c."academicYearId" = ${activeAcademicYear.id}`
-            : Prisma.empty
-        }
-      WHERE sp."schoolId" = ${schoolId}
-        AND sp."className" IS NOT NULL
-        AND sp.section IS NOT NULL
-        ${activeAcademicYear ? Prisma.empty : Prisma.sql`AND FALSE`}
-        AND c.id IS NULL
-    `);
+    let classNameWithoutClass: DataQualityIssue[] = [];
+    if (config.DATA_QUALITY_CHECK_PROFILE_CLASS) {
+      classNameWithoutClass = await this.prisma.$queryRaw<
+        DataQualityIssue[]
+      >(Prisma.sql`
+        SELECT
+          'PROFILE_CLASS_NOT_FOUND' AS type,
+          'medium' AS severity,
+          sp.id AS "studentProfileId",
+          sp."userId" AS "studentUserId",
+          sp."studentCode" AS "studentCode",
+          u.name AS "studentName",
+          sp."className" AS "className",
+          sp.section AS section,
+          NULL AS "placementClassName",
+          NULL AS "placementSection",
+          NULL AS "placementAcademicYear",
+          'Create the missing class/section for the active year or update the profile to an existing class.' AS recommendation,
+          CONCAT('Profile references "', sp."className", ' ', COALESCE(sp.section, ''), '" but no matching Class exists for the active academic year.') AS detail
+        FROM "StudentProfile" sp
+        JOIN "User" u ON u.id = sp."userId"
+        LEFT JOIN "Class" c
+          ON c."schoolId" = sp."schoolId"
+          AND c.name = sp."className"
+          AND c.section = sp.section
+          ${
+            activeAcademicYear
+              ? Prisma.sql`AND c."academicYearId" = ${activeAcademicYear.id}`
+              : Prisma.empty
+          }
+        WHERE sp."schoolId" = ${schoolId}
+          AND sp."className" IS NOT NULL
+          AND sp.section IS NOT NULL
+          ${activeAcademicYear ? Prisma.empty : Prisma.sql`AND FALSE`}
+          AND c.id IS NULL
+      `);
+    }
 
     issues.push(...classNameWithoutClass);
 
-    if (activeAcademicYearKeys.length > 1) {
+    if (config.DATA_QUALITY_CHECK_ENROLLMENT && activeAcademicYearKeys.length > 1) {
       const studentClassRows = await this.prisma.studentClass.findMany({
         where: {
           schoolId,

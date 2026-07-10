@@ -1,0 +1,36 @@
+{
+  "created": "Isaaruu kaffaltii '{{name}}' milkaa'een uumameera",
+  "updated": "Isaaruu kaffaltii '{{name}}' milkaa'een haaromfameera",
+  "deleted": "Isaaruu kaffaltii '{{name}}' milkaa'een haqameera",
+  "not_found": "Isaaruu kaffaltii hin argamne",
+  "payment": {
+    "success": "Kaffaltii {{amount}} milkaa'een fudhatameera. Rasiitii: {{receiptNumber}}",
+    "failed": "Kaffaltii dadhabe: {{reason}}",
+    "partial": "Kaffaltii gartokkee {{amount}} fudhatameera. Hanqina: {{balance}}",
+    "refunded": "Kaffaltii {{amount}} milkaa'een deebifameera",
+    "cancelled": "Kaffaltiin haqameera"
+  },
+  "invoice": {
+    "generated": "Invoice {{studentName}} tiif qophaa'e: {{amount}}",
+    "overdue": "Invoice {{studentName}} tursiifameera: {{amount}}",
+    "paid": "Invoice {{invoiceNumber}} akka kaffalameetti mallatteeffameera"
+  },
+  "discount": {
+    "applied": "Hanqina {{amount}} {{studentName}} irratti fayyadameera",
+    "removed": "Hanqinni {{studentName}} irraa haqameera",
+    "invalid": "Koodii hanqinaa sirrii miti ykn haalatti hin guutamne"
+  },
+  "waiver": {
+    "applied": "Hiisni kaffaltii {{studentName}} fi {{description}} tiif kennameera",
+    "removed": "Hiisni kaffaltii {{studentName}} irraa haqameera"
+  },
+  "receipt": {
+    "generated": "Rasiitiin qophaa'e: {{receiptNumber}}",
+    "not_found": "Rasiitiin hin argamne",
+    "duplicate": "Rasiitii dachaa {{receiptNumber}} tiif gaafatameera"
+  },
+  "due_date": "Guyyaa xumuraa kaffaltii: {{date}}",
+  "overdue_reminder": "Yaadachiisa: {{amount}} guyyaa {{date}} irraa tursiifameera. Adabbiin tursiifamaa ni moggaafamuu danda'a",
+  "balance": "Haala maallaqaa ammaa: {{amount}}",
+  "total_due": "Waliigala kaffaluu qabu: {{amount}}"
+}

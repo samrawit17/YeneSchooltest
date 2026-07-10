@@ -7,12 +7,36 @@
     "subject": "የይለፍ ቃል መቀየሪያ ጥያቄ",
     "body": "<h1>የይለፍ ቃል መቀየሪያ</h1><p>ውድ {{name}},</p><p>የይለፍ ቃልዎን ለመቀየር ጥያቄ ደርሶናል።</p><p>ይህ ሊንክ በ1 ሰአት ውስጥ ያበቃል።</p><p>ይህን ካልጠየቁ ይህን ኢሜይል ችላ ይበሉ።</p><p>ከልቤ ፣<br>{{schoolName}} ቡድን</p>"
   },
-  "fee_reminder": {
-    "subject": "የክፍያ ማሳሰቢያ",
-    "body": "<h1>የክፍያ ማሳሰቢያ</h1><p>ውድ {{parentName}},</p><p>የሚከተለው ክፍያ ቀነ ገደብ እንዳለው እናሳስብዎታለን፦</p><p><strong>ክፍያ፦</strong> {{feeDescription}}<br><strong>መጠን፦</strong> {{amount}}<br><strong>ቀነ ገደብ፦</strong> {{dueDate}}</p><p>እባክዎ ቅጣትን ለማስቀረት በቀነ ገደቡ ውስጥ ይክፈሉ።</p><p>ከልቤ ፣<br>{{schoolName}} የፋይናንስ ክፍል</p>"
+  "attendance_warning": {
+    "subject": "የ{{studentName}} የመገኘት ማስጠንቀቂያ",
+    "body": "<h1>የመገኘት ማስጠንቀቂያ</h1><p>ውድ {{parentName}},</p><p>ይህ የ{{studentName}} መገኘት ወደ <strong>{{percentage}}%</strong> መውረዱን ለማሳወቅ ነው።</p><p>እባክዎ መደበኛ መገኘትን ያረጋግጡ።</p><p>ከልቤ ፣<br>{{schoolName}} አስተዳደር</p>"
   },
   "exam_result": {
     "subject": "የ{{examName}} ውጤት ታትሟል",
     "body": "<h1>የፈተና ውጤቶች</h1><p>ውድ {{name}},</p><p>የ<strong>{{examName}}</strong> ውጤቶች ታትመዋል።</p><p>ውጤቶችዎን በወላጅ/ተማሪ ፖርታል በመግባት መመልከት ይችላሉ።</p><p>ከልቤ ፣<br>{{schoolName}} አስተዳደር</p>"
+  },
+  "fee_reminder": {
+    "subject": "የክፍያ ማሳሰቢያ",
+    "body": "<h1>የክፍያ ማሳሰቢያ</h1><p>ውድ {{parentName}},</p><p>የሚከተለው ክፍያ ቀነ ገደብ እንዳለው እናሳስብዎታለን፦</p><p><strong>ክፍያ፦</strong> {{feeDescription}}<br><strong>መጠን፦</strong> {{amount}}<br><strong>ቀነ ገደብ፦</strong> {{dueDate}}</p><p>እባክዎ ቅጣትን ለማስቀረት በቀነ ገደቡ ውስጥ ይክፈሉ።</p><p>ከልቤ ፣<br>{{schoolName}} የፋይናንስ ክፍል</p>"
+  },
+  "admission_approved": {
+    "subject": "የ{{studentName}} መግቢያ ጸድቋል",
+    "body": "<h1>መግቢያ ጸድቋል</h1><p>ውድ {{parentName}},</p><p>የ{{studentName}} መግቢያ ወደ <strong>{{schoolName}}</strong> መሰጠቱን በደስታ እንገልጻለን።</p><p>እባክዎ ምዝገባውን ለማጠናቀቅ ትምህርት ቤቱን ይጎብኙ።</p><p>ከልቤ ፣<br>{{schoolName}} የመግቢያ ክፍል</p>"
+  },
+  "admission_rejected": {
+    "subject": "የ{{studentName}} የመግቢያ ሁኔታ",
+    "body": "<h1>የመግቢያ ማሻሻያ</h1><p>ውድ {{parentName}},</p><p>ከጥንቃቄ ግምገማ በኋላ፣ የ{{studentName}} መግቢያ ወደ {{schoolName}} መሰጠት አለመቻሉን በማዘን እንገልጻለን።</p><p>ምክንያት፡ {{reason}}</p><p>ከልቤ ፣<br>{{schoolName}} የመግቢያ ክፍል</p>"
+  },
+  "payment_receipt": {
+    "subject": "የክፍያ ደረሰኝ - {{receiptNumber}}",
+    "body": "<h1>የክፍያ ደረሰኝ</h1><p>ውድ {{name}},</p><p>ክፍያዎ በተሳካ ሁኔታ ደርሷል።</p><p><strong>የደረሰኝ ቁጥር፦</strong> {{receiptNumber}}<br><strong>መጠን፦</strong> {{amount}}<br><strong>ቀን፦</strong> {{date}}<br><strong>መግለጫ፦</strong> {{description}}</p><p>ለክፍያዎ እናመሰግናለን።</p><p>ከልቤ ፣<br>{{schoolName}} የፋይናንስ ክፍል</p>"
+  },
+  "report_card": {
+    "subject": "የውጤት ካርድ ዝግጁ ነው - {{termName}}",
+    "body": "<h1>የውጤት ካርድ ዝግጁ ነው</h1><p>ውድ {{parentName}},</p><p>የ{{studentName}} የውጤት ካርድ ለ<strong>{{termName}}</strong> አሁን ዝግጁ ነው።</p><p>እባክዎ የውጤት ካርዱን ለማየት እና ለማውረድ የወላጅ ፖርታል ይግቡ።</p><p>ከልቤ ፣<br>{{schoolName}} አስተዳደር</p>"
+  },
+  "enrollment_request": {
+    "subject": "አዲስ የምዝገባ ጥያቄ - {{studentName}}",
+    "body": "<h1>አዲስ የምዝገባ ጥያቄ</h1><p>አዲስ የምዝገባ ጥያቄ ቀርቧል።</p><p><strong>ተማሪ፦</strong> {{studentName}}<br><strong>ክፍል፦</strong> {{grade}}<br><strong>የቀረበበት ቀን፦</strong> {{date}}</p><p>እባክዎ ጥያቄውን ይገምግሙ እና ያስኬዱ።</p><p>ከልቤ ፣<br>{{schoolName}} ሥርዓት</p>"
   }
 }

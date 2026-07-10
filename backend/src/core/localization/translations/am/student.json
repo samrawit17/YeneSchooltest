@@ -1,0 +1,49 @@
+{
+  "created": {
+    "success": "ተማሪ {{name}} በተሳካ ሁኔታ ተመዝግቧል",
+    "bulk": "{{count}} ተማሪዎች በተሳካ ሁኔታ ተመዝግበዋል"
+  },
+  "updated": {
+    "success": "የተማሪ {{name}} መረጃ በተሳካ ሁኔታ ተዘምኗል",
+    "profile": "የተማሪ መገለጫ ተዘምኗል",
+    "status": "የተማሪ ሁኔታ ወደ {{status}} ተቀይሯል"
+  },
+  "deleted": {
+    "success": "ተማሪ {{name}} ከሥርዓቱ ተወግዷል",
+    "confirm": "ተማሪ {{name}} መሰረዝ ይፈልጋሉ? ይህ እርምጃ መቀልበስ አይቻልም"
+  },
+  "not_found": "ተማሪ አልተገኘም",
+  "already_enrolled": "ተማሪው በዚህ ክፍል ውስጥ ቀድሞውኑ ተመዝግቧል",
+  "not_enrolled": "ተማሪው በምንም ክፍል ውስጥ አልተመዘገበም",
+  "transfer": {
+    "success": "ተማሪ {{name}} ወደ {{class}} በተሳካ ሁኔታ ተዛውሯል",
+    "failed": "ተማሪን ማዛወር አልተሳካም። እባክዎ የዒላማ ክፍል አቅምን ያረጋግጡ"
+  },
+  "promotion": {
+    "success": "ተማሪ {{name}} ወደ {{grade}} ከፍ ብሏል",
+    "bulk_success": "{{count}} ተማሪዎች በተሳካ ሁኔታ ከፍ ብለዋል",
+    "failed": "ተማሪው የማስተዋወቂያ መስፈርቶቹን አላሟላም",
+    "no_candidates": "�ማስተዋወቂያ ብቁ የሆኑ ተማሪዎች አልተገኙም"
+  },
+  "attendance": {
+    "summary": "ለ{{name}} የመገኘት ማጠቃለያ፡ {{present}} ተገኝተዋል፣ {{absent}} አልተገኙም ከ{{total}} ቀናት",
+    "low_attendance": "የተማሪ {{name}} መገኘት ወደ {{percentage}}% ወርዷል",
+    "warning": "የመገኘት ማስጠንቀቂያ፡ {{name}} {{count}} ተከታታይ ቀናት አልተገኝቷል"
+  },
+  "id_card": {
+    "generated": "ለ{{name}} የመታወቂያ ካርድ ተዘጋጅቷል",
+    "not_found": "የመታወቂያ ካርድ አብነት አልተገኘም"
+  },
+  "certificate": {
+    "generated": "ለ{{name}} የምስክር ወረቀት ተዘጋጅቷል",
+    "template_not_found": "የምስክር ወረቀት አብነት አልተገኘም"
+  },
+  "parent": {
+    "linked": "ወላጅ {{parentName}} ከተማሪ {{studentName}} ጋር ተገናኝቷል",
+    "unlinked": "ወላጅ ከተማሪ ሂሳብ ተወግዷል",
+    "already_linked": "ወላጅ ቀድሞውኑ ከዚህ ተማሪ ጋር ተገናኝቷል"
+  },
+  "guardian": {
+    "updated": "ለ{{name}} የአሳዳጊ መረጃ ተዘምኗል"
+  }
+}

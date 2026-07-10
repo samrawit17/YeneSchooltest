@@ -1,0 +1,48 @@
+{
+  "user": {
+    "created": "ተጠቃሚ {{userName}} በ{{actorName}} ተፈጥሯል",
+    "updated": "ተጠቃሚ {{userName}} በ{{actorName}} ተሻሽሏል",
+    "deleted": "ተጠቃሚ {{userName}} በ{{actorName}} ተሰርዟል",
+    "login": "ተጠቃሚ {{userName}} ከ{{ipAddress}} ገብቷል",
+    "logout": "ተጠቃሚ {{userName}} ወጥቷል",
+    "password_changed": "ተጠቃሚ {{userName}} የይለፍ ቃል ቀይሯል",
+    "password_reset": "የ{{userName}} የይለፍ ቃል በ{{actorName}} ተቀይሯል",
+    "role_changed": "የ{{userName}} ሚና ወደ {{newRole}} በ{{actorName}} ተቀይሯል",
+    "status_changed": "የ{{userName}} ሁኔታ ወደ {{status}} በ{{actorName}} ተቀይሯል"
+  },
+  "student": {
+    "enrolled": "ተማሪ {{studentName}} በ{{className}} በ{{actorName}} ተመዝግቧል",
+    "transferred": "ተማሪ {{studentName}} ወደ {{newClass}} በ{{actorName}} ተዛውሯል",
+    "promoted": "ተማሪ {{studentName}} ወደ {{grade}} በ{{actorName}} ከፍ ብሏል",
+    "graduated": "ተማሪ {{studentName}} በ{{actorName}} ተመርቋል",
+    "suspended": "ተማሪ {{studentName}} በ{{actorName}} ታግዷል",
+    "expelled": "ተማሪ {{studentName}} በ{{actorName}} ተባርሯል"
+  },
+  "fee": {
+    "payment_received": "የ{{amount}} ክፍያ ከ{{studentName}} በ{{actorName}} ተቀብሏል",
+    "payment_waived": "የ{{amount}} ክፍያ ለ{{studentName}} በ{{actorName}} ተሰርዟል",
+    "fee_structure_created": "የክፍያ መዋቅር {{name}} በ{{actorName}} ተፈጥሯል",
+    "fee_structure_updated": "የክፍያ መዋቅር {{name}} በ{{actorName}} ተሻሽሏል",
+    "discount_applied": "የ{{amount}} ቅናሽ ለ{{studentName}} በ{{actorName}} ተሰጥቷል"
+  },
+  "exam": {
+    "created": "ፈተና {{examName}} በ{{actorName}} ተፈጥሯል",
+    "results_published": "የ{{examName}} ውጤቶች በ{{actorName}} ታትመዋል",
+    "results_updated": "የ{{examName}} ውጤቶች በ{{actorName}} ተሻሽለዋል"
+  },
+  "settings": {
+    "school_updated": "የትምህርት ቤት ቅንብሮች በ{{actorName}} ተዘምነዋል",
+    "platform_updated": "የመድረክ ቅንብሮች በ{{actorName}} ተዘምነዋል"
+  },
+  "security": {
+    "failed_login": "ለ{{email}} ከ{{ipAddress}} ያልተሳካ የመግቢያ ሙከራ",
+    "suspicious_activity": "ለተጠቃሚ {{userName}} አጠራጣሪ እንቅስቃሴ ተገኝቷል፡ {{details}}",
+    "permission_changed": "ፈቃድ {{permission}} {{action}} ለሚና {{role}} በ{{actorName}}"
+  },
+  "backup": {
+    "created": "የሥርዓት ምትኬ በ{{actorName}} ተፈጥሯል",
+    "restored": "የሥርዓት ምትኬ በ{{actorName}} ተመልሷል",
+    "deleted": "ምትኬ {{backupName}} በ{{actorName}} ተሰርዟል",
+    "downloaded": "ምትኬ በ{{actorName}} ተወርዷል"
+  }
+}

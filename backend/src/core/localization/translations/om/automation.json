@@ -1,0 +1,34 @@
+{
+  "rule": {
+    "created": "Seera ofii '{{ruleName}}' milkaa'een uumameera",
+    "updated": "Seera ofii '{{ruleName}}' milkaa'een haaromfameera",
+    "deleted": "Seera ofii '{{ruleName}}' milkaa'een haqameera",
+    "enabled": "Seera ofii '{{ruleName}}' hojiirra ooleera",
+    "disabled": "Seera ofii '{{ruleName}}' dhaabameera",
+    "not_found": "Seera ofii hin argamne"
+  },
+  "execution": {
+    "started": "Seera '{{ruleName}}' gocha {{eventType}} tiif hojiirra ooluu jira",
+    "completed": "Seera '{{ruleName}}' milkaa'een hojiirra ooleera: gochoota {{actionCount}} raawwatamaniiru",
+    "failed": "Hojiirra ooliin seerichaa '{{ruleName}}' dadhabe: {{error}}",
+    "condition_met": "Haalli seera '{{ruleName}}' tiif guutameera",
+    "condition_not_met": "Haalli seera '{{ruleName}}' tiif hin guutamne",
+    "action_executed": "Gochi {{actionType}} raawwatameera: {{result}}",
+    "action_failed": "Gochi {{actionType}} dadhabe: {{error}}"
+  },
+  "action": {
+    "send_email": "Imeelii gara {{recipients}} erguu jira",
+    "send_sms": "SMS gara {{recipients}} erguu jira",
+    "push_notification": "Beeksisa dhiibuu erguu jira",
+    "create_alert": "Akeekkachiisa uumuu jira: {{message}}",
+    "update_database": "Dirree kuusaa deetaa {{field}} gara {{value}} haaromsuu jira"
+  },
+  "trigger": {
+    "attendance_marked": "Dhufaatii barattoota {{count}} galmeeffameera",
+    "fee_overdue": "Kaffaltiin tursiifame barattoota {{count}} tiif argameera",
+    "fee_paid": "Kaffaltii barataa {{studentName}} irraa dhufeera",
+    "grade_published": "Bu'aan {{subjectName}} maxxanfameera",
+    "student_created": "Barataan haaraa {{studentName}} uumameera",
+    "exam_created": "Qormaanni haaraa {{examName}} uumameera"
+  }
+}

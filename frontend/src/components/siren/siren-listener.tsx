@@ -39,45 +39,53 @@ export function SirenListener() {
   useEffect(() => {
     if (!user?.schoolId) return;
 
-    // Connect to WebSocket (use backend host from NEXT_PUBLIC_API_URL if provided)
     const backendUrl = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL
       ? new URL(process.env.NEXT_PUBLIC_API_URL)
       : new URL(window.location.origin);
     const wsProtocol = backendUrl.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${backendUrl.host}/api/siren/ws?schoolId=${user.schoolId}`;
 
-    try {
-      wsRef.current = new WebSocket(wsUrl);
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
 
-      wsRef.current.onopen = () => {
-        console.log("Siren listener connected");
-      };
+    const connect = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-      wsRef.current.onmessage = (event) => {
-        try {
-          const sirenEvent: SirenEvent = JSON.parse(event.data);
-          handleSirenEvent(sirenEvent);
-        } catch (error) {
-          console.error("Failed to parse siren event:", error);
-        }
-      };
+      try {
+        const ws = new WebSocket(wsUrl);
 
-      wsRef.current.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
+        ws.onopen = () => {
+          console.log("Siren listener connected");
+        };
 
-      wsRef.current.onclose = () => {
-        console.log("Siren listener disconnected");
-        // Attempt reconnect after 5 seconds
-        setTimeout(() => {
-          window.location.reload();
-        }, 5000);
-      };
-    } catch (error) {
-      console.error("Failed to connect to siren WebSocket:", error);
-    }
+        ws.onmessage = (event) => {
+          try {
+            const sirenEvent: SirenEvent = JSON.parse(event.data);
+            handleSirenEvent(sirenEvent);
+          } catch (error) {
+            console.error("Failed to parse siren event:", error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+        };
+
+        ws.onclose = () => {
+          console.log("Siren listener disconnected, reconnecting in 5s...");
+          reconnectTimeout = setTimeout(connect, 5000);
+        };
+
+        wsRef.current = ws;
+      } catch (error) {
+        console.error("Failed to connect to siren WebSocket:", error);
+        reconnectTimeout = setTimeout(connect, 5000);
+      }
+    };
+
+    connect();
 
     return () => {
+      clearTimeout(reconnectTimeout);
       if (wsRef.current) {
         wsRef.current.close();
       }

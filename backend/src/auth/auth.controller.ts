@@ -17,6 +17,7 @@ import {
   UploadedFiles,
   Res,
   BadRequestException,
+  Header,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -457,6 +458,9 @@ export class AuthController {
 
   @Get('users/me')
   @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
   async getCurrentUser(@Request() req) {
     try {
       const storedUser = await this.authService.getUserById(req.user.id);

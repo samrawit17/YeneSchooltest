@@ -31,6 +31,20 @@ const DATE_FORMATS: Record<string, LocaleDateFormat> = {
     time: { hour: '2-digit', minute: '2-digit' },
     datetime: { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
   },
+  so: {
+    short: { year: 'numeric', month: '2-digit', day: '2-digit' },
+    medium: { year: 'numeric', month: 'short', day: 'numeric' },
+    long: { year: 'numeric', month: 'long', day: 'numeric' },
+    time: { hour: '2-digit', minute: '2-digit' },
+    datetime: { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+  },
+  ar: {
+    short: { year: 'numeric', month: '2-digit', day: '2-digit' },
+    medium: { year: 'numeric', month: 'short', day: 'numeric' },
+    long: { year: 'numeric', month: 'long', day: 'numeric' },
+    time: { hour: '2-digit', minute: '2-digit' },
+    datetime: { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+  },
   ti: {
     short: { year: 'numeric', month: '2-digit', day: '2-digit' },
     medium: { year: 'numeric', month: 'short', day: 'numeric' },
@@ -48,6 +62,8 @@ export class DateFormatter {
     en: 'en-US',
     am: 'am-ET',
     om: 'om-ET',
+    so: 'so-SO',
+    ar: 'ar-SA',
     ti: 'ti-ET',
   };
 
@@ -79,10 +95,20 @@ export class DateFormatter {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    if (diffDay < 7) return `${diffDay}d ago`;
+    const relativeLabels: Record<string, { justNow: string; mAgo: string; hAgo: string; dAgo: string }> = {
+      en: { justNow: 'just now', mAgo: 'm ago', hAgo: 'h ago', dAgo: 'd ago' },
+      am: { justNow: 'አሁን', mAgo: 'ደቂቃ በፊት', hAgo: 'ሰአት በፊት', dAgo: 'ቀን በፊት' },
+      om: { justNow: 'amma', mAgo: 'daqiiqa dura', hAgo: 'sa\'aatii dura', dAgo: 'guyyaa dura' },
+      so: { justNow: 'hadda', mAgo: 'daqiiqo kahor', hAgo: 'saacad kahor', dAgo: 'maalin kahor' },
+      ar: { justNow: 'الآن', mAgo: 'دقيقة مضت', hAgo: 'ساعة مضت', dAgo: 'يوم مضت' },
+    };
+
+    const labels = relativeLabels[locale] || relativeLabels.en;
+
+    if (diffSec < 60) return labels.justNow;
+    if (diffMin < 60) return `${diffMin} ${labels.mAgo}`;
+    if (diffHour < 24) return `${diffHour} ${labels.hAgo}`;
+    if (diffDay < 7) return `${diffDay} ${labels.dAgo}`;
     return this.format(date, 'short', locale);
   }
 }

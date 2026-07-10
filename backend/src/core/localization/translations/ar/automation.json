@@ -1,0 +1,34 @@
+{
+  "rule": {
+    "created": "تم إنشاء قاعدة الأتمتة '{{ruleName}}' بنجاح",
+    "updated": "تم تحديث قاعدة الأتمتة '{{ruleName}}' بنجاح",
+    "deleted": "تم حذف قاعدة الأتمتة '{{ruleName}}' بنجاح",
+    "enabled": "تم تفعيل قاعدة الأتمتة '{{ruleName}}'",
+    "disabled": "تم تعطيل قاعدة الأتمتة '{{ruleName}}'",
+    "not_found": "لم يتم العثور على قاعدة الأتمتة"
+  },
+  "execution": {
+    "started": "جاري تنفيذ القاعدة '{{ruleName}}' للحدث {{eventType}}",
+    "completed": "تم تنفيذ القاعدة '{{ruleName}}' بنجاح: تم تنفيذ {{actionCount}} إجراء",
+    "failed": "فشل تنفيذ القاعدة '{{ruleName}}': {{error}}",
+    "condition_met": "تم استيفاء الشرط للقاعدة '{{ruleName}}'",
+    "condition_not_met": "لم يتم استيفاء الشرط للقاعدة '{{ruleName}}'",
+    "action_executed": "تم تنفيذ الإجراء {{actionType}}: {{result}}",
+    "action_failed": "فشل الإجراء {{actionType}}: {{error}}"
+  },
+  "action": {
+    "send_email": "جاري إرسال بريد إلكتروني إلى {{recipients}}",
+    "send_sms": "جاري إرسال رسالة نصية إلى {{recipients}}",
+    "push_notification": "جاري إرسال إشعار فوري",
+    "create_alert": "جاري إنشاء تنبيه: {{message}}",
+    "update_database": "جاري تحديث حقل قاعدة البيانات {{field}} إلى {{value}}"
+  },
+  "trigger": {
+    "attendance_marked": "تم تسجيل حضور {{count}} طالب",
+    "fee_overdue": "تم اكتشاف رسوم متأخرة لـ {{count}} طالب",
+    "fee_paid": "تم استلام دفعة من {{studentName}}",
+    "grade_published": "تم نشر درجات {{subjectName}}",
+    "student_created": "تم إنشاء طالب جديد {{studentName}}",
+    "exam_created": "تم إنشاء امتحان جديد {{examName}}"
+  }
+}

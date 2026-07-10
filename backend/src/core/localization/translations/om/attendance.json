@@ -1,0 +1,20 @@
+{
+  "marked": "Dhufaatii {{className}} guyyaa {{date}} galmeeffameera",
+  "bulk_marked": "Dhufaatii waliigalaa barattoota {{count}} galmeeffameera",
+  "session_opened": "Sessiin dhufaatii {{className}} sa'aatii {{time}} banameera",
+  "session_closed": "Sessiin dhufaatii {{className}} cufameera",
+  "session_not_found": "Sessiin dhufaatii socho'aa jiru hin argamne",
+  "already_marked": "Dhufaatii {{studentName}} har'a duraanuu galmeeffameera",
+  "not_marked": "Dhufaatii guyyaa {{date}} ammaatti hin galmoofne",
+  "override": "Dhufaatii {{studentName}} namni {{actorName}} jijjiireera",
+  "report": {
+    "daily": "Gabaasa dhufaatii guyyaa {{date}}",
+    "monthly": "Gabaasa dhufaatii ji'a {{month}}",
+    "summary": "Iddoo dhufaatii: {{present}} argaman, {{absent}} hin argamne, {{late}} tursiifaman",
+    "student_summary": "{{studentName}}: {{present}}/{{total}} guyyaa argaman ({{percentage}}%)"
+  },
+  "low_attendance": "Akeekkachiisa dhufaatii: dhufaatii {{studentName}} dhibbeentaa {{percentage}}%",
+  "excused": "Hir'inni {{studentName}} hayyamameera",
+  "unexcused": "Hir'inni {{studentName}} hayyama malee galmeeffameera",
+  "late": "{{studentName}} daqiiqaa {{minutes}} tursiifameera"
+}

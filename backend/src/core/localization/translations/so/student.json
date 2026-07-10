@@ -1,0 +1,49 @@
+{
+  "created": {
+    "success": "Ardayga {{name}} si guul leh ayaa loo diiwaan geliyey",
+    "bulk": "{{count}} arday ayaa si guul leh loo diiwaan geliyey"
+  },
+  "updated": {
+    "success": "Macluumaadka ardayga {{name}} si guul leh ayaa loo cusbooneysiiyey",
+    "profile": "Profaylka ardayga waa la cusbooneysiiyey",
+    "status": "Xaaladda ardayga waxaa loo beddelay {{status}}"
+  },
+  "deleted": {
+    "success": "Ardayga {{name}} waa laga saaray nidaamka",
+    "confirm": "Ma hubtaa inaad tirtirto ardayga {{name}}? Tallaabadan dib looma celin karo"
+  },
+  "not_found": "Ardayga lama helin",
+  "already_enrolled": "Ardayga horaa loogu diiwaan geliyey fasalkan",
+  "not_enrolled": "Ardayga kuma diiwaan gashan fasalka",
+  "transfer": {
+    "success": "Ardayga {{name}} si guul leh ayaa loogu wareejiyey {{class}}",
+    "failed": "Wareejinta ardaydu way fashilantay. Fadlan hubi awoodda fasalka loo wareejinayo"
+  },
+  "promotion": {
+    "success": "Ardayga {{name}} waxaa loo dallacsiiyey {{grade}}",
+    "bulk_success": "{{count}} arday ayaa si guul leh loo dallacsiiyey",
+    "failed": "Ardaygu kama buuxo shuruudaha dallacsiga",
+    "no_candidates": "Ma jiraan arday u qalma dallacsiga"
+  },
+  "attendance": {
+    "summary": "Soo koobista xaadirka {{name}}: {{present}} joogay, {{absent}} ma joogin {{total}} maalmood gudahood",
+    "low_attendance": "Xaadirka ardayga {{name}} waxa uu hoos ugu dhacay {{percentage}}%",
+    "warning": "Digniinta xaadirka: {{name}} wuu maqnaa {{count}} maalmood oo is xiga"
+  },
+  "id_card": {
+    "generated": "Kaarka aqoonsiga ee {{name}} waa la diyaariyey",
+    "not_found": "Template-ka kaarka aqoonsiga lama helin"
+  },
+  "certificate": {
+    "generated": "Shahaadada {{name}} waa la diyaariyey",
+    "template_not_found": "Template-ka shahaadada lama helin"
+  },
+  "parent": {
+    "linked": "Waalidka {{parentName}} waxaa lala xidhiidhiyey ardayga {{studentName}}",
+    "unlinked": "Waalidka waxaa laga saaray akoonka ardayga",
+    "already_linked": "Waalidka horaa ula xidhiidhiyey ardaygan"
+  },
+  "guardian": {
+    "updated": "Macluumaadka masuulka {{name}} waa la cusbooneysiiyey"
+  }
+}

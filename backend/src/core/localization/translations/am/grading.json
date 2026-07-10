@@ -1,0 +1,25 @@
+{
+  "grade": {
+    "entered": "ለ{{studentName}} የ{{subjectName}} ውጤት ገብቷል",
+    "updated": "ለ{{studentName}} የ{{subjectName}} ውጤት ተሻሽሏል",
+    "submitted": "የ{{subjectName}} ውጤቶች ቀርበዋል",
+    "approved": "የ{{subjectName}} ውጤቶች ጸድቀዋል",
+    "published": "የ{{subjectName}} ውጤቶች ታትመዋል",
+    "rejected": "የውጤት አቀራረብ ውድቅ ሆኗል፡ {{reason}}"
+  },
+  "report_card": {
+    "generated": "የ{{studentName}} የውጤት ካርድ ለ{{termName}} ተዘጋጅቷል",
+    "not_found": "የውጤት ካርድ አልተገኘም",
+    "published": "የ{{termName}} የውጤት ካርዶች ታትመዋል"
+  },
+  "assessment": {
+    "created": "ግምገማ '{{name}}' ተፈጥሯል",
+    "scored": "ለ{{studentName}} ግምገማ ተሰጥቷል",
+    "locked": "የግምገማ ውጤቶች ተቆልፈዋል"
+  },
+  "grading_component": {
+    "created": "የውጤት አካል '{{name}}' ተፈጥሯል",
+    "updated": "የውጤት አካል '{{name}}' ተሻሽሏል",
+    "not_found": "የውጤት አካል አልተገኘም"
+  }
+}

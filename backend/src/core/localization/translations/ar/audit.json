@@ -1,0 +1,48 @@
+{
+  "user": {
+    "created": "تم إنشاء المستخدم {{userName}} بواسطة {{actorName}}",
+    "updated": "تم تحديث المستخدم {{userName}} بواسطة {{actorName}}",
+    "deleted": "تم حذف المستخدم {{userName}} بواسطة {{actorName}}",
+    "login": "قام المستخدم {{userName}} بتسجيل الدخول من {{ipAddress}}",
+    "logout": "قام المستخدم {{userName}} بتسجيل الخروج",
+    "password_changed": "قام المستخدم {{userName}} بتغيير كلمة المرور",
+    "password_reset": "تم إعادة تعيين كلمة المرور للمستخدم {{userName}} بواسطة {{actorName}}",
+    "role_changed": "تم تغيير دور المستخدم {{userName}} إلى {{newRole}} بواسطة {{actorName}}",
+    "status_changed": "تم تغيير حالة المستخدم {{userName}} إلى {{status}} بواسطة {{actorName}}"
+  },
+  "student": {
+    "enrolled": "تم تسجيل الطالب {{studentName}} في {{className}} بواسطة {{actorName}}",
+    "transferred": "تم نقل الطالب {{studentName}} إلى {{newClass}} بواسطة {{actorName}}",
+    "promoted": "تم ترقية الطالب {{studentName}} إلى {{grade}} بواسطة {{actorName}}",
+    "graduated": "تخرج الطالب {{studentName}} بواسطة {{actorName}}",
+    "suspended": "تم تعليق الطالب {{studentName}} بواسطة {{actorName}}",
+    "expelled": "تم فصل الطالب {{studentName}} بواسطة {{actorName}}"
+  },
+  "fee": {
+    "payment_received": "تم استلام دفعة {{amount}} من {{studentName}} بواسطة {{actorName}}",
+    "payment_waived": "تم إعفاء {{studentName}} من رسوم {{amount}} بواسطة {{actorName}}",
+    "fee_structure_created": "تم إنشاء هيكل الرسوم {{name}} بواسطة {{actorName}}",
+    "fee_structure_updated": "تم تحديث هيكل الرسوم {{name}} بواسطة {{actorName}}",
+    "discount_applied": "تم تطبيق خصم {{amount}} على {{studentName}} بواسطة {{actorName}}"
+  },
+  "exam": {
+    "created": "تم إنشاء الامتحان {{examName}} بواسطة {{actorName}}",
+    "results_published": "تم نشر نتائج {{examName}} بواسطة {{actorName}}",
+    "results_updated": "تم تحديث نتائج {{examName}} بواسطة {{actorName}}"
+  },
+  "settings": {
+    "school_updated": "تم تحديث إعدادات المدرسة بواسطة {{actorName}}",
+    "platform_updated": "تم تحديث إعدادات المنصة بواسطة {{actorName}}"
+  },
+  "security": {
+    "failed_login": "محاولة دخول فاشلة لـ {{email}} من {{ipAddress}}",
+    "suspicious_activity": "تم اكتشاف نشاط مشبوه للمستخدم {{userName}}: {{details}}",
+    "permission_changed": "تم {{action}} الصلاحية {{permission}} لدور {{role}} بواسطة {{actorName}}"
+  },
+  "backup": {
+    "created": "تم إنشاء نسخة احتياطية للنظام بواسطة {{actorName}}",
+    "restored": "تم استعادة النسخة الاحتياطية للنظام بواسطة {{actorName}}",
+    "deleted": "تم حذف النسخة الاحتياطية {{backupName}} بواسطة {{actorName}}",
+    "downloaded": "تم تحميل النسخة الاحتياطية بواسطة {{actorName}}"
+  }
+}

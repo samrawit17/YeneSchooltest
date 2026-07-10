@@ -1,0 +1,36 @@
+{
+  "created": "تم إنشاء هيكل الرسوم '{{name}}' بنجاح",
+  "updated": "تم تحديث هيكل الرسوم '{{name}}' بنجاح",
+  "deleted": "تم حذف هيكل الرسوم '{{name}}' بنجاح",
+  "not_found": "لم يتم العثور على هيكل الرسوم",
+  "payment": {
+    "success": "تم استلام دفعة بقيمة {{amount}} بنجاح. الإيصال: {{receiptNumber}}",
+    "failed": "فشلت الدفعة: {{reason}}",
+    "partial": "تم استلام دفعة جزئية بقيمة {{amount}}. الرصيد المتبقي: {{balance}}",
+    "refunded": "تم استرداد مبلغ {{amount}} بنجاح",
+    "cancelled": "تم إلغاء الدفعة"
+  },
+  "invoice": {
+    "generated": "تم إنشاء فاتورة لـ {{studentName}}: {{amount}}",
+    "overdue": "فاتورة {{studentName}} متأخرة: {{amount}}",
+    "paid": "تم تحديد الفاتورة {{invoiceNumber}} كمدفوعة"
+  },
+  "discount": {
+    "applied": "تم تطبيق خصم بقيمة {{amount}} لـ {{studentName}}",
+    "removed": "تم إزالة الخصم من {{studentName}}",
+    "invalid": "رمز الخصم غير صالح أو لم تستوف المعايير"
+  },
+  "waiver": {
+    "applied": "تم تطبيق إعفاء من الرسوم لـ {{studentName}} بسبب {{description}}",
+    "removed": "تم إزالة الإعفاء من الرسوم من {{studentName}}"
+  },
+  "receipt": {
+    "generated": "تم إنشاء الإيصال: {{receiptNumber}}",
+    "not_found": "لم يتم العثور على الإيصال",
+    "duplicate": "تم طلب إيصال مكرر لـ {{receiptNumber}}"
+  },
+  "due_date": "تاريخ استحقاق الدفع: {{date}}",
+  "overdue_reminder": "تذكير: {{amount}} متأخرة منذ {{date}}. قد يتم تطبيق غرامة تأخير",
+  "balance": "الرصيد الحالي: {{amount}}",
+  "total_due": "المبلغ المستحق: {{amount}}"
+}

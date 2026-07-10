@@ -6,6 +6,10 @@
   "fee_received": "{{schoolName}}: {{amount}} ክፍያ ተቀብሏል። ደረሰኝ፡ {{receiptNo}}።",
   "exam_reminder": "{{schoolName}}: {{examName}} በ{{date}} በ{{time}} ተይዟል። እባክዎ በዝግጅት ይኑሩ።",
   "exam_result": "{{schoolName}}: የ{{examName}} ውጤት ታትሟል። ዝርዝር ለማየት ፖርታል ይጠቀሙ።",
+  "homework_reminder": "{{schoolName}}: የ{{subjectName}} የቤት ስራ ማሳሰቢያ። የሚከፈልበት ቀን፡ {{dueDate}}።",
+  "meeting_reminder": "{{schoolName}}: የወላጅ-መምህር ስብሰባ በ{{date}} በ{{time}}። መገኘት አስፈላጊ ነው።",
+  "emergency_alert": "{{schoolName}} ማስጠንቀቂያ፡ {{message}}። እባክዎ አስፈላጊውን ጥንቃቄ ያድርጉ።",
   "general_notification": "{{schoolName}}: {{message}}",
-  "emergency_alert": "{{schoolName}} ማስጠንቀቂያ፡ {{message}}። እባክዎ አስፈላጊውን ጥንቃቄ ያድርጉ።"
+  "enrollment_approved": "{{schoolName}}: የ{{studentName}} ምዝገባ ጸድቋል። እባክዎ ትምህርት ቤቱን በመጎብኘት ምዝገባውን ያጠናቅቁ።",
+  "school_event": "{{schoolName}}: {{eventName}} በ{{date}}። {{description}}"
 }

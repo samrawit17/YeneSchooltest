@@ -1,0 +1,28 @@
+{
+  "created": "ፈተና '{{examName}}' በተሳካ ሁኔታ ተፈጥሯል",
+  "updated": "ፈተና '{{examName}}' በተሳካ ሁኔታ ተሻሽሏል",
+  "deleted": "ፈተና '{{examName}}' በተሳካ ሁኔታ ተሰርዟል",
+  "not_found": "ፈተና አልተገኘም",
+  "scheduled": "ፈተና በ{{date}} በ{{time}} ተይዟል",
+  "rescheduled": "ፈተና ወደ {{date}} በ{{time}} ተቀይሯል",
+  "cancelled": "ፈተና ተሰርዟል",
+  "result": {
+    "entered": "የ{{examName}} ውጤቶች ገብተዋል",
+    "published": "የ{{examName}} ውጤቶች ታትመዋል",
+    "updated": "የ{{examName}} ውጤቶች ተሻሽለዋል",
+    "not_found": "ለዚህ ፈተና ምንም ውጤት አልተገኘም",
+    "already_published": "ውጤቶች ቀድሞውኑ ታትመዋል",
+    "confirm_publish": "የ{{examName}} ውጤቶችን ማተም ይፈልጋሉ?"
+  },
+  "seating": {
+    "generated": "ለ{{examName}} የመቀመጫ ዝግጅት ተዘጋጅቷል",
+    "printed": "የመቀመጫ ዝግጅት ታትሟል",
+    "not_found": "ምንም የመቀመጫ ዝግጅት አልተገኘም",
+    "student_assigned": "{{studentName}} ወደ ክፍል {{room}}, መቀመጫ {{seat}} ተመድበዋል"
+  },
+  "grade_scale": {
+    "created": "የውጤት ልኬት ተፈጥሯል",
+    "updated": "የውጤት ልኬት ተሻሽሏል",
+    "not_found": "የውጤት ልኬት አልተገኘም"
+  }
+}

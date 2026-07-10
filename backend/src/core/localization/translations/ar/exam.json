@@ -1,0 +1,28 @@
+{
+  "created": "تم إنشاء الامتحان '{{examName}}' بنجاح",
+  "updated": "تم تحديث الامتحان '{{examName}}' بنجاح",
+  "deleted": "تم حذف الامتحان '{{examName}}' بنجاح",
+  "not_found": "لم يتم العثور على الامتحان",
+  "scheduled": "تم جدولة الامتحان في {{date}} الساعة {{time}}",
+  "rescheduled": "تم إعادة جدولة الامتحان إلى {{date}} الساعة {{time}}",
+  "cancelled": "تم إلغاء الامتحان",
+  "result": {
+    "entered": "تم إدخال نتائج {{examName}}",
+    "published": "تم نشر نتائج {{examName}}",
+    "updated": "تم تحديث نتائج {{examName}}",
+    "not_found": "لم يتم العثور على نتائج لهذا الامتحان",
+    "already_published": "تم نشر النتائج مسبقاً",
+    "confirm_publish": "هل أنت متأكد من نشر نتائج {{examName}}؟"
+  },
+  "seating": {
+    "generated": "تم إنشاء ترتيب الجلوس لـ {{examName}}",
+    "printed": "تم طباعة ترتيب الجلوس",
+    "not_found": "لم يتم العثور على ترتيب جلوس",
+    "student_assigned": "تم تعيين {{studentName}} في الغرفة {{room}}، المقعد {{seat}}"
+  },
+  "grade_scale": {
+    "created": "تم إنشاء سلم الدرجات",
+    "updated": "تم تحديث سلم الدرجات",
+    "not_found": "لم يتم العثور على سلم الدرجات"
+  }
+}

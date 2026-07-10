@@ -1,22 +1,42 @@
 {
-  "common": {
-    "greeting": "Salaan {{name}},",
-    "farewell": "Salaan,",
-    "team_signature": "Kooxda Nidaamka Maamulka Dugsiga",
-    "footer": "© {{year}} Nidaamka Maamulka Dugsiga. Xuquuqda oo dhan waa la dhawray."
-  },
   "welcome": {
-    "subject": "Ku Soo Dhawoow Nidaamka Maamulka Dugsiga",
-    "body": "Kuso dhawoow nidaamka maamulka dugsiga. Akoonkaaga si guul leh ayaa loo abuuray."
+    "subject": "Ku soo dhawoow {{schoolName}}",
+    "body": "<h1>Ku soo dhawoow {{schoolName}}</h1><p>Waayeel {{name}},</p><p>Akoonkaaga si guul leh ayaa loo abuuray.</p><p>Fadlan soo gal oo beddel furahaaga sirta ah markaaga ugu horeysa.</p><p>Si tix gal leh,<br>{{schoolName}} Kooxda</p>"
   },
   "password_reset": {
-    "subject": "Dib u Deji Furaha Sirta ah",
-    "body": "Waxaan helnay codsi dib u dejinta furaha sirta ah. Fadlan guji linkiga hoose si aad dib ugu dejiso."
+    "subject": "Codsiga Dib u Dejinta Furaha Sirta ah",
+    "body": "<h1>Dib u Dejinta Furaha Sirta ah</h1><p>Waayeel {{name}},</p><p>Waxaan helnay codsi dib u dejinta furaha sirta ah.</p><p>Linkigani wuxuu dhacayaa 1 saac gudahood.</p><p>Haddii aadan codsan, fadlan iska indhatir email-kan.</p><p>Si tix gal leh,<br>{{schoolName}} Kooxda</p>"
   },
-  "enrollment": {
-    "approved_subject": "Diiwaangelinta La Ansixiyay",
-    "approved_body": "Diiwaangelinta {{studentName}} ee {{className}} waa la ansixiyay.",
-    "rejected_subject": "Diiwaangelinta La Diiday",
-    "rejected_body": "Waan ka xunnahay, diiwaangelinta {{studentName}} waa la diiday."
+  "attendance_warning": {
+    "subject": "Digniinta Xaadirka - {{studentName}}",
+    "body": "<h1>Digniinta Xaadirka</h1><p>Waayeel {{parentName}},</p><p>Waxaan ku ogeysinaynaa in xaadirka {{studentName}} uu hoos ugu dhacay <strong>{{percentage}}%</strong>.</p><p>Fadlan hubi xaadirka joogtada ah si looga fogaado cawaaqibta tacliinta.</p><p>Si tix gal leh,<br>{{schoolName}} Maamulka</p>"
+  },
+  "exam_result": {
+    "subject": "Natiijooyinka Imtixaanka {{examName}} Waa la Daabacay",
+    "body": "<h1>Natiijooyinka Imtixaanka</h1><p>Waayeel {{name}},</p><p>Natiijooyinka <strong>{{examName}}</strong> waa la daabacay.</p><p>Waxaad ka daawan kartaa natiijooyinkaaga adiga oo soo gala portal-ka waalidka/ardayga.</p><p>Si tix gal leh,<br>{{schoolName}} Maamulka</p>"
+  },
+  "fee_reminder": {
+    "subject": "Xusuusin Bixinta Lacagta",
+    "body": "<h1>Xusuusin Bixinta Lacagta</h1><p>Waayeel {{parentName}},</p><p>Waa xusuusin in lacagta soo socota ay tahay in la bixiyo:</p><p><strong>Lacagta:</strong> {{feeDescription}}<br><strong>Qadarka:</strong> {{amount}}<br><strong>Taariikhda:</strong> {{dueDate}}</p><p>Fadlan bixi ka hor taariikhda si aad uga fogaato ganaaxa.</p><p>Si tix gal leh,<br>{{schoolName}} Waaxda Maaliyadda</p>"
+  },
+  "admission_approved": {
+    "subject": "Gelitaanka {{studentName}} Waa la Ansixiyey",
+    "body": "<h1>Gelitaanka Waa la Ansixiyey</h1><p>Waayeel {{parentName}},</p><p>Waxaan ku faraxsanahay inaan ku ogeysinno in gelitaanka {{studentName}} ee <strong>{{schoolName}}</strong> la ansixiyey.</p><p>Fadlan booqo dugsiga si aad u dhamaystirto habka diiwaangelinta.</p><p>Si tix gal leh,<br>{{schoolName}} Gelitaanka</p>"
+  },
+  "admission_rejected": {
+    "subject": "Xaaladda Gelitaanka - {{studentName}}",
+    "body": "<h1>Cusboonaysiinta Gelitaanka</h1><p>Waayeel {{parentName}},</p><p>Ka dib dib u eegis taxaddar leh, waxaynu kaa xunnahay inaan ku ogeysinno in gelitaanka {{studentName}} ee {{schoolName}} la diiday.</p><p>Sababta: {{reason}}</p><p>Si tix gal leh,<br>{{schoolName}} Gelitaanka</p>"
+  },
+  "payment_receipt": {
+    "subject": "Rasiidka Bixinta - {{receiptNumber}}",
+    "body": "<h1>Rasiidka Bixinta</h1><p>Waayeel {{name}},</p><p>Bixintaada si guul leh ayaa loo helay.</p><p><strong>Lambarka Rasiidka:</strong> {{receiptNumber}}<br><strong>Qadarka:</strong> {{amount}}<br><strong>Taariikhda:</strong> {{date}}<br><strong>Sharaxaada:</strong> {{description}}</p><p>Bixintaada waad ku mahadsan tahay.</p><p>Si tix gal leh,<br>{{schoolName}} Waaxda Maaliyadda</p>"
+  },
+  "report_card": {
+    "subject": "Qaaradda Buundooyinka Waa la Diyaariyey - {{termName}}",
+    "body": "<h1>Qaaradda Buundooyinka Waa la Diyaariyey</h1><p>Waayeel {{parentName}},</p><p>Qaaradda buundooyinka {{studentName}} ee <strong>{{termName}}</strong> hadda waa la diyaariyey.</p><p>Fadlan soo gal portal-ka waalidka si aad u aragto oo uga soo dejiso qaaradda buundooyinka.</p><p>Si tix gal leh,<br>{{schoolName}} Maamulka</p>"
+  },
+  "enrollment_request": {
+    "subject": "Codsiga Diiwaangelinta Cusub - {{studentName}}",
+    "body": "<h1>Codsiga Diiwaangelinta Cusub</h1><p>Codsiga diiwaangelinta cusub ayaa la soo gudbiyey.</p><p><strong>Ardayga:</strong> {{studentName}}<br><strong>Fasalka:</strong> {{grade}}<br><strong>Taariikhda:</strong> {{date}}</p><p>Fadlan dib u eeg oo habaynta codsiga.</p><p>Si tix gal leh,<br>{{schoolName}} Nidaamka</p>"
   }
 }

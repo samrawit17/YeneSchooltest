@@ -1,0 +1,20 @@
+{
+  "marked": "የ{{className}} መገኘት በ{{date}} ተመዝግቧል",
+  "bulk_marked": "የ{{count}} ተማሪዎች የቡድን መገኘት ተመዝግቧል",
+  "session_opened": "የ{{className}} መገኘት ክፍለ ጊዜ በ{{time}} ተከፍቷል",
+  "session_closed": "የ{{className}} መገኘት ክፍለ ጊዜ ተዘግቷል",
+  "session_not_found": "ምንም ንቁ የመገኘት ክፍለ ጊዜ አልተገኘም",
+  "already_marked": "የ{{studentName}} ዛሬ መገኘት ቀድሞውኑ ተመዝግቧል",
+  "not_marked": "የ{{date}} መገኘት እስካሁን አልተመዘገበም",
+  "override": "የ{{studentName}} መገኘት በ{{actorName}} ተለውጧል",
+  "report": {
+    "daily": "የ{{date}} ዕለታዊ የመገኘት ሪፖርት",
+    "monthly": "የ{{month}} ወርሃዊ የመገኘት ሪፖርት",
+    "summary": "የመገኘት ማጠቃለያ፡ {{present}} ተገኝተዋል፣ {{absent}} አልተገኙም፣ {{late}} ዘግይተዋል",
+    "student_summary": "{{studentName}}: {{present}}/{{total}} ቀናት ተገኝተዋል ({{percentage}}%)"
+  },
+  "low_attendance": "የመገኘት ማስጠንቀቂያ፡ የ{{studentName}} መገኘት {{percentage}}% ነው",
+  "excused": "የ{{studentName}} መቅረት ተቀባይነት አግኝቷል",
+  "unexcused": "ያለቅባይነት የ{{studentName}} መቅረት ተመዝግቧል",
+  "late": "{{studentName}} በ{{minutes}} ደቂቃ ዘግይተዋል"
+}

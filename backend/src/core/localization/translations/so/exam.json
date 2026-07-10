@@ -1,0 +1,28 @@
+{
+  "created": "Imtixaanka '{{examName}}' si guul leh ayaa loo abuuray",
+  "updated": "Imtixaanka '{{examName}}' si guul leh ayaa loo cusbooneysiiyey",
+  "deleted": "Imtixaanka '{{examName}}' si guul leh ayaa loo tirtiray",
+  "not_found": "Imtixaanka lama helin",
+  "scheduled": "Imtixaanka waa loo qorsheeyey {{date}} waqtiga {{time}}",
+  "rescheduled": "Imtixaanka waxaa dib loo qorsheeyey {{date}} waqtiga {{time}}",
+  "cancelled": "Imtixaankii waa la joojiyey",
+  "result": {
+    "entered": "Natiijooyinka {{examName}} waa la galiyey",
+    "published": "Natiijooyinka {{examName}} waa la daabacay",
+    "updated": "Natiijooyinka {{examName}} waa la cusbooneysiiyey",
+    "not_found": "Imtixaankan natiijoo lama helin",
+    "already_published": "Natiijooyinka horaa loo daabacay",
+    "confirm_publish": "Ma hubtaa inaad daabacdo natiijooyinka {{examName}}?"
+  },
+  "seating": {
+    "generated": "Qorshaha fadhiga ee {{examName}} waa la diyaariyey",
+    "printed": "Qorshaha fadhiga waa la daabacay",
+    "not_found": "Ma jiro qorshe fadhi oo la helay",
+    "student_assigned": "{{studentName}} waxaa loo xilsaaray qolka {{room}}, fadhiga {{seat}}"
+  },
+  "grade_scale": {
+    "created": "Miisaanka buundooyinka waa la abuuray",
+    "updated": "Miisaanka buundooyinka waa la cusbooneysiiyey",
+    "not_found": "Miisaanka buundooyinka lama helin"
+  }
+}

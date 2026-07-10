@@ -1,0 +1,48 @@
+{
+  "user": {
+    "created": "Fayyadamaan {{userName}} namni {{actorName}} uumeera",
+    "updated": "Fayyadamaan {{userName}} namni {{actorName}} haaromseera",
+    "deleted": "Fayyadamaan {{userName}} namni {{actorName}} balleesseera",
+    "login": "Fayyadamaan {{userName}} irraa {{ipAddress}} seenee jira",
+    "logout": "Fayyadamaan {{userName}} bahee jira",
+    "password_changed": "Fayyadamaan {{userName}} jecha icciitii jijjiireera",
+    "password_reset": "Jecha icciitii fayyadamaa {{userName}} namni {{actorName}} jijjiireera",
+    "role_changed": "Gahee fayyadamaa {{userName}} gara {{newRole}} namni {{actorName}} jijjiireera",
+    "status_changed": "Haalli fayyadamaa {{userName}} gara {{status}} namni {{actorName}} jijjiireera"
+  },
+  "student": {
+    "enrolled": "Barataan {{studentName}} kutaa {{className}} keessatti namni {{actorName}} galmeesseera",
+    "transferred": "Barataan {{studentName}} gara {{newClass}} namni {{actorName}} dabarseera",
+    "promoted": "Barataan {{studentName}} gara {{grade}} namni {{actorName}} ol qabeera",
+    "graduated": "Barataan {{studentName}} namni {{actorName}} xumureera",
+    "suspended": "Barataan {{studentName}} namni {{actorName}} dhaabeera",
+    "expelled": "Barataan {{studentName}} namni {{actorName}} ari'eera"
+  },
+  "fee": {
+    "payment_received": "Kaffaltii {{amount}} barataa {{studentName}} irraa namni {{actorName}} fudhateera",
+    "payment_waived": "Kaffaltii {{amount}} barataa {{studentName}} tiif namni {{actorName}} dhiiseera",
+    "fee_structure_created": "Isaaruu kaffaltii {{name}} namni {{actorName}} uumeera",
+    "fee_structure_updated": "Isaaruu kaffaltii {{name}} namni {{actorName}} haaromseera",
+    "discount_applied": "Hanqina {{amount}} barataa {{studentName}} tiif namni {{actorName}} fayyadameera"
+  },
+  "exam": {
+    "created": "Qormaanni {{examName}} namni {{actorName}} uumeera",
+    "results_published": "Bu'aan {{examName}} namni {{actorName}} maxxanseera",
+    "results_updated": "Bu'aan {{examName}} namni {{actorName}} haaromseera"
+  },
+  "settings": {
+    "school_updated": "Sagantaa mana barumsaa namni {{actorName}} haaromseera",
+    "platform_updated": "Sagantaa poortaalaa namni {{actorName}} haaromseera"
+  },
+  "security": {
+    "failed_login": "Yaaliin seenaa {{email}} irraa {{ipAddress}} hin milkoofne",
+    "suspicious_activity": "Gochi shakkisiisaa fayyadamaa {{userName}} tiif argameera: {{details}}",
+    "permission_changed": "Hayyama {{permission}} {{action}} gahee {{role}} tiif namni {{actorName}}"
+  },
+  "backup": {
+    "created": "Duub-duubri sirnaa namni {{actorName}} uumeera",
+    "restored": "Duub-duubri sirnaa namni {{actorName}} deebiseera",
+    "deleted": "Duub-duubrii {{backupName}} namni {{actorName}} balleesseera",
+    "downloaded": "Duub-duubrii namni {{actorName}} buufateera"
+  }
+}

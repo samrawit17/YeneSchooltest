@@ -1,0 +1,25 @@
+{
+  "grade": {
+    "entered": "Buundooyinka {{studentName}} ee {{subjectName}} waa la galiyey",
+    "updated": "Buundooyinka {{studentName}} ee {{subjectName}} waa la cusbooneysiiyey",
+    "submitted": "Buundooyinka {{subjectName}} waa la gudbiyey",
+    "approved": "Buundooyinka {{subjectName}} waa la ansixiyey",
+    "published": "Buundooyinka {{subjectName}} waa la daabacay",
+    "rejected": "Gudbinta buundooyinka waa la diiday: {{reason}}"
+  },
+  "report_card": {
+    "generated": "Qaaradda buundooyinka {{studentName}} - {{termName}} waa la diyaariyey",
+    "not_found": "Qaaradda buundooyinka lama helin",
+    "published": "Qaaradda buundooyinka ee {{termName}} waa la daabacay"
+  },
+  "assessment": {
+    "created": "Qiimaynta '{{name}}' waa la abuuray",
+    "scored": "Qiimaynta {{studentName}} waa la buundeeyey",
+    "locked": "Natiijooyinka qiimaynta waa la xidhay"
+  },
+  "grading_component": {
+    "created": "Qaybta buundeynta '{{name}}' waa la abuuray",
+    "updated": "Qaybta buundeynta '{{name}}' waa la cusbooneysiiyey",
+    "not_found": "Qaybta buundeynta lama helin"
+  }
+}

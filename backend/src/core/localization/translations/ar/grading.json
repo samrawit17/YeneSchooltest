@@ -1,0 +1,25 @@
+{
+  "grade": {
+    "entered": "تم إدخال درجة {{studentName}} في {{subjectName}}",
+    "updated": "تم تحديث درجة {{studentName}} في {{subjectName}}",
+    "submitted": "تم تقديم درجات {{subjectName}}",
+    "approved": "تمت الموافقة على درجات {{subjectName}}",
+    "published": "تم نشر درجات {{subjectName}}",
+    "rejected": "تم رفض تقديم الدرجة: {{reason}}"
+  },
+  "report_card": {
+    "generated": "تم إنشاء كشف الدرجات لـ {{studentName}} - {{termName}}",
+    "not_found": "لم يتم العثور على كشف الدرجات",
+    "published": "تم نشر كشوف الدرجات لـ {{termName}}"
+  },
+  "assessment": {
+    "created": "تم إنشاء التقييم '{{name}}'",
+    "scored": "تم تسجيل تقييم {{studentName}}",
+    "locked": "تم تأمين نتائج التقييم"
+  },
+  "grading_component": {
+    "created": "تم إنشاء مكون التقييم '{{name}}'",
+    "updated": "تم تحديث مكون التقييم '{{name}}'",
+    "not_found": "لم يتم العثور على مكون التقييم"
+  }
+}

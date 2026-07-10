@@ -7,12 +7,36 @@
     "subject": "Gaafannoo Jijjiirama Jecha Icciitii",
     "body": "<h1>Jijjiirama Jecha Icciitii</h1><p>Kabajaa {{name}},</p><p>Gaafannoo jijjiirama jecha icciitii keessan arganneerra.</p><p>Liinkiin kun sa'aatii 1 keessatti xumurama.</p><p>Yoo kana hin gaafannin, imeelii kana dhiisaa.</p><p>Kabajaan,<br>{{schoolName}} Gartuu</p>"
   },
-  "fee_reminder": {
-    "subject": "Yaadachiisa Kaffaltii",
-    "body": "<h1>Yaadachiisa Kaffaltii</h1><p>Kabajaa {{parentName}},</p><p>Kaffaltiin armaan gadii guyyaa xumurawaa qaba:</p><p><strong>Kaffaltii:</strong> {{feeDescription}}<br><strong>Hamma:</strong> {{amount}}<br><strong>Guyyaa xumuraa:</strong> {{dueDate}}</p><p>Mee adabbii xiqqeessuuf guyyaa xumuraa duratti kaffali.</p><p>Kabajaan,<br>{{schoolName}} Mimitii Maallaqaa</p>"
+  "attendance_warning": {
+    "subject": "Akeekkachiisa Dhufaatii - {{studentName}}",
+    "body": "<h1>Akeekkachiisa Dhufaatii</h1><p>Kabajaa {{parentName}},</p><p>Dhufaatii {{studentName}} gara <strong>{{percentage}}%</strong> gadi bu'uu isaan beeksisuu keenya.</p><p>Mee dhufaatii yeroo hunda mirkaneessaa.</p><p>Kabajaan,<br>{{schoolName}} Bulchiinsa</p>"
   },
   "exam_result": {
     "subject": "Bu'aan Qormaata {{examName}} Maxxanfameera",
     "body": "<h1>Bu'aa Qormaata</h1><p>Kabajaa {{name}},</p><p>Bu'aan <strong>{{examName}}</strong> maxxanfameera.</p><p>Bu'aa keessan poortaala seenuun ilaaluu dandeessu.</p><p>Kabajaan,<br>{{schoolName}} Bulchiinsa</p>"
+  },
+  "fee_reminder": {
+    "subject": "Yaadachiisa Kaffaltii",
+    "body": "<h1>Yaadachiisa Kaffaltii</h1><p>Kabajaa {{parentName}},</p><p>Kaffaltiin armaan gadii guyyaa xumurawaa qaba:</p><p><strong>Kaffaltii:</strong> {{feeDescription}}<br><strong>Hamma:</strong> {{amount}}<br><strong>Guyyaa xumuraa:</strong> {{dueDate}}</p><p>Mee adabbii xiqqeessuuf guyyaa xumuraa duratti kaffali.</p><p>Kabajaan,<br>{{schoolName}} Mimitii Maallaqaa</p>"
+  },
+  "admission_approved": {
+    "subject": "Seensi {{studentName}} Mirkanaa'e",
+    "body": "<h1>Seensa Mirkanaa'e</h1><p>Kabajaa {{parentName}},</p><p>Seensi {{studentName}} gara <strong>{{schoolName}}</strong> mirkanaa'uu isaan gammachuun isin beeksifna.</p><p>Moo mana barumsaa dhaqaa galmee xumuraa.</p><p>Kabajaan,<br>{{schoolName}} Seensa</p>"
+  },
+  "admission_rejected": {
+    "subject": "Haala Seensaa - {{studentName}}",
+    "body": "<h1>Haala Seensaa</h1><p>Kabajaa {{parentName}},</p><p>Sakatta'a xiyyeeffannaa booda, seensi {{studentName}} gara {{schoolName}} akka hin mirkanaafne gaddaan isin beeksifna.</p><p>Sababa: {{reason}}</p><p>Kabajaan,<br>{{schoolName}} Seensa</p>"
+  },
+  "payment_receipt": {
+    "subject": "Rasiitii Kaffaltii - {{receiptNumber}}",
+    "body": "<h1>Rasiitii Kaffaltii</h1><p>Kabajaa {{name}},</p><p>Kaffaltiin keessan milkaa'een fudhatameera.</p><p><strong>Lak. Rasiitii:</strong> {{receiptNumber}}<br><strong>Hamma:</strong> {{amount}}<br><strong>Guyyaa:</strong> {{date}}<br><strong>Ibsa:</strong> {{description}}</p><p>Kaffaltii keessaniif galatoomi.</p><p>Kabajaan,<br>{{schoolName}} Mimitii Maallaqaa</p>"
+  },
+  "report_card": {
+    "subject": "Kardii Bu'aa Qophaa'ee Jira - {{termName}}",
+    "body": "<h1>Kardii Bu'aa Qophaa'ee Jira</h1><p>Kabajaa {{parentName}},</p><p>Kardii bu'aa {{studentName}} <strong>{{termName}}</strong> tiif amma qophaa'ee jira.</p><p>Mee poortaala matii seenuun kardii bu'aa ilaali fi buufadhu.</p><p>Kabajaan,<br>{{schoolName}} Bulchiinsa</p>"
+  },
+  "enrollment_request": {
+    "subject": "Gaaffii Galmee Haaraa - {{studentName}}",
+    "body": "<h1>Gaaffii Galmee Haaraa</h1><p>Gaaffiin galmee haaraa dhiyaateera.</p><p><strong>Barataa:</strong> {{studentName}}<br><strong>Kutaa:</strong> {{grade}}<br><strong>Guyyaa dhiyaate:</strong> {{date}}</p><p>Mee sakatta'aa fi hordafii.</p><p>Kabajaan,<br>{{schoolName}} Sirna</p>"
   }
 }
