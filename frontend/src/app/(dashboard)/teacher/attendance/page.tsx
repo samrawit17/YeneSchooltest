@@ -25,6 +25,7 @@ import {
   Wifi,
   WifiOff,
   AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -942,7 +943,7 @@ export default function TeacherAttendancePage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#111111]">
+    <div className="bg-gray-50 dark:bg-[#111111]">
       <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
         <div className="mb-4 min-w-0 sm:mb-6">
@@ -951,11 +952,7 @@ export default function TeacherAttendancePage() {
             <div className="min-w-0 order-1">
               <h1 className="text-2xl font-bold text-black">Attendance</h1>
               <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Mark and monitor daily student attendance</p>
-              {attendanceLockMessage && !isSubmitted && (
-                <div className="mt-2 inline-flex max-w-full items-start gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                  <span>{attendanceLockMessage}</span>
-                </div>
-              )}
+
               {isSubmitted && (
                 <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[rgba(var(--brand-color-rgb),0.14)] px-3 py-1 text-sm text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.22)]">
                   <CheckCircle className="w-4 h-4 shrink-0" />
@@ -1023,44 +1020,6 @@ export default function TeacherAttendancePage() {
                 </Button>
               </div>
 
-              {/* Academic Year */}
-              <Select
-                value={selectedAcademicYear}
-                onValueChange={(val) => { 
-                  console.log('[Attendance] User selected year:', val, 'name:', academicYears.find(y => y.id === val)?.name);
-                  setSelectedAcademicYear(val); setSelectedClass(""); setStudents([]); setHasChanges(false); 
-                }}
-              >
-                <SelectTrigger className="w-full border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white sm:w-[150px]">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-[#1C1C1C]">
-                  {academicYears.map((year) => (
-                    <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-[#334155]">
-                      {year.name} {year.isActive ? "(Active)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Class (Teacher can only view assigned class) */}
-              <Select
-                value={selectedClass}
-                onValueChange={setSelectedClass}
-                disabled={isLoadingClasses}
-              >
-                <SelectTrigger className="w-full border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white sm:w-[180px]">
-                  <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-[#1C1C1C] max-h-[300px] overflow-y-auto">
-                  {classOptions.map(cls => (
-                    <SelectItem key={cls.key} value={cls.key} className="dark:text-white dark:focus:bg-[#334155]">
-                      {cls.name} - Section {cls.sectionName} {cls.type === 'homeroom' ? '(Homeroom)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
             </div>
           </div>
         </div>
@@ -1068,24 +1027,74 @@ export default function TeacherAttendancePage() {
         {/* Main Body - Student Attendance Table */}
         <Card className="mb-6 min-w-0 overflow-hidden shadow-sm dark:bg-[#1C1C1C]">
           <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white shrink-0">
                 <span className="hidden sm:inline">Student Attendance - {selectedClassLabel}</span>
                 <span className="sm:hidden">Student Attendance</span>
               </CardTitle>
-              {/* Search */}
-              <div className="relative w-full sm:w-80 lg:w-96">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border-0 hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:hover:bg-[#222222] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white"
-                />
+              {/* Filters Row: Search | Academic Year | Class */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
+                {/* Search */}
+                <div className="relative w-full sm:w-[600px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search students..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 border-0 hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:hover:bg-[#222222] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white"
+                  />
+                </div>
+
+                {/* Academic Year */}
+                <Select
+                  value={selectedAcademicYear}
+                  onValueChange={(val) => { 
+                    console.log('[Attendance] User selected year:', val, 'name:', academicYears.find(y => y.id === val)?.name);
+                    setSelectedAcademicYear(val); setSelectedClass(""); setStudents([]); setHasChanges(false); 
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-[140px] border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-[#1C1C1C]">
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-[#334155]">
+                        {year.name} {year.isActive ? "(Active)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Class (Teacher can only view assigned class) */}
+                <Select
+                  value={selectedClass}
+                  onValueChange={setSelectedClass}
+                  disabled={isLoadingClasses}
+                >
+                  <SelectTrigger className="w-full sm:w-[170px] border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white">
+                    <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-[#1C1C1C] max-h-[300px] overflow-y-auto">
+                    {classOptions.map(cls => (
+                      <SelectItem key={cls.key} value={cls.key} className="dark:text-white dark:focus:bg-[#334155]">
+                        {cls.name} - Section {cls.sectionName} {cls.type === 'homeroom' ? '(Homeroom)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
 
+          {/* Lock Message - hides all student data */}
+          {attendanceLockMessage && !isSubmitted ? (
+            <div className="p-3 sm:hidden">
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <Lock className="w-10 h-10 text-amber-500" />
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">{attendanceLockMessage}</p>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-3 p-3 sm:hidden">
             {isLoadingStudents ? (
               <div className="flex items-center justify-center gap-2 py-8">
@@ -1136,8 +1145,15 @@ export default function TeacherAttendancePage() {
               ))
             )}
           </div>
+          )}
 
-          {/* Table */}
+          {/* Lock Message - hides table */}
+          {attendanceLockMessage && !isSubmitted ? (
+            <div className="hidden sm:flex flex-col items-center gap-3 py-16 text-center">
+              <Lock className="w-12 h-12 text-amber-500" />
+              <p className="text-base font-medium text-amber-700 dark:text-amber-400">{attendanceLockMessage}</p>
+            </div>
+          ) : (
           <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[700px] sm:min-w-full">
               <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#111111]">
@@ -1232,10 +1248,11 @@ export default function TeacherAttendancePage() {
               </tbody>
             </table>
           </div>
+          )}
         </Card>
 
         {/* Sticky Action Bar */}
-        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1C1C1C] rounded-lg p-3 sm:p-4 shadow-lg">
+        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1C1C1C] rounded-lg p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Button
