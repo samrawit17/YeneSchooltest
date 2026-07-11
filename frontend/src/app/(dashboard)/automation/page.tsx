@@ -14,7 +14,24 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  X,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import RuleBuilder from "@/components/automation/RuleBuilder";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +58,8 @@ export default function AutomationPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["automation-rules"],
@@ -69,7 +88,7 @@ export default function AutomationPage() {
   const rules = data?.data || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
+    <div className="bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Automation Rules</h1>
@@ -80,7 +99,7 @@ export default function AutomationPage() {
             <History className="mr-2 h-4 w-4" />
             Execution Logs
           </Button>
-          <Button onClick={() => router.push("/automation/create")}>
+          <Button onClick={() => setShowCreateForm(true)} className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
             <Plus className="mr-2 h-4 w-4" />
             Create Rule
           </Button>
@@ -98,16 +117,13 @@ export default function AutomationPage() {
           ))}
         </div>
       ) : rules.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-16">
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center gap-4 h-full min-h-[300px]">
             <Play className="h-12 w-12 text-gray-300 dark:text-gray-600" />
             <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No automation rules yet</h3>
               <p className="text-sm text-gray-500">Create your first rule to automate school workflows.</p>
             </div>
-            <Button onClick={() => router.push("/automation/create")}>
-              <Plus className="mr-2 h-4 w-4" /> Create Rule
-            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -166,10 +182,7 @@ export default function AutomationPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => {
-                      setDeletingId(rule.id);
-                      deleteMutation.mutate(rule.id);
-                    }}
+                    onClick={() => setConfirmDeleteId(rule.id)}
                     disabled={deleteMutation.isPending && deletingId === rule.id}
                     title="Delete rule"
                   >
@@ -185,6 +198,45 @@ export default function AutomationPage() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Rule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this rule and its execution history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (!confirmDeleteId) return;
+                setDeletingId(confirmDeleteId);
+                deleteMutation.mutate(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Automation Rule</DialogTitle>
+          </DialogHeader>
+          <RuleBuilder
+            onAfterSave={() => {
+              setShowCreateForm(false);
+              queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

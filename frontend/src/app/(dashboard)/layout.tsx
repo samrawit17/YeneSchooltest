@@ -14,6 +14,7 @@ import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import AiFloatingButton from "@/components/AiFloatingButton";
 import { queryKeys } from "@/lib/query-keys";
 import { useTranslations } from "@/hooks/useTranslations";
 
@@ -360,6 +361,8 @@ export default function DashboardLayout({
         </footer>
 
       </main>
+
+      <AiFloatingButton />
     </div>
   );
 }

@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CalendarDays, Loader2, Plus, Search, Send } from "lucide-react";
+import { Loader2, Plus, Search, Send } from "lucide-react";
 import { useTranslations } from "@/hooks/useTranslations";
 import { TranslatedText } from "@/components/translation/TranslatedText";
 
@@ -39,12 +39,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const {
-    currentAcademicYear,
-    formattedYearLabel,
-    displayTermName,
-    isLoading: isAcademicYearLoading,
-  } = useAcademicYear();
+  const { currentAcademicYear, isLoading: isAcademicYearLoading } = useAcademicYear();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -344,24 +339,13 @@ export default function MessagesPage() {
     <div className="p-3 md:p-6 h-full overflow-hidden flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4 mb-3 md:mb-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-black">{t.title.messages}</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">{t.title.messages}</h1>
           <p className="text-xs md:text-sm text-gray-500 hidden sm:block">{t.subtitle.internal}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="text-xs gap-1 border-gray-300 dark:border-[#334155]">
-              <CalendarDays className="h-3 w-3" />
-              {formattedYearLabel}
-            </Badge>
-            {displayTermName && (
-              <Badge variant="secondary" className="text-xs">
-                {displayTermName}
-              </Badge>
-            )}
-          </div>
         </div>
 
         <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
+            <Button className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
               <Plus className="w-4 h-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">{t.actions.newConversation}</span>
               <span className="sm:hidden">{t.actions.new}</span>

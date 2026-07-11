@@ -809,7 +809,8 @@ export default function PromotionPage() {
                         setSelectedStudents(new Set(promotableStudents.map((s) => s.student.id)));
                       }}
                       disabled={promotableStudents.length === 0}
-                      className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-lg bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs px-4 py-2"
+                      style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                     >
                       <GraduationCap className="h-4 w-4" />
                       Promote All Eligible
@@ -844,7 +845,8 @@ export default function PromotionPage() {
                           (!promoteAll && selectedStudents.size === 0) ||
                           (requiresStreamAssignment && missingStreamCount > 0)
                         }
-                        className="flex items-center gap-2 rounded-xl bg-[var(--brand-color,#e35336)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/25 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex items-center gap-2 rounded-lg bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs px-5 py-2.5"
+                        style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                       >
                         {actionLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />

@@ -283,7 +283,7 @@ export function SirenScheduleManagement() {
           </div>
           <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 self-start sm:self-auto">
+              <Button size="sm" className="gap-2 self-start sm:self-auto bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
                 <Plus className="h-4 w-4 shrink-0" />
                 {t.schedule.addSchedule}
               </Button>
@@ -363,7 +363,7 @@ export function SirenScheduleManagement() {
                 >
                   {t.schedule.cancel}
                 </Button>
-                <Button onClick={handleSave} className="gap-2">
+                <Button onClick={handleSave} className="gap-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
                   <Save className="w-4 h-4" />
                   {editingId ? t.schedule.update : t.schedule.create}
                 </Button>

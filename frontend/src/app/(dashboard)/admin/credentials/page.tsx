@@ -451,7 +451,7 @@ export default function CredentialsPage() {
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="mt-4">
+                  <div className="mt-4 flex justify-end">
                     <Pagination
                       page={currentPage}
                       setPage={setCurrentPage}

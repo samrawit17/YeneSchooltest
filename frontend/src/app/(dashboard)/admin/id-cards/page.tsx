@@ -297,7 +297,8 @@ export default function IdCardGeneratorPage() {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90"
+              className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+              style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
               onClick={handleDownloadAll}
               disabled={loading || downloadLoading || filteredStudents.length === 0 || exceedsBulkLimit}
             >
@@ -392,7 +393,7 @@ export default function IdCardGeneratorPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between gap-2 text-base">
               <span>{t.page.settingsTitle}</span>
-              <Button size="sm" className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90" onClick={() => setPreviewOpen(true)}>
+              <Button size="sm" className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} onClick={() => setPreviewOpen(true)}>
                 <Eye className="mr-2 h-4 w-4" />
                 {t.page.preview}
               </Button>
@@ -465,7 +466,7 @@ export default function IdCardGeneratorPage() {
               )}
             </div>
             <div className="flex justify-end md:col-span-2">
-              <Button className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90" onClick={saveTemplate} disabled={templateSaving}>
+              <Button className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} onClick={saveTemplate} disabled={templateSaving}>
                 {templateSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {t.page.saveSettings}
               </Button>
@@ -500,7 +501,7 @@ export default function IdCardGeneratorPage() {
       </div>
 
       {mounted && createPortal(previewOpen ? (
-        <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50 p-4" onClick={() => setPreviewOpen(false)}>
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setPreviewOpen(false)}>
           <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#111111]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-base font-semibold dark:text-white"><Palette className="h-4 w-4" /> {t.page.previewTitle}</h3>

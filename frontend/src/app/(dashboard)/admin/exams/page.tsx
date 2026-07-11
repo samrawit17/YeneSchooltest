@@ -1074,8 +1074,9 @@ export default function AssessmentManagementPage() {
   };
 
   const brandSolidStyle = {
-    backgroundColor: "var(--brand-color)",
-    borderColor: "var(--brand-color)",
+    color: "var(--brand-color)",
+    borderColor: "rgba(var(--brand-color-rgb),0.24)",
+    backgroundColor: "rgba(var(--brand-color-rgb),0.12)",
   } as const;
 
   const brandTextStyle = {
@@ -1130,7 +1131,7 @@ export default function AssessmentManagementPage() {
           </Button>
           <Button
             onClick={() => setModalOpen(true)}
-            className="text-white shadow-sm hover:opacity-90"
+              className="shadow-sm hover:opacity-90"
             style={brandSolidStyle}
           >
             <Plus className="w-4 h-4 mr-1 sm:mr-2" />
@@ -1224,17 +1225,6 @@ export default function AssessmentManagementPage() {
                 ? t.empty.createFirst
                 : t.empty.adjustFilters}
             </p>
-            {assessments.length === 0 && (
-              <Button
-                size="sm"
-                className="mt-4 text-white shadow-sm hover:opacity-90"
-                onClick={() => setModalOpen(true)}
-                style={brandSolidStyle}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                {t.actions.createAssessment}
-              </Button>
-            )}
           </CardContent>
         </Card>
       ) : (
@@ -1799,7 +1789,7 @@ export default function AssessmentManagementPage() {
                   }
                   setCreateStep(createStep === "basic" ? "scope" : "review");
                 }}
-                className="min-w-[120px] text-white shadow-sm hover:opacity-90"
+                className="min-w-[120px] shadow-sm hover:opacity-90"
                 style={brandSolidStyle}
               >
                 Continue
@@ -1809,7 +1799,7 @@ export default function AssessmentManagementPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || selectedAssignments.length === 0}
-                className="min-w-[120px] text-white shadow-sm hover:opacity-90"
+                className="min-w-[120px] shadow-sm hover:opacity-90"
                 style={brandSolidStyle}
               >
                 {submitting ? (
@@ -1855,7 +1845,7 @@ export default function AssessmentManagementPage() {
             <AlertDialogAction
               onClick={handleLock}
               disabled={locking}
-              className="text-white shadow-sm hover:opacity-90"
+            className="shadow-sm hover:opacity-90"
               style={brandSolidStyle}
             >
               {locking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

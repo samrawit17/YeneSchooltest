@@ -9,6 +9,7 @@ import type { NotificationPreferences } from "@/lib/api/notifications";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
 import { writeCachedSchoolLoginContext } from "@/lib/school-resolver";
+import { formatDateByCalendarType, normalizeCalendarType } from "@/lib/calendar-utils";
 import { useProfileData } from "@/hooks/useProfileData";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeStore } from "@/lib/themeStore";
@@ -263,6 +264,16 @@ const ProfilePage = () => {
     profileData?.studentProfile?.createdAt ||
     profileData?.enrollment?.createdAt ||
     user?.createdAt;
+  const memberSinceDisplay = (() => {
+    if (!memberSinceAt) return "-";
+    const parsed = new Date(memberSinceAt);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    try {
+      return formatDateByCalendarType(parsed, normalizeCalendarType(user?.calendarType));
+    } catch {
+      return "-";
+    }
+  })();
   const lastUpdatedAt =
     profileData?.updatedAt ||
     profileData?.studentProfile?.updatedAt ||
@@ -1094,8 +1105,8 @@ const ProfilePage = () => {
                                   <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.schoolId}</p>
-                                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user.schoolId}</p>
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.schoolCode || "School Code"}</p>
+                                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{school?.code || user.schoolId}</p>
                                 </div>
                               </div>
                             </CardContent>
@@ -1111,7 +1122,7 @@ const ProfilePage = () => {
                               <div>
                                 <p className="text-xs font-medium text-gray-500">{t.info.memberSince}</p>
                                 <p className="text-sm font-bold text-gray-900">
-                                  {memberSinceAt ? formatDate(memberSinceAt) : '-'}
+                                  {memberSinceDisplay}
                                 </p>
                               </div>
                             </div>

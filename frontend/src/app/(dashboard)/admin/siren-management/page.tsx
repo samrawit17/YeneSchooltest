@@ -76,7 +76,7 @@ export default function SirenManagementPage() {
         </div>
 
         <div className="flex w-full flex-wrap gap-2 md:w-auto md:shrink-0 md:justify-end">
-          <Button onClick={handleRing} disabled={ringing} className="gap-2">
+          <Button onClick={handleRing} disabled={ringing} className="gap-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
             {ringing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
             {t.ring}
           </Button>

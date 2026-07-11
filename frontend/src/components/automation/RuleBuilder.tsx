@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, GripVertical, AlertCircle, ArrowRight, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +43,7 @@ interface RuleBuilderProps {
   initialData?: RuleFormData;
   ruleId?: string;
   isEdit?: boolean;
+  onAfterSave?: () => void;
 }
 
 const OPERATORS = [
@@ -63,7 +63,7 @@ const genId = () => `block_${++idCounter}_${Date.now()}`;
 const defaultCondition = (): Condition => ({ id: genId(), field: "", operator: "eq", value: "" });
 const defaultAction = (): ActionBlock => ({ id: genId(), type: "", config: {} });
 
-export default function RuleBuilder({ initialData, ruleId, isEdit }: RuleBuilderProps) {
+export default function RuleBuilder({ initialData, ruleId, isEdit, onAfterSave }: RuleBuilderProps) {
   const router = useRouter();
   const [eventTypes, setEventTypes] = useState<EventTypeInfo[]>([]);
   const [actionTypes, setActionTypes] = useState<ActionTypeInfo[]>([]);
@@ -210,7 +210,11 @@ export default function RuleBuilder({ initialData, ruleId, isEdit }: RuleBuilder
         await automationAPI.createRule(payload);
         toast.success("Rule created");
       }
-      router.push("/automation");
+      if (onAfterSave) {
+        onAfterSave();
+      } else {
+        router.push("/automation");
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save rule");
     } finally {
@@ -221,228 +225,209 @@ export default function RuleBuilder({ initialData, ruleId, isEdit }: RuleBuilder
   const selectedActionType = (id: string) => actionTypes.find((at) => at.value === form.actions.find((a) => a.id === id)?.type);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{isEdit ? "Edit Automation Rule" : "Create Automation Rule"}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Rule Name</Label>
-            <Input
-              placeholder="e.g. Alert admin when attendance drops below 75%"
-              value={form.name}
-              onChange={(e) => updateForm({ name: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Description (optional)</Label>
-            <Textarea
-              placeholder="Describe what this rule does"
-              value={form.description}
-              onChange={(e) => updateForm({ description: e.target.value })}
-              rows={2}
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>Rule Name</Label>
+          <Input
+            placeholder="e.g. Alert admin when attendance drops below 75%"
+            value={form.name}
+            onChange={(e) => updateForm({ name: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Description (optional)</Label>
+          <Textarea
+            placeholder="Describe what this rule does"
+            value={form.description}
+            onChange={(e) => updateForm({ description: e.target.value })}
+            rows={2}
+          />
+        </div>
+      </div>
 
       {/* Trigger */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-400">1</span>
-            Select Trigger
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            <Label>When this event happens</Label>
-            <Select value={form.eventTrigger} onValueChange={(v) => updateForm({ eventTrigger: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose an event..." />
-              </SelectTrigger>
-              <SelectContent>
-                {eventTypes.map((et) => (
-                  <SelectItem key={et.value} value={et.value}>
-                    <div>
-                      <span className="font-medium">{et.label}</span>
-                      <span className="ml-2 text-xs text-gray-400">({et.value})</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.eventTrigger && (
-              <p className="text-xs text-gray-500">
-                {eventTypes.find((et) => et.value === form.eventTrigger)?.description}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-400">1</span>
+          Select Trigger
+        </h3>
+        <div className="space-y-1.5">
+          <Label className="text-xs">When this event happens</Label>
+          <Select value={form.eventTrigger} onValueChange={(v) => updateForm({ eventTrigger: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose an event..." />
+            </SelectTrigger>
+            <SelectContent>
+              {eventTypes.map((et) => (
+                <SelectItem key={et.value} value={et.value}>
+                  <div>
+                    <span className="font-medium">{et.label}</span>
+                    <span className="ml-2 text-xs text-gray-400">({et.value})</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {form.eventTrigger && (
+            <p className="text-xs text-gray-500">
+              {eventTypes.find((et) => et.value === form.eventTrigger)?.description}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Conditions */}
-      <Card className="border-l-4 border-l-amber-500">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">2</span>
-            Conditions (optional)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {form.conditions.conditions.length > 0 && (
-            <div className="space-y-2">
-              {form.conditions.conditions.map((condition, index) => (
-                <div key={condition.id}>
-                  {index > 0 && (
-                    <div className="flex justify-center py-1">
-                      <button
-                        type="button"
-                        onClick={toggleConditionOperator}
-                        className="rounded-md border bg-white px-3 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-400"
-                      >
-                        {form.conditions.operator}
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex items-start gap-2 rounded-lg border bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/50">
-                    <GripVertical className="mt-2 h-4 w-4 shrink-0 text-gray-400" />
-                    <div className="grid flex-1 gap-2 sm:grid-cols-3">
-                      <Input
-                        placeholder="Field (e.g. percentage)"
-                        value={condition.field}
-                        onChange={(e) => updateCondition(condition.id, { field: e.target.value })}
-                      />
-                      <Select
-                        value={condition.operator}
-                        onValueChange={(v) => updateCondition(condition.id, { operator: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {OPERATORS.map((op) => (
-                            <SelectItem key={op.value} value={op.value}>
-                              {op.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="Value"
-                        value={condition.value}
-                        onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeCondition(condition.id)}
-                      className="h-9 w-9 shrink-0 text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <Button variant="outline" size="sm" onClick={addCondition}>
-            <Plus className="mr-1 h-4 w-4" /> Add Condition
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <Card className="border-l-4 border-l-emerald-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">3</span>
-            Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {form.actions.map((action, index) => {
-            const typeInfo = selectedActionType(action.id);
-            return (
-              <div key={action.id} className="space-y-2">
+      <div className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">2</span>
+          Conditions (optional)
+        </h3>
+        {form.conditions.conditions.length > 0 && (
+          <div className="space-y-2">
+            {form.conditions.conditions.map((condition, index) => (
+              <div key={condition.id}>
                 {index > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <ArrowRight className="h-3 w-3" /> THEN
+                  <div className="flex justify-center py-1">
+                    <button
+                      type="button"
+                      onClick={toggleConditionOperator}
+                      className="rounded-md border bg-white px-3 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-400"
+                    >
+                      {form.conditions.operator}
+                    </button>
                   </div>
                 )}
-                <div className="rounded-lg border bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/50">
-                  <div className="mb-3 flex items-center justify-between">
-                    <Select value={action.type} onValueChange={(v) => handleActionTypeChange(action.id, v)}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="Choose an action..." />
+                <div className="flex items-start gap-2 rounded-lg border bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/50">
+                  <GripVertical className="mt-2 h-4 w-4 shrink-0 text-gray-400" />
+                  <div className="grid flex-1 gap-2 sm:grid-cols-3">
+                    <Input
+                      placeholder="Field (e.g. percentage)"
+                      value={condition.field}
+                      onChange={(e) => updateCondition(condition.id, { field: e.target.value })}
+                    />
+                    <Select
+                      value={condition.operator}
+                      onValueChange={(v) => updateCondition(condition.id, { operator: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {actionTypes.map((at) => (
-                          <SelectItem key={at.value} value={at.value}>
-                            {at.label}
+                        {OPERATORS.map((op) => (
+                          <SelectItem key={op.value} value={op.value}>
+                            {op.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="icon" onClick={() => removeAction(action.id)} className="text-red-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Input
+                      placeholder="Value"
+                      value={condition.value}
+                      onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                    />
                   </div>
-                  {typeInfo && (
-                    <div className="space-y-2">
-                      {Object.keys(action.config).map((field) => (
-                        <div key={field} className="space-y-1">
-                          <Label className="text-xs capitalize">{field.replace(/([A-Z])/g, " $1")}</Label>
-                          {field === "body" || field === "message" ? (
-                            <Textarea
-                              placeholder={`{{payloadField}} for dynamic values`}
-                              value={action.config[field] || ""}
-                              onChange={(e) => updateActionConfig(action.id, field, e.target.value)}
-                              rows={2}
-                            />
-                          ) : (
-                            <Input
-                              placeholder={`Enter ${field}`}
-                              value={action.config[field] || ""}
-                              onChange={(e) => updateActionConfig(action.id, field, e.target.value)}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeCondition(condition.id)}
+                    className="h-9 w-9 shrink-0 text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            );
-          })}
-          <Button variant="outline" size="sm" onClick={addAction}>
-            <Plus className="mr-1 h-4 w-4" /> Add Action
-          </Button>
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        )}
+        <Button variant="outline" size="sm" onClick={addCondition} className="mt-3">
+          <Plus className="mr-1 h-4 w-4" /> Add Condition
+        </Button>
+      </div>
+
+      {/* Actions */}
+      <div className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">3</span>
+          Actions
+        </h3>
+        {form.actions.map((action, index) => {
+          const typeInfo = selectedActionType(action.id);
+          return (
+            <div key={action.id} className="space-y-2 mb-3">
+              {index > 0 && (
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <ArrowRight className="h-3 w-3" /> THEN
+                </div>
+              )}
+              <div className="rounded-lg border bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/50">
+                <div className="mb-3 flex items-center justify-between">
+                  <Select value={action.type} onValueChange={(v) => handleActionTypeChange(action.id, v)}>
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder="Choose an action..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {actionTypes.map((at) => (
+                        <SelectItem key={at.value} value={at.value}>
+                          {at.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" onClick={() => removeAction(action.id)} className="text-red-500">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                {typeInfo && (
+                  <div className="space-y-2">
+                    {Object.keys(action.config).map((field) => (
+                      <div key={field} className="space-y-1">
+                        <Label className="text-xs capitalize">{field.replace(/([A-Z])/g, " $1")}</Label>
+                        {field === "body" || field === "message" ? (
+                          <Textarea
+                            placeholder={`{{payloadField}} for dynamic values`}
+                            value={action.config[field] || ""}
+                            onChange={(e) => updateActionConfig(action.id, field, e.target.value)}
+                            rows={2}
+                          />
+                        ) : (
+                          <Input
+                            placeholder={`Enter ${field}`}
+                            value={action.config[field] || ""}
+                            onChange={(e) => updateActionConfig(action.id, field, e.target.value)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <Button variant="outline" size="sm" onClick={addAction}>
+          <Plus className="mr-1 h-4 w-4" /> Add Action
+        </Button>
+      </div>
 
       {/* Toggle + Submit */}
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={form.isActive}
-              onCheckedChange={(v) => updateForm({ isActive: v })}
-            />
-            <Label className="cursor-pointer">{form.isActive ? "Rule is active" : "Rule is disabled"}</Label>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.push("/automation")}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? "Saving..." : isEdit ? "Update Rule" : "Create Rule"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] p-4">
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.isActive}
+            onCheckedChange={(v) => updateForm({ isActive: v })}
+          />
+          <Label className="cursor-pointer text-sm">{form.isActive ? "Rule is active" : "Rule is disabled"}</Label>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push("/automation")}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={saving} className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
+            {saving ? "Saving..." : isEdit ? "Update Rule" : "Create Rule"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

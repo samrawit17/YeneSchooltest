@@ -781,7 +781,7 @@ export default function AcademicYearsPage() {
           <p className="text-gray-600 dark:text-gray-400">{t.subtitle}</p>
         </div>
         {canCreateAcademicYear && (
-          <Button type="button" onClick={() => setShowCreateModal(true)}>
+          <Button type="button" onClick={() => setShowCreateModal(true)} className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
             <Plus className="h-4 w-4" />
             {t.newAcademicYear.replace(/^\+\s*/, "")}
           </Button>
@@ -1001,7 +1001,8 @@ export default function AcademicYearsPage() {
               <button
                 onClick={() => handleActivateYear(selectedYear.id)}
                 disabled={saving || getTotalWeight() !== 100}
-                className="rounded-lg bg-[var(--brand-color,#e35336)] px-6 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:opacity-50"
+                className="rounded-lg bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs px-6 py-2 disabled:opacity-50"
+                style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
               >
                 {t.activate}
               </button>
@@ -1059,10 +1060,6 @@ export default function AcademicYearsPage() {
         <DialogContent className="max-w-md border dark:border-[#2A2A2A] dark:bg-[#111111]">
           <DialogHeader>
             <DialogTitle>{t.createYear}</DialogTitle>
-            <DialogDescription>
-              Create the school year and its default periods from the school
-              curriculum setting.
-            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateAcademicYear} className="space-y-4">
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
@@ -1128,7 +1125,8 @@ export default function AcademicYearsPage() {
               <button
                 type="submit"
                 disabled={saving || !canCreateAcademicYear}
-                className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+                    className="rounded-lg bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs px-4 py-2"
+                    style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
               >
                 {saving ? t.creating : t.create}
               </button>
@@ -1265,7 +1263,8 @@ export default function AcademicYearsPage() {
                   <button
                     type="submit"
                     disabled={saving || !canUpdateAcademicYear}
-                    className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+                className="rounded-lg bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs px-4 py-2"
+                style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                   >
                     {saving ? t.saving : editingTerm ? t.update : t.create}
                   </button>

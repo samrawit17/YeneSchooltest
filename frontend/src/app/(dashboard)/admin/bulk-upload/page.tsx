@@ -199,6 +199,7 @@ export default function BulkUploadPage() {
     academicYears.find((year) => year.id === selectedYear)?.name ||
     selectedYear;
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [importFile, setImportFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -300,9 +301,11 @@ export default function BulkUploadPage() {
   }
 
   async function processFile(file: File) {
+    setIsProcessing(true);
     setImportFile(file);
     setUploadResult(null);
     setValidationWarnings([]);
+    try {
     const text = await file.text();
     const rows = text.split("\n").filter((row) => row.trim());
     if (rows.length === 0) {
@@ -377,6 +380,9 @@ export default function BulkUploadPage() {
     });
     setPreviewData(parsed);
     setValidationWarnings(warnings);
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function handleUpload() {
@@ -694,7 +700,14 @@ export default function BulkUploadPage() {
                       <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{importFile.name}</p>
-                    <p className="mt-1 text-sm text-gray-500">{(importFile.size / 1024).toFixed(1)} KB &middot; {t.csvReady}</p>
+                    <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-gray-500">
+                      {(importFile.size / 1024).toFixed(1)} KB
+                      {isProcessing ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.csvProcessing}</>
+                      ) : (
+                        <>&middot; {t.csvReady}</>
+                      )}
+                    </p>
                     <div className="mt-4 flex gap-3">
                       <Button size="sm" onClick={(e) => { e.stopPropagation(); handleUpload(); }} disabled={isUploading}>
                         {isUploading ? (

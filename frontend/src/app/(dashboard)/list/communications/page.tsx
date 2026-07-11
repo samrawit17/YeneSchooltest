@@ -33,7 +33,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
-  CalendarDays,
 } from "lucide-react";
 import {
   Communication,
@@ -549,12 +548,7 @@ function CommunicationsContent() {
   const preselectedStudentId = searchParams ? searchParams.get("studentId") : null;
   const conversationId = searchParams ? searchParams.get("conversationId") : null;
   const { user } = useAuth();
-  const {
-    currentAcademicYear,
-    formattedYearLabel,
-    displayTermName,
-    isLoading: isAcademicYearLoading,
-  } = useAcademicYear();
+  const { currentAcademicYear, isLoading: isAcademicYearLoading } = useAcademicYear();
   const academicYearId = currentAcademicYear?.id;
   
   const [conversations, setConversations] = useState<ConversationWithParent[]>([]);
@@ -745,24 +739,13 @@ function CommunicationsContent() {
   };
 
   return (
-    <div className="p-3 md:p-6">
+    <div className="h-screen flex flex-col overflow-hidden p-3 md:p-6">
       <div className="mb-3 flex flex-col gap-3 md:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">{t.title.communicationBook}</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">{t.title.communicationBook}</h1>
           <p className="hidden text-xs text-gray-500 sm:block md:text-sm">{t.subtitle.book}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <Badge variant="outline" className="gap-1 border-gray-300 text-xs dark:border-[#334155]">
-              <CalendarDays className="h-3 w-3" />
-              {formattedYearLabel}
-            </Badge>
-            {displayTermName && (
-              <Badge variant="secondary" className="text-xs">
-                {displayTermName}
-              </Badge>
-            )}
-          </div>
         </div>
-        <Button onClick={() => setShowNewMessageModal(true)} className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
+        <Button onClick={() => setShowNewMessageModal(true)} className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
           <Plus className="mr-1 h-4 w-4 md:mr-2" />
           <span className="hidden sm:inline">{t.actions.newMessage}</span>
           <span className="sm:hidden">{t.actions.new}</span>

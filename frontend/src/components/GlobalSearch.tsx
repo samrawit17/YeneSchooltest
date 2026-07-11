@@ -510,7 +510,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                             {allowedEntities.slice(0, 8).map((entity) => (
                                                 <div
                                                     key={entity.key}
-                                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded"
+                                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-[#2A2A2A] text-gray-600 dark:text-gray-400 rounded"
                                                 >
                                                     {entity.icon}
                                                     {entity.label}</div>

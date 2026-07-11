@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -47,6 +48,9 @@ const studentHref = (issue: DataQualityIssue, edit = false) => {
 };
 
 export default function DataConsistencyReportPage() {
+  const searchParams = useSearchParams();
+  const targetSchoolId = searchParams.get("schoolId") ?? undefined;
+
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState<"all" | DataQualitySeverity>("all");
   const [type, setType] = useState("all");
@@ -54,8 +58,9 @@ export default function DataConsistencyReportPage() {
   const [pageSize, setPageSize] = useState(15);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["data-quality", "student-consistency"],
-    queryFn: async () => (await dataQualityAPI.getStudentConsistency()).data,
+    queryKey: ["data-quality", "student-consistency", targetSchoolId],
+    queryFn: async () =>
+      (await dataQualityAPI.getStudentConsistency(targetSchoolId)).data,
   });
 
   const issueTypes = useMemo(
@@ -168,6 +173,20 @@ export default function DataConsistencyReportPage() {
           <p className="text-sm text-muted-foreground">
             Find records that need parent links, active-year placement, or profile cleanup.
           </p>
+          {targetSchoolId && (
+            <div className="mt-1.5 flex items-center gap-2 text-xs">
+              <Badge variant="outline" className="font-medium">
+                School: {targetSchoolId}
+              </Badge>
+              <Link
+                href={`/list/schools/${targetSchoolId}/settings`}
+                className="inline-flex items-center gap-1 text-[var(--brand-color,#e35336)] hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Back to school settings
+              </Link>
+            </div>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />

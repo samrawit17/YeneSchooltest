@@ -328,7 +328,8 @@ const TeacherAssignmentPage = () => {
         <div className="flex items-center gap-3">
           <Button 
             variant="default" 
-            className=""
+            className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+            style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
             onClick={() => setShowBulkModal(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -483,7 +484,7 @@ const TeacherAssignmentPage = () => {
 
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-gray-600 dark:text-white">{t.cancel}</Button>
-            <Button onClick={handleSaveAssignment} disabled={saving} className="min-w-[100px]">
+            <Button onClick={handleSaveAssignment} disabled={saving} className="min-w-[100px] bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.save}
             </Button>
           </DialogFooter>
@@ -516,7 +517,7 @@ const TeacherAssignmentPage = () => {
 
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowHomeroomModal(false)} disabled={saving} className="dark:border-gray-600 dark:text-white">{t.cancel}</Button>
-            <Button onClick={handleSaveHomeroomAssignment} disabled={saving} className="bg-amber-600 hover:bg-amber-700 min-w-[120px]">
+            <Button onClick={handleSaveHomeroomAssignment} disabled={saving} className="min-w-[120px] bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.saveHomeroom}
             </Button>
           </DialogFooter>
@@ -607,7 +608,8 @@ const TeacherAssignmentPage = () => {
             <Button 
               onClick={handleBulkAssign} 
               disabled={saving || selectedSections.length === 0 || selectedSubjects.length === 0 || !selectedBulkTeacherId} 
-              className="bg-blue-600 hover:bg-blue-700 min-w-[150px]"
+              className="min-w-[150px] bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+              style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link className="h-4 w-4 mr-2" />}
               {t.applyBulk}

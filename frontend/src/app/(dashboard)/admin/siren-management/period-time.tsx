@@ -299,7 +299,8 @@ export function PeriodTimeManagement() {
             <DialogTrigger asChild>
               <Button
                 size="sm"
-                className="gap-2 self-start sm:self-auto"
+                className="gap-2 self-start sm:self-auto bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg"
+                style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}
                 disabled={hasReachedMaxPeriods}
                 title={hasReachedMaxPeriods ? t.period.toasts.maxReached.replace("{max}", String(maxPeriodsPerDay)) : undefined}
               >
@@ -370,7 +371,7 @@ export function PeriodTimeManagement() {
                 >
                   {t.period.cancel}
                 </Button>
-                <Button onClick={handleSave} className="gap-2" disabled={saving}>
+                <Button onClick={handleSave} className="gap-2 bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} disabled={saving}>
                   <Save className="w-4 h-4" />
                   {saving ? t.period.saving : editingId ? t.period.update : t.period.create}
                 </Button>

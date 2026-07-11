@@ -167,7 +167,7 @@ export default function ManageOnlineExamsPage() {
             <p className="text-sm text-gray-500">All created online examinations.</p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }}>
           <Link href="/admin/practice-exams#create-exams">
             <Plus className="mr-2 h-4 w-4" />
             Create Exam
@@ -355,7 +355,7 @@ export default function ManageOnlineExamsPage() {
               </div>
               <div className="flex justify-end gap-2 md:col-span-2">
                 <Button variant="outline" onClick={() => setEditingExam(null)}>Cancel</Button>
-                <Button disabled={updateExam.isPending || !editForm.title.trim()} onClick={() => updateExam.mutate()}>
+                <Button className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} disabled={updateExam.isPending || !editForm.title.trim()} onClick={() => updateExam.mutate()}>
                   {updateExam.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Save Changes
                 </Button>

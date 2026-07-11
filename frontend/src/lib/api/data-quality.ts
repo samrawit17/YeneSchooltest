@@ -32,6 +32,8 @@ export type StudentConsistencyReport = {
 };
 
 export const dataQualityAPI = {
-  getStudentConsistency: () =>
-    api.get<StudentConsistencyReport>("/data-quality/student-consistency"),
+  getStudentConsistency: (schoolId?: string) =>
+    api.get<StudentConsistencyReport>("/data-quality/student-consistency", {
+      params: schoolId ? { schoolId } : undefined,
+    }),
 };

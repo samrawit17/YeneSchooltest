@@ -188,6 +188,13 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   // Platform Settings (Super Admin)
   "platform-settings": { label: "Platform Settings", href: "/platform-settings", parent: "dashboard" },
 
+  // Automation Module
+  "automation": { label: "Automation", href: "/automation", parent: "dashboard" },
+  "automation-logs": { label: "Execution Logs", parent: "automation" },
+  "automation-create": { label: "Create Rule", parent: "automation" },
+  "automation-detail": { label: "Rule Details", parent: "automation" },
+  "automation-edit": { label: "Edit Rule", parent: "automation-detail" },
+
   // Admin Module
   "admin": { label: "Administration", href: "/admin", parent: "dashboard" },
   "admin-assignments": { label: "Assignments", href: "/admin/assignments", parent: "admin" },
@@ -264,7 +271,7 @@ function shouldHideBreadcrumb(pathname: string): boolean {
   ];
 
   // Routes that should show breadcrumbs even if they're single-segment
-  const showBreadcrumbRoutes = ["/settings", "/profile", "/notifications", "/messages", "/platform-settings"];
+  const showBreadcrumbRoutes = ["/settings", "/profile", "/notifications", "/messages", "/platform-settings", "/automation"];
   const shouldShowBreadcrumb = showBreadcrumbRoutes.some(route => pathname.startsWith(route));
 
   // Check exact matches

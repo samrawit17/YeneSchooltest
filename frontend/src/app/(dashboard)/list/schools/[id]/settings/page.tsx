@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import api from '@/lib/api/core';
 import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/subscription';
@@ -908,12 +909,6 @@ export default function SchoolSettingsPage() {
     }
   }, [schoolInfo?.name, schoolId, setItems]);
 
-  useEffect(() => {
-    if (calendarType) {
-      fetchAcademicYears();
-    }
-  }, [calendarType, fetchAcademicYears]);
-
   const syncSchoolCaches = (schoolPatch: Record<string, any>) => {
     const updateSchool = (current: any) =>
       current ? { ...current, ...schoolPatch } : current;
@@ -1514,6 +1509,10 @@ export default function SchoolSettingsPage() {
 
       warnedUnsaved.current = false;
 
+      queryClient.invalidateQueries({
+        queryKey: ['data-quality', 'student-consistency', schoolId],
+      });
+
       toast.success(messageText('settingsSaveSuccess', 'School settings saved successfully'));
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || messageText('settingsSaveFailed', 'Failed to save settings');
@@ -2108,6 +2107,24 @@ export default function SchoolSettingsPage() {
                           )}
                         </div>
                       </div>
+                    </div>
+                  )}
+                  {category === 'dataQuality' && (
+                    <div className="flex flex-col gap-3 rounded-lg border border-[var(--brand-color,#e35336)]/20 bg-[var(--brand-color,#e35336)]/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {messageText('viewReport', 'View the full Data Consistency Report')}
+                        </p>
+                        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                          {messageText('viewReportHint', 'Review and fix detected data quality issues across students and records.')}
+                        </p>
+                      </div>
+                      <Button asChild variant="outline" className="shrink-0">
+                        <Link href={`/admin/reports/data-consistency?schoolId=${schoolId}`}>
+                          <ExternalLink className="w-4 h-4 mr-1.5" />
+                          {messageText('openReport', 'Open Report')}
+                        </Link>
+                      </Button>
                     </div>
                   )}
                   {settings.map((setting) => (

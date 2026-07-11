@@ -1329,10 +1329,10 @@ export default function AttendanceManagementPage() {
                  </Table>
                </div>
              ) : (
-                <div className="text-center py-12 text-[var(--brand-color,#e35336)]">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-[var(--brand-color,#e35336)]" />
-                  <p className="text-[var(--brand-color,#e35336)]">{t.noSessions}</p>
-               </div>
+                 <div className="text-center py-12">
+                   <Users className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                   <p className="text-gray-500 dark:text-gray-400">{t.noSessions}</p>
+                </div>
              )}
           </Card>
         </div>

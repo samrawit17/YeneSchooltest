@@ -210,7 +210,7 @@ export default function AdminPracticeExamsPage() {
               <p className="text-xs text-gray-500">
                 Question count is created by adding questions manually or importing a CSV after the exam is created.
               </p>
-              <Button className="w-full" disabled={createExam.isPending || !examForm.title.trim() || !examForm.grade || (streamRequired && !examForm.stream)} onClick={() => createExam.mutate()}>
+              <Button className="w-full bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} disabled={createExam.isPending || !examForm.title.trim() || !examForm.grade || (streamRequired && !examForm.stream)} onClick={() => createExam.mutate()}>
                 {createExam.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Create
               </Button>
@@ -306,7 +306,7 @@ export default function AdminPracticeExamsPage() {
                     </div>
                   )}
                   <div>
-                    <Button disabled={addQuestion.isPending} onClick={() => addQuestion.mutate()}>
+                    <Button className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A] font-medium text-xs rounded-lg" style={{ color: "var(--brand-color)", border: "1px solid rgba(var(--brand-color-rgb),0.24)", backgroundColor: "rgba(var(--brand-color-rgb),0.12)" }} disabled={addQuestion.isPending} onClick={() => addQuestion.mutate()}>
                       {addQuestion.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                       Save Question
                     </Button>
