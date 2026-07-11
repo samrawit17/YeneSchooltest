@@ -23,7 +23,7 @@ export class TranslationService {
     params?: TranslationParams,
   ): Promise<string> {
     const { domain, keyPath } = this.parseKey(key);
-    const result = await this.lookupWithFallback(locale, domain, keyPath, params);
+    const result = await this.lookupWithFallback(locale, domain, keyPath, key, params);
 
     if (result !== null) return result;
 
@@ -53,19 +53,20 @@ export class TranslationService {
     locale: Language,
     domain: string,
     keyPath: string[],
+    fullKey: string,
     params?: TranslationParams,
   ): Promise<string | null> {
     const chain = this.fallback.getFallbackChain(locale);
 
     for (const fallbackLocale of chain) {
-      const value = await this.lookupSingle(fallbackLocale, domain, keyPath);
+      const value = await this.lookupSingle(fallbackLocale, domain, keyPath, fullKey);
       if (value !== null) {
         return params ? this.formatter.format(value, params) : value;
       }
     }
 
     if (!chain.includes(DEFAULT_LANGUAGE)) {
-      const value = await this.lookupSingle(DEFAULT_LANGUAGE, domain, keyPath);
+      const value = await this.lookupSingle(DEFAULT_LANGUAGE, domain, keyPath, fullKey);
       if (value !== null) {
         return params ? this.formatter.format(value, params) : value;
       }
@@ -74,7 +75,7 @@ export class TranslationService {
     const globalKey = keyPath.join('.');
     for (const fallbackLocale of SUPPORTED_LANGUAGES) {
       if (chain.includes(fallbackLocale) || fallbackLocale === DEFAULT_LANGUAGE) continue;
-      const value = await this.lookupSingle(fallbackLocale, domain, keyPath);
+      const value = await this.lookupSingle(fallbackLocale, domain, keyPath, fullKey);
       if (value !== null) {
         return params ? this.formatter.format(value, params) : value;
       }
@@ -87,6 +88,7 @@ export class TranslationService {
     locale: Language,
     domain: string,
     keyPath: string[],
+    fullKey?: string,
   ): Promise<string | null> {
     const cacheKey = keyPath.join('.');
     const cached = await this.cache.get(locale, domain, cacheKey);
@@ -99,6 +101,18 @@ export class TranslationService {
     if (typeof value === 'string') {
       await this.cache.set(locale, domain, cacheKey, value);
       return value;
+    }
+
+    if (domain !== 'messages') {
+      const messagesData = await this.loader.load(locale, 'messages');
+      if (messagesData) {
+        const messagesKey = fullKey || keyPath.join('.');
+        const msgValue = (messagesData as any)[messagesKey];
+        if (typeof msgValue === 'string') {
+          await this.cache.set(locale, domain, cacheKey, msgValue);
+          return msgValue;
+        }
+      }
     }
 
     return null;
