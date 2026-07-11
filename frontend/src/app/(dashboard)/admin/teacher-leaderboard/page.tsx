@@ -123,61 +123,61 @@ export default function TeacherLeaderboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#111111] md:p-6">
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="bg-gray-50 dark:bg-[#111111]">
+      <div className="space-y-3 px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">
+            <h1 className="text-xl font-bold text-gray-950 dark:text-white">
               Teacher Leaderboard
             </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Ranking based on the last 30 days of on-time grading, attendance submissions, and lesson planning.
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Last 30 days — on-time grading, attendance, lesson planning.
             </p>
           </div>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => loadLeaderboard(true)}
             disabled={refreshing}
-            className="w-full sm:w-auto"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
-            <AlertCircle className="h-4 w-4" />
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {error}
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <Card>
-            <CardContent className="flex items-center justify-between p-5">
+            <CardContent className="flex items-center justify-between p-3.5">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Teachers ranked</p>
-                <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">{rows.length}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Teachers ranked</p>
+                <p className="text-xl font-bold text-gray-950 dark:text-white">{rows.length}</p>
               </div>
-              <Users className="h-9 w-9 text-blue-600" />
+              <Users className="h-6 w-6 text-blue-600" />
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="flex items-center justify-between p-5">
+            <CardContent className="flex items-center justify-between p-3.5">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Average score</p>
-                <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">{averageScore}%</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Average score</p>
+                <p className="text-xl font-bold text-gray-950 dark:text-white">{averageScore}%</p>
               </div>
-              <Trophy className="h-9 w-9 text-amber-500" />
+              <Trophy className="h-6 w-6 text-amber-500" />
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Current leader</p>
-              <p className="mt-2 truncate text-xl font-bold text-gray-950 dark:text-white">
+            <CardContent className="p-3.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Current leader</p>
+              <p className="truncate text-base font-bold text-gray-950 dark:text-white">
                 {topTeacher?.teacherName || "No teacher data"}
               </p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {topTeacher ? `${topTeacher.overallScore}% overall` : "No activity found"}
               </p>
             </CardContent>
@@ -186,26 +186,26 @@ export default function TeacherLeaderboardPage() {
 
         {rows.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <CardContent className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">
               No teacher leaderboard data is available for the last 30 days.
             </CardContent>
           </Card>
         ) : (
           <>
-            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.4fr]">
+            <div className="grid gap-3 lg:grid-cols-2">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Score Distribution</CardTitle>
+                <CardHeader className="pb-0">
+                  <CardTitle className="text-sm">Score Distribution</CardTitle>
                 </CardHeader>
-                <CardContent className="h-[300px]">
+                <CardContent className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={distribution}
                         dataKey="value"
                         nameKey="name"
-                        innerRadius={68}
-                        outerRadius={105}
+                        innerRadius={45}
+                        outerRadius={70}
                         paddingAngle={3}
                         label={({ name, value }) => `${name}: ${value}`}
                       >
@@ -220,18 +220,18 @@ export default function TeacherLeaderboardPage() {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Top Teacher Metrics</CardTitle>
+                <CardHeader className="pb-0">
+                  <CardTitle className="text-sm">Top Teacher Metrics</CardTitle>
                 </CardHeader>
-                <CardContent className="h-[300px]">
+                <CardContent className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={comparisonData}>
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
                       <Tooltip />
-                      <Bar dataKey="grading" name="On-time grading" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="attendance" name="Attendance" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="lessons" name="Lesson plans" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="grading" name="On-time grading" fill="#2563eb" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="attendance" name="Attendance" fill="#16a34a" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="lessons" name="Lesson plans" fill="#f59e0b" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -239,64 +239,31 @@ export default function TeacherLeaderboardPage() {
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Teacher Ranking</CardTitle>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-sm">Teacher Ranking</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                   {rows.map((teacher) => (
                     <div
                       key={teacher.teacherId}
-                      className="grid gap-4 p-4 lg:grid-cols-[220px_1fr_90px] lg:items-center"
+                      className="flex flex-wrap items-center gap-3 px-4 py-3"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-sm font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                          #{teacher.rank}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-                            {teacher.teacherName}
-                          </p>
-                          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                            {teacher.teacherEmail || "No email"}
-                          </p>
-                        </div>
+                      <div className="flex w-8 shrink-0 items-center justify-center rounded bg-amber-50 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        #{teacher.rank}
                       </div>
-
-                      <div className="grid gap-3 md:grid-cols-3">
-                        {[
-                          {
-                            label: "On-time grading",
-                            value: teacher.gradingScore,
-                            detail: `${teacher.gradingOnTime}/${teacher.gradingSubmitted} on time`,
-                          },
-                          {
-                            label: "Attendance",
-                            value: teacher.attendanceScore,
-                            detail: `${teacher.attendanceSubmitted} submitted`,
-                          },
-                          {
-                            label: "Lesson plans",
-                            value: teacher.lessonPlanScore,
-                            detail: `${teacher.lessonPlans} published`,
-                          },
-                        ].map((metric) => (
-                          <div key={metric.label}>
-                            <div className="mb-1 flex items-center justify-between text-xs">
-                              <span className="text-gray-500 dark:text-gray-400">{metric.label}</span>
-                              <span className="font-medium text-gray-700 dark:text-gray-200">{metric.value}%</span>
-                            </div>
-                            <Progress value={metric.value} className="h-2" />
-                            <p className="mt-1 text-xs text-gray-400">{metric.detail}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="text-left lg:text-right">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Overall</p>
-                        <p className="text-2xl font-bold text-gray-950 dark:text-white">
-                          {teacher.overallScore}%
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-950 dark:text-white">
+                          {teacher.teacherName}
                         </p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span title="On-time grading">{teacher.gradingScore}% <span className="hidden sm:inline">grade</span></span>
+                        <span title="Attendance">{teacher.attendanceScore}% <span className="hidden sm:inline">attd</span></span>
+                        <span title="Lesson plans">{teacher.lessonPlanScore}% <span className="hidden sm:inline">lesson</span></span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-gray-950 dark:text-white">{teacher.overallScore}%</span>
                       </div>
                     </div>
                   ))}

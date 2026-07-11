@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, X, MessageSquare, AlertTriangle, FileText, Lightbulb } from "lucide-react";
+import { Bot, X, ChevronRight, MessageSquare, AlertTriangle, FileText, Lightbulb } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AiFloatingButton() {
@@ -31,7 +31,7 @@ export default function AiFloatingButton() {
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-[998] bg-black/40" onClick={() => handleOpenChange(false)} />
+        <div className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm" onClick={() => handleOpenChange(false)} />
       )}
 
       <div
@@ -55,7 +55,7 @@ export default function AiFloatingButton() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--brand-color)] text-white">
                     <Bot className="h-4 w-4" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">AI Assistant</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">YeneSchool AI</span>
                 </div>
                 <button
                   onClick={() => handleOpenChange(false)}
@@ -68,37 +68,41 @@ export default function AiFloatingButton() {
               <div className="space-y-0">
                 <button
                   onClick={() => { handleOpenChange(false); router.push("/ai/assistant"); }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-[#2A2A2A]"
+                  className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#222222] dark:hover:text-white"
                 >
-                  <MessageSquare className="h-4 w-4 text-[var(--brand-color)]" />
-                  <span>Ask AI Assistant</span>
+                  <MessageSquare className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-white" />
+                  <span>Ask YeneSchool AI</span>
+                  <ChevronRight className="ml-auto h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-gray-400" />
                 </button>
 
                 {(user.role === "ADMIN" || user.role === "TEACHER" || user.role === "SUPER_ADMIN") && (
                   <>
                     <button
                       onClick={() => { handleOpenChange(false); router.push("/ai/assistant?tab=alerts"); }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-[#2A2A2A]"
+                      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#222222] dark:hover:text-white"
                     >
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <AlertTriangle className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-white" />
                       <span>View Alerts</span>
+                      <ChevronRight className="ml-auto h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-gray-400" />
                     </button>
                     <button
                       onClick={() => { handleOpenChange(false); router.push("/ai/assistant?tab=report"); }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-[#2A2A2A]"
+                      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#222222] dark:hover:text-white"
                     >
-                      <FileText className="h-4 w-4 text-blue-500" />
+                      <FileText className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-white" />
                       <span>Generate Report</span>
+                      <ChevronRight className="ml-auto h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-gray-400" />
                     </button>
                   </>
                 )}
 
                 <button
                   onClick={() => { handleOpenChange(false); router.push("/ai/assistant?tab=recommend"); }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-[#2A2A2A]"
+                  className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#222222] dark:hover:text-white"
                 >
-                  <Lightbulb className="h-4 w-4 text-yellow-500" />
+                  <Lightbulb className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-white" />
                   <span>Suggestions</span>
+                  <ChevronRight className="ml-auto h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-gray-400" />
                 </button>
               </div>
 
