@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { StudentContextService } from './context/student-context.service';
 import { SchoolContextService } from './context/school-context.service';
 import { HelpService } from '../help/help.service';
+import { AiToolExecutorService } from './tools/ai-tool-executor.service';
+import { AI_TOOLS } from './tools/ai-tools.registry';
 import { CHAT_PROMPTS, REPORT_PROMPTS, ALERT_PROMPTS } from './prompts';
 
 export interface AiChatResponse {
@@ -57,6 +59,7 @@ export class AiService {
     private readonly studentContext: StudentContextService,
     private readonly schoolContext: SchoolContextService,
     private readonly helpService: HelpService,
+    private readonly toolExecutor: AiToolExecutorService,
   ) {
     this.apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || null;
     this.apiUrl = process.env.AI_API_URL || '';
@@ -75,7 +78,7 @@ export class AiService {
 
   async chat(
     message: string,
-    context: { role: string; schoolId: string; studentId?: string; classId?: string },
+    context: { role: string; schoolId: string; studentId?: string; classId?: string; jwtToken?: string },
   ): Promise<AiChatResponse> {
     const contextData: string[] = [];
     let systemContext = '';
@@ -113,7 +116,7 @@ export class AiService {
 
     const systemPrompt = CHAT_PROMPTS.system(context.role, systemContext);
     try {
-      const reply = await this.callLlm(systemPrompt, message);
+      const reply = await this.chatWithTools(systemPrompt, message, context.jwtToken);
       return { reply, sources: contextData, contextUsed: contextData };
     } catch {
       this.logger.warn('LLM call failed, falling back to offline mode');
@@ -221,40 +224,99 @@ export class AiService {
     return 'LOW';
   }
 
+  private async chatWithTools(systemPrompt: string, userMessage: string, jwtToken?: string): Promise<string> {
+    const useTools = !!jwtToken;
+
+    const body = this.provider === 'gemini'
+      ? this.buildGeminiBody(systemPrompt, userMessage, useTools ? AI_TOOLS : undefined)
+      : this.buildOpenAiBody(systemPrompt, userMessage);
+
+    const raw = await this.callLlmRaw(body);
+
+    if (!raw) return '';
+
+    if (this.provider === 'gemini') {
+      const functionCall = raw?.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+      if (functionCall && useTools) {
+        const result = await this.toolExecutor.execute(
+          { name: functionCall.name, args: functionCall.args || {} },
+          jwtToken!,
+        );
+
+        const turn2Body = this.buildGeminiBody(
+          systemPrompt,
+          userMessage,
+          undefined,
+          functionCall,
+          result,
+        );
+
+        const turn2Raw = await this.callLlmRaw(turn2Body);
+        return turn2Raw?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+      return raw?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    const toolCall = raw?.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall && useTools) {
+      const args = JSON.parse(toolCall.function.arguments || '{}');
+      const result = await this.toolExecutor.execute(
+        { name: toolCall.function.name, args },
+        jwtToken!,
+      );
+
+      const turn2Body = this.buildOpenAiBody(
+        systemPrompt,
+        userMessage,
+        toolCall,
+        result,
+      );
+
+      const turn2Raw = await this.callLlmRaw(turn2Body);
+      return turn2Raw?.choices?.[0]?.message?.content || '';
+    }
+
+    return raw?.choices?.[0]?.message?.content || '';
+  }
+
+  private async callLlmRaw(body: any): Promise<any> {
+    const url = this.provider === 'gemini'
+      ? (this.apiUrl || `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`)
+      : (this.apiUrl || 'https://api.openai.com/v1/chat/completions');
+    this.logger.debug(`Calling ${this.provider} LLM: ${url} (model: ${this.model})`);
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.provider === 'openai') {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    } else {
+      headers['X-Goog-Api-Key'] = this.apiKey!;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   private async callLlm(systemPrompt: string, userMessage: string): Promise<string> {
     try {
       const body = this.provider === 'gemini'
         ? this.buildGeminiBody(systemPrompt, userMessage)
         : this.buildOpenAiBody(systemPrompt, userMessage);
 
-      const url = this.provider === 'gemini'
-        ? (this.apiUrl || `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`)
-        : (this.apiUrl || 'https://api.openai.com/v1/chat/completions');
-      this.logger.debug(`Calling ${this.provider} LLM: ${url} (model: ${this.model})`);
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (this.provider === 'openai') {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-      } else {
-        headers['X-Goog-Api-Key'] = this.apiKey!;
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json() as any;
+      const data = await this.callLlmRaw(body);
       return this.provider === 'gemini'
         ? data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
         : data?.choices?.[0]?.message?.content || '';
@@ -264,24 +326,89 @@ export class AiService {
     }
   }
 
-  private buildOpenAiBody(systemPrompt: string, userMessage: string) {
+  private buildOpenAiBody(
+    systemPrompt: string,
+    userMessage: string,
+    toolCall?: any,
+    toolResult?: { success: boolean; data?: any; error?: string },
+  ) {
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ];
+
+    if (toolCall) {
+      messages.push({
+        role: 'assistant',
+        content: null,
+        tool_calls: [toolCall],
+      });
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(toolResult),
+      });
+    }
+
     return {
       model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
+      messages,
       temperature: 0.3,
       max_tokens: 2048,
+      ...(toolCall ? {} : { tools: AI_TOOLS.map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      })) }),
     };
   }
 
-  private buildGeminiBody(systemPrompt: string, userMessage: string) {
-    return {
-      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+  private buildGeminiBody(
+    systemPrompt: string,
+    userMessage: string,
+    tools?: typeof AI_TOOLS,
+    functionCall?: any,
+    functionResult?: { success: boolean; data?: any; error?: string },
+  ) {
+    const parts: any[] = [{ text: userMessage }];
+    const contents: any[] = [{ role: 'user', parts }];
+
+    if (functionCall) {
+      contents.push({
+        role: 'model',
+        parts: [{ functionCall: { name: functionCall.name, args: functionCall.args } }],
+      });
+      contents.push({
+        role: 'function',
+        parts: [{
+          functionResponse: {
+            name: functionCall.name,
+            response: { name: functionCall.name, content: functionResult },
+          },
+        }],
+      });
+    }
+
+    const body: any = {
+      contents,
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
     };
+
+    if (tools && tools.length > 0) {
+      body.tools = [{
+        functionDeclarations: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        })),
+      }];
+    }
+
+    return body;
   }
 
   private parseReportResponse(content: string): AiReportResponse {

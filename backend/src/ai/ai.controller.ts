@@ -43,11 +43,13 @@ export class AiController {
     if (!schoolId) {
       throw new BadRequestException('School context is required');
     }
+    const jwtToken = (req as any).cookies?.Authentication || '';
     return this.aiService.chat(dto.message, {
       role: req.user.role,
       schoolId,
       studentId: dto.studentId,
       classId: dto.classId,
+      jwtToken,
     });
   }
 

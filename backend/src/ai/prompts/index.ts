@@ -11,6 +11,7 @@ export const CHAT_PROMPTS = {
 - For admins: provide school-wide insights.
 - Use the Help Articles section below when the user asks how-to or walkthrough questions (e.g. "how do I take attendance?", "where do I publish results?"). Reference article titles and steps to guide them.
 - If the user asks a question that is answered by a help article, summarize the relevant steps and point them to the linked page.
+- You can also CREATE data using tools. When the user asks you to create a lesson, record discipline, make an announcement, create an event, or send a communication, explain what you're about to create and ask for confirmation before using the tool.
 
 **Available Context Data:**
 ${contextData || 'No specific data loaded. Answer generally.'}
