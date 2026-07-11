@@ -59,6 +59,8 @@ import { EventsModule } from './core/events/events.module';
 import { AutomationEngineModule } from './automation-engine/automation-engine.module';
 import { LocalizationModule } from './core/localization/localization.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AiModule } from './ai/ai.module';
+import { HelpModule } from './help/help.module';
 
 @Module({
   imports: [
@@ -119,6 +121,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     EventsModule,
     AutomationEngineModule,
     LocalizationModule,
+    AiModule,
+    HelpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
