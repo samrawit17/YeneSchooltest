@@ -1,7 +1,7 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { AllowSuperAdminMixedRole, Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { DataQualityService } from './data-quality.service';
 
@@ -10,35 +10,58 @@ import { DataQualityService } from './data-quality.service';
 export class DataQualityController {
   constructor(private readonly dataQualityService: DataQualityService) {}
 
+  private resolveSchoolId(req: any, schoolId?: string) {
+    if (req.user?.role === Role.SUPER_ADMIN && schoolId) {
+      return schoolId;
+    }
+    return req.user.schoolId;
+  }
+
   @Get('student-consistency')
+  @AllowSuperAdminMixedRole()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  getStudentConsistencyReport(@Request() req: any) {
+  getStudentConsistencyReport(
+    @Request() req: any,
+    @Query('schoolId') schoolId?: string,
+  ) {
     return this.dataQualityService.getStudentConsistencyReport(
-      req.user.schoolId,
+      this.resolveSchoolId(req, schoolId),
     );
   }
 
   @Get('staff-consistency')
+  @AllowSuperAdminMixedRole()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  getStaffConsistencyReport(@Request() req: any) {
+  getStaffConsistencyReport(
+    @Request() req: any,
+    @Query('schoolId') schoolId?: string,
+  ) {
     return this.dataQualityService.getStaffConsistencyReport(
-      req.user.schoolId,
+      this.resolveSchoolId(req, schoolId),
     );
   }
 
   @Get('class-structure')
+  @AllowSuperAdminMixedRole()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  getClassStructureReport(@Request() req: any) {
+  getClassStructureReport(
+    @Request() req: any,
+    @Query('schoolId') schoolId?: string,
+  ) {
     return this.dataQualityService.getClassStructureReport(
-      req.user.schoolId,
+      this.resolveSchoolId(req, schoolId),
     );
   }
 
   @Get('timetable-conflicts')
+  @AllowSuperAdminMixedRole()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  getTimetableConflictReport(@Request() req: any) {
+  getTimetableConflictReport(
+    @Request() req: any,
+    @Query('schoolId') schoolId?: string,
+  ) {
     return this.dataQualityService.getTimetableConflictReport(
-      req.user.schoolId,
+      this.resolveSchoolId(req, schoolId),
     );
   }
 }
