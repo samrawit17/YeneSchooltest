@@ -1653,6 +1653,36 @@ if (
     return updated;
   }
 
+  async unlockAssessment(schoolId: string, assessmentId: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, schoolId },
+      select: { id: true, status: true },
+    });
+
+    if (!assessment) throw new LocalizedException('assessments.assessment_not_found_c5381dbc', undefined, HttpStatus.NOT_FOUND, 'Assessment not found');
+    if (assessment.status !== AssessmentStatus.LOCKED) throw new LocalizedException('assessments.assessment_not_locked_9a3f2b1c', undefined, HttpStatus.BAD_REQUEST, 'Assessment is not locked');
+
+    const teacherIds = await this.getAssessmentAffectedTeacherIds(
+      schoolId,
+      assessmentId,
+    );
+    const updated = await this.prisma.assessment.update({
+      where: { id: assessmentId },
+      data: {
+        status: AssessmentStatus.ACTIVE,
+        lockAt: null,
+      },
+    });
+    await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
+
+    void this.eventBus.emit('assessment.unlocked', {
+      schoolId,
+      assessmentId: updated.id,
+    });
+
+    return updated;
+  }
+
   async getMissingMarks(schoolId: string, query: ListAssessmentsFilterDto & { page?: number; limit?: number }) {
     const page = query.page || 1;
     const limit = query.limit || 20;

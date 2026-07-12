@@ -236,4 +236,10 @@ export class AssessmentsController {
   async lockAssessment(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.assessmentsService.lockAssessment(req.user.schoolId, id);
   }
+
+  @Post(':id/unlock')
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
+  async unlockAssessment(@Request() req: AuthRequest, @Param('id') id: string) {
+    return this.assessmentsService.unlockAssessment(req.user.schoolId, id);
+  }
 }
