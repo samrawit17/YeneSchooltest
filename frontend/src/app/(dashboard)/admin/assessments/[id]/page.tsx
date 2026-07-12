@@ -11,10 +11,12 @@ import {
   Clock,
   Loader2,
   Lock,
+  Unlock,
   Save,
   Users,
 } from "lucide-react";
 import { assessmentsAPI } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
@@ -109,10 +111,12 @@ function normalizePayload(payload: any): AssessmentDetail | null {
 export default function AssessmentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const assessmentId = params?.id;
   const [assessment, setAssessment] = useState<AssessmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [form, setForm] = useState({
     title: "",
     startDate: "",
@@ -163,6 +167,22 @@ export default function AssessmentDetailPage() {
     () => assessment?.subjects.reduce((sum, subject) => sum + subject._count.scores, 0) ?? 0,
     [assessment],
   );
+
+  const canUnlock = user?.role === "ADMIN" || user?.role === "REGISTRAR" || user?.role === "SUPER_ADMIN";
+
+  const handleUnlock = async () => {
+    if (!assessmentId) return;
+    setUnlocking(true);
+    try {
+      await assessmentsAPI.unlock(assessmentId);
+      toast.success("Assessment unlocked");
+      await loadAssessment();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to unlock assessment");
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!assessment || !assessmentId) return;
@@ -231,7 +251,7 @@ export default function AssessmentDetailPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <Link
-            href="/admin/assessments"
+            href="/admin/exams"
             className="mb-2 inline-flex items-center text-sm text-gray-500 transition-colors hover:text-[var(--brand-color)]"
           >
             <ArrowLeft className="mr-1.5 h-4 w-4" />
@@ -252,14 +272,27 @@ export default function AssessmentDetailPage() {
           </p>
         </div>
 
-        <Button
-          onClick={handleSave}
-          disabled={saving || isLocked || !hasChanges}
-          className="w-full sm:w-auto"
-        >
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Save
-        </Button>
+        <div className="flex items-center gap-2">
+          {isLocked && canUnlock && (
+            <Button
+              variant="outline"
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="w-full sm:w-auto"
+            >
+              {unlocking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unlock className="mr-2 h-4 w-4" />}
+              Unlock
+            </Button>
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={saving || isLocked || !hasChanges}
+            className="w-full sm:w-auto"
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
