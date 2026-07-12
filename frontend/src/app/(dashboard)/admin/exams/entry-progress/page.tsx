@@ -58,6 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilters } from "@/components/filters/Filters";
+import Pagination from "@/components/Pagination";
 
 type SortKey = "subject" | "className" | "progress" | "missing";
 type SortDir = "asc" | "desc";
@@ -146,6 +147,14 @@ export default function EntryProgressPage() {
   const [sortKey, setSortKey] = useState<SortKey>("missing");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [reminding, setReminding] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZES = [10, 15, 25, 50, 100];
+
+  // Reset to page 1 when filters, search, or sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortKey, sortDir]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/sign-in");
@@ -256,6 +265,16 @@ export default function EntryProgressPage() {
 
     return filtered;
   }, [data, search, sortDir, sortKey, statusFilter]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return rows.slice(start, end);
+  }, [rows, currentPage, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const startItem = rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, rows.length);
 
   const deadlineLabel = useMemo(() => {
     const term = terms.find((item) => item.id === selectedTerm);
@@ -549,7 +568,7 @@ export default function EntryProgressPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((row) => {
+                    {paginatedRows.map((row) => {
                       const status = getProgressStatus(row);
                       const tone = getDeadlineTone(row);
                       return (
@@ -632,16 +651,40 @@ export default function EntryProgressPage() {
                 </Table>
               </div>
 
-              <div className="px-4 py-2.5 border-t border-gray-100/70 dark:border-[#2A2A2A]/50 bg-gray-50/80 dark:bg-[#1A1A1A]/40 backdrop-blur-sm flex items-center justify-between">
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  Showing {rows.length} of {stats.total} assignments
-                  {stats.totalMissing > 0 && <span className="ml-2">· {stats.totalMissing} missing</span>}
-                </p>
-                {loading && (
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Refreshing...
-                  </span>
-                )}
+              <div className="px-4 py-3 border-t border-gray-100/70 dark:border-[#2A2A2A]/50 bg-gray-50/80 dark:bg-[#1A1A1A]/40 backdrop-blur-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                      Showing <span className="font-medium text-gray-500 dark:text-gray-400">{rows.length > 0 ? `${startItem}-${endItem}` : '0'}</span> of{' '}
+                      <span className="font-medium text-gray-500 dark:text-gray-400">{rows.length}</span>
+                      {stats.totalMissing > 0 && (
+                        <span className="ml-2">· <span className="text-rose-500">{stats.totalMissing}</span> missing</span>
+                      )}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-gray-400">Rows:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="text-xs border border-gray-200 dark:border-[#2A2A2A] rounded-md bg-white dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#e35336]/30"
+                      >
+                        {PAGE_SIZES.map((size) => (
+                          <option key={size} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {loading && (
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Refreshing...
+                      </span>
+                    )}
+                  </div>
+
+                  <Pagination page={currentPage} setPage={setCurrentPage} totalPages={totalPages} />
+                </div>
               </div>
             </Card>
           )}
