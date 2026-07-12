@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Trash2,
   Lock,
+  Unlock,
   BookOpen,
   FileText,
   GraduationCap,
@@ -422,11 +423,13 @@ function SubjectRow({
 function AssessmentCard({
   assessment,
   onLock,
+  onUnlock,
   expanded,
   onToggle,
 }: {
   assessment: Assessment;
   onLock: (id: string) => void;
+  onUnlock: (id: string) => void;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -481,6 +484,18 @@ function AssessmentCard({
               title={t.assessmentCard.lockTooltip}
             >
               <Lock className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {assessment.status === "LOCKED" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnlock(assessment.id);
+              }}
+              className="flex items-center gap-1 text-xs text-amber-500 transition-colors hover:text-[var(--brand-color)]"
+              title={t.assessmentCard.unlockTooltip}
+            >
+              <Unlock className="w-3.5 h-3.5" />
             </button>
           )}
           <button
@@ -588,7 +603,9 @@ export default function AssessmentManagementPage() {
 
   // Lock confirm
   const [lockTarget, setLockTarget] = useState<string | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<string | null>(null);
   const [locking, setLocking] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [clearing, setClearing] = useState(false);
 
   // Form data
@@ -1013,6 +1030,22 @@ export default function AssessmentManagementPage() {
     }
   };
 
+  // ── Unlock
+  const handleUnlock = async () => {
+    if (!unlockTarget) return;
+    setUnlocking(true);
+    try {
+      await assessmentsAPI.unlock(unlockTarget);
+      toast.success(t.toasts.unlocked);
+      setUnlockTarget(null);
+      loadAssessments();
+    } catch {
+      toast.error(t.toasts.unlockFailed);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   // ── Lock
   const handleLock = async () => {
     if (!lockTarget) return;
@@ -1234,6 +1267,7 @@ export default function AssessmentManagementPage() {
               key={a.id}
               assessment={a}
               onLock={(id) => setLockTarget(id)}
+              onUnlock={(id) => setUnlockTarget(id)}
               expanded={expandedId === a.id}
               onToggle={() => setExpandedId((prev) => (prev === a.id ? null : a.id))}
             />
@@ -1850,6 +1884,42 @@ export default function AssessmentManagementPage() {
             >
               {locking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {t.lockDialog.lock}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Unlock Confirm Dialog ── */}
+      <AlertDialog open={!!unlockTarget} onOpenChange={(o) => { if (!o) setUnlockTarget(null); }}>
+        <AlertDialogContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Unlock className="w-4 h-4 text-amber-500" />
+              {t.unlockDialog.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
+              {t.unlockDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={unlocking}
+              className="bg-white hover:opacity-90 dark:bg-[#1A1A1A]"
+              style={{
+                color: "var(--brand-color)",
+                borderColor: "rgba(var(--brand-color-rgb),0.24)",
+              }}
+            >
+              {t.unlockDialog.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="shadow-sm hover:opacity-90"
+              style={brandSolidStyle}
+            >
+              {unlocking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {t.unlockDialog.unlock}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
