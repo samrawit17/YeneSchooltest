@@ -1,99 +1,3 @@
-# Production build stage
-FROM node:20-slim AS builder
-
-ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-ENV DATABASE_URL=${DATABASE_URL}
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NPM_CONFIG_FETCH_TIMEOUT=300000
-
-WORKDIR /app
-
-# Network: Debian mirrors blocked on this network (Fastly CDN 403)
-# Fail fast with 10s timeout so build doesn't hang
-RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
-    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies
-RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error --ignore-scripts
-
-# Copy source code
-COPY . .
-
-# Generate Prisma client (handled by entrypoint)
-# RUN npx prisma generate
-
-# Build the application
-RUN npm run build
-
-# ===========================================
-# PRODUCTION RUNTIME
-# ===========================================
-
-# Production runtime
-FROM node:20-slim AS production
-
-ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-ENV DATABASE_URL=${DATABASE_URL}
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NPM_CONFIG_FETCH_TIMEOUT=300000
-
-WORKDIR /app
-
-# Network: Debian mirrors blocked on this network (Fastly CDN 403)
-# Fail fast with 10s timeout so build doesn't hang
-RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
-    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 --ingroup nodejs nodejs
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --legacy-peer-deps --omit=dev --no-audit --loglevel=error --ignore-scripts
-
-# Copy Prisma schema and generated client
-COPY prisma ./prisma/
-RUN npx prisma generate
-
-# Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-
-# Copy config files
-COPY *.json ./
-COPY tsconfig*.json ./
-COPY nest-cli.json ./
-COPY prisma.config.ts ./
-
-RUN chmod +x /app/docker-entrypoint.sh
-
-# Change ownership
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
-
-EXPOSE 8001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:8001/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
-
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["node", "dist/main.js"]
-
 # ===========================================
 # DEVELOPMENT BUILD
 # ===========================================
@@ -120,12 +24,90 @@ RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
 
 COPY . .
 
-# RUN npx prisma generate
-
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8001 9229
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "start"]
+
+# ===========================================
+# PRODUCTION BUILD
+# ===========================================
+
+FROM node:20-slim AS builder
+
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
+
+WORKDIR /app
+
+# Network: Debian mirrors blocked on this network (Fastly CDN 403)
+# Fail fast with 10s timeout so build doesn't hang
+RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
+    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
+
+COPY package*.json ./
+
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error --ignore-scripts
+
+COPY . .
+
+RUN npm run build
+
+# Production runtime
+FROM node:20-slim AS production
+
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
+
+WORKDIR /app
+
+# Network: Debian mirrors blocked on this network (Fastly CDN 403)
+# Fail fast with 10s timeout so build doesn't hang
+RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
+    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nodejs
+
+COPY package*.json ./
+
+RUN npm ci --legacy-peer-deps --omit=dev --no-audit --loglevel=error --ignore-scripts
+
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
+COPY *.json ./
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
+COPY prisma.config.ts ./
+
+RUN chmod +x /app/docker-entrypoint.sh
+
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:8001/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["node", "dist/main.js"]
