@@ -6,9 +6,10 @@ import { SchoolContextService } from './context/school-context.service';
 import { AiToolExecutorService } from './tools/ai-tool-executor.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { HelpModule } from '../help/help.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, HelpModule],
   controllers: [AiController],
   providers: [AiService, StudentContextService, SchoolContextService, AiToolExecutorService],
   exports: [AiService, StudentContextService, SchoolContextService, AiToolExecutorService],
