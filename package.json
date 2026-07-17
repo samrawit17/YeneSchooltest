@@ -1,0 +1,27 @@
+{
+  "name": "yeneschool-school-management-system",
+  "version": "1.0.0",
+  "description": "> **AI agents**: Start at `AGENT.md`. Only read other docs when the task requires them.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samrawit17/YeneSchooltest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/samrawit17/YeneSchooltest/issues"
+  },
+  "homepage": "https://github.com/samrawit17/YeneSchooltest#readme",
+  "dependencies": {
+    "railway": "^3.5.9"
+  }
+}

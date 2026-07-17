@@ -1,7 +1,3 @@
-# ===========================================
-# DEVELOPMENT BUILD
-# ===========================================
-
 FROM node:20-slim AS deps
 
 WORKDIR /app
@@ -32,11 +28,6 @@ EXPOSE 8000
 
 CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
-# ===========================================
-# PRODUCTION BUILD
-# ===========================================
-
-# Builder stage
 FROM node:20-slim AS builder
 
 WORKDIR /app
@@ -52,9 +43,10 @@ RUN npm ci --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
 
 COPY . .
 
+ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN npm run build
 
-# Production stage
 FROM node:20-slim AS production
 
 WORKDIR /app
@@ -77,13 +69,9 @@ RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
-EXPOSE 8000
+EXPOSE 3000
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV PORT=8000
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "const port = process.env.PORT || 8000; fetch('http://127.0.0.1:' + port + '/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "server.js"]
